@@ -1,0 +1,360 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registro - AgroTech</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        /* Reset básico */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        /* Estilo base do corpo */
+        body {
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background-image: url(img/imagem1.jpg);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            padding: 20px;
+        }
+
+        /* Container base para formulários */
+        .form-container1 {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 450px;
+            width: 100%;
+        }
+
+        /* Título do formulário */
+        form h2 {
+            margin-bottom: 24px;
+            text-align: center;
+            color: #202124;
+            font-size: 24px;
+            font-weight: 400;
+        }
+
+        /* Grupos de campos do formulário */
+        .input-group {
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        /* Rótulos */
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-size: 14px;
+            color: #5f6368;
+        }
+
+        /* Campos de entrada */
+        input[type="text"],
+        input[type="email"],
+        input[type="password"],
+        input[type="date"],
+        select {
+            width: 100%;
+            padding: 13px 15px;
+            border: 1px solid #dadce0;
+            border-radius: 4px;
+            font-size: 16px;
+            transition: border 0.2s ease;
+        }
+
+        input:focus, select:focus {
+            border: 1px solid #1a73e8;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.2);
+        }
+
+        /* Estilo para campos com erro */
+        .input-error {
+            border: 1px solid #d93025 !important;
+        }
+
+        /* Mensagens de erro */
+        .error-message {
+            color: #d93025;
+            font-size: 12px;
+            margin-top: 4px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+        }
+
+        /* Ícones de erro */
+        .error-icon {
+            color: #d93025;
+            font-size: 14px;
+        }
+
+        /* Botão principal */
+        button {
+            width: 100%;
+            padding: 10px;
+            background: #1a73e8;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s ease;
+            height: 44px;
+        }
+
+        button:hover {
+            background: #1565c0;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Links para login/cadastro */
+        .login-link {
+            text-align: center;
+            font-size: 14px;
+            margin-top: 30px;
+            color: #5f6368;
+        }
+
+        .login-link a {
+            color: #1a73e8;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .login-link a:hover {
+            text-decoration: underline;
+        }
+
+        /* Indicador de campo obrigatório */
+        .required::after {
+            content: " *";
+            color: #d93025;
+        }
+
+        /* MEDIA QUERIES: Responsividade */
+        @media (max-width: 768px) {
+            .form-container1 {
+                padding: 30px 24px;
+            }
+
+            form h2 {
+                font-size: 22px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .form-container1 {
+                padding: 24px 16px;
+                border-radius: 8px;
+            }
+
+            form h2 {
+                font-size: 20px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="form-container1">
+        <form class="register-form" action="php/registro.php" method="POST" novalidate>
+            <h2>Criar sua conta</h2>
+
+            <div class="input-group">
+                <label for="nome_completo" class="required">Nome completo</label>
+                <input type="text" id="nome_completo" name="nome_completo" required>
+                <span class="error-message" id="nomeError"></span>
+            </div>
+
+            <div class="input-group">
+                <label for="email" class="required">Email</label>
+                <input type="email" id="email" name="email" required>
+                <span class="error-message" id="emailError"></span>
+            </div>
+
+            <div class="input-group">
+                <label for="data_nascimento" class="required">Data de fundação da fazenda</label>
+                <input type="date" id="data_nascimento" name="data_nascimento" required>
+                <span class="error-message" id="dataError"></span>
+            </div>
+
+            <div class="input-group">
+                <label for="provincia" class="required">Província</label>
+                <select id="provincia" name="provincia" required>
+                  <option value="">Selecione uma província</option>
+                </select>
+                <span class="error-message" id="provinciaError"></span>
+            </div>
+
+            <div class="input-group">
+                <label for="municipio" class="required">Município</label>
+                <select id="municipio" name="municipio" disabled required>
+                  <option value="">Selecione uma província primeiro</option>
+                </select>
+                <span class="error-message" id="municipioError"></span>
+            </div>
+
+            <div class="input-group">
+                <label for="palavra_passe" class="required">Senha</label>
+                <input type="password" id="palavra_passe" name="palavra_passe" required>
+                <span class="error-message" id="senhaError"></span>
+            </div>
+
+            <div class="input-group">
+                <label for="confirmar_senha" class="required">Confirme a Senha</label>
+                <input type="password" id="confirmar_senha" name="confirmar_senha" required>
+                <span class="error-message" id="confirmSenhaError"></span>
+            </div>
+
+            <button type="submit">Criar conta</button>
+
+            <p class="login-link">
+                Já tem uma conta? <a href="login.html">Fazer login</a>
+            </p>
+        </form>
+    </div>
+    
+    <script>
+        const dados = {
+          "Luanda": ["Belas", "Cacuaco", "Cazenga", "Ícolo e Bengo", "Luanda", "Quissama", "Talatona", "Viana"],
+          "Bengo": ["Ambriz", "Bula Atumba", "Dande", "Dembos", "Nambuangongo", "Pango Aluquém"],
+          "Benguela": ["Baía Farta", "Balombo", "Benguela", "Bocoio", "Caimbambo", "Catumbela", "Chongoroi", "Cubal", "Ganda", "Lobito"],
+          "Bié": ["Andulo", "Camacupa", "Catabola", "Chinguar", "Chitembo", "Cuemba", "Cunhinga", "Kuito"],
+          "Cabinda": ["Belize", "Buco-Zau", "Cabinda", "Cacongo"],
+          "Cuando Cubango": ["Calai", "Cuangar", "Cuchi", "Cuito Cuanavale", "Dirico", "Mavinga", "Menongue", "Rivungo"],
+          "Cuanza Norte": ["Ambaca", "Banga", "Bolongongo", "Cambambe", "Cazengo", "Golungo Alto", "Lucala", "Quiculungo", "Samba Cajú"],
+          "Cuanza Sul": ["Amboim", "Cassongue", "Conda", "Ebo", "Libolo", "Mussende", "Porto Amboim", "Quibala", "Quilenda", "Seles", "Sumbe"],
+          "Cunene": ["Cahama", "Cuanhama", "Curoca", "Cuvelai", "Namacunde", "Ombadja"],
+          "Huambo": ["Bailundo", "Caála", "Ecunha", "Huambo", "Londuimbali", "Longonjo", "Mungo", "Tchicala Tcholohanga", "Tchindjenje", "Ukuma"],
+          "Huíla": ["Caconda", "Cacula", "Caluquembe", "Chiange", "Chibia", "Chicomba", "Chipindo", "Humpata", "Jamba", "Lubango", "Matala", "Quilengues", "Quipungo"],
+          "Lunda Norte": ["Cambulo", "Capenda-Camulemba", "Caungula", "Chitato", "Cuango", "Cuilo", "Lubalo", "Lucapa", "Xá-Muteba"],
+          "Lunda Sul": ["Cacolo", "Dala", "Muconda", "Saurimo"],
+          "Malanje": ["Cacuso", "Calandula", "Cambundi-Catembo", "Cangandala", "Caombo", "Cunda-Dia-Baze", "Luquembo", "Malanje", "Marimba", "Massango", "Quela", "Quirima"],
+          "Moxico": ["Alto Zambeze", "Bundas", "Camanongue", "Cameia", "Léua", "Luau", "Luacano", "Luchazes", "Moxico"],
+          "Namibe": ["Bibala", "Camucuio", "Moçâmedes", "Tômbwa", "Virei"],
+          "Uíge": ["Alto Cauale", "Ambuíla", "Bembe", "Buengas", "Bungo", "Damba", "Maquela do Zombo", "Mucaba", "Negage", "Puri", "Quimbele", "Quitexe", "Sanza Pombo", "Songo", "Uíge", "Zombo"],
+          "Zaire": ["Cuimba", "Mabanza Kongo", "Nóqui", "Nzeto", "Soyo", "Tomboco"]
+        };
+
+        const provSelect = document.getElementById("provincia");
+        const munSelect = document.getElementById("municipio");
+
+        // Preenche as províncias
+        Object.keys(dados).forEach(prov => {
+          const opt = document.createElement("option");
+          opt.value = prov;
+          opt.textContent = prov;
+          provSelect.appendChild(opt);
+        });
+
+        // Preenche municípios ao trocar província
+        provSelect.addEventListener("change", () => {
+          const prov = provSelect.value;
+          munSelect.innerHTML = "";
+
+          if (!prov) {
+            munSelect.disabled = true;
+            munSelect.innerHTML = '<option value="">Selecione uma província primeiro</option>';
+            return;
+          }
+
+          dados[prov].forEach(mun => {
+            const opt = document.createElement("option");
+            opt.value = mun;
+            opt.textContent = mun;
+            munSelect.appendChild(opt);
+          });
+
+          munSelect.disabled = false;
+        });
+
+        // Validação em tempo real
+        const form = document.querySelector('.register-form');
+        const inputs = form.querySelectorAll('input, select');
+        
+        inputs.forEach(input => {
+            // Validação ao sair do campo
+            input.addEventListener('blur', () => {
+                validateField(input);
+            });
+            
+            // Remover estilos de erro ao digitar
+            input.addEventListener('input', () => {
+                if (input.classList.contains('input-error')) {
+                    input.classList.remove('input-error');
+                    const errorElement = document.getElementById(input.id + 'Error');
+                    if (errorElement) {
+                        errorElement.innerHTML = '';
+                    }
+                }
+            });
+        });
+
+        // Validação no envio do formulário
+        form.addEventListener('submit', (e) => {
+            let isValid = true;
+            
+            inputs.forEach(input => {
+                if (!validateField(input)) {
+                    isValid = false;
+                }
+            });
+            
+            // Validação especial para confirmação de senha
+            const password = document.getElementById('palavra_passe');
+            const confirmPassword = document.getElementById('confirmar_senha');
+            
+            if (password.value !== confirmPassword.value) {
+                confirmPassword.classList.add('input-error');
+                document.getElementById('confirmSenhaError').innerHTML = '<i class="fas fa-exclamation-circle error-icon"></i> As senhas não coincidem';
+                isValid = false;
+            }
+            
+            if (!isValid) {
+                e.preventDefault();
+            }
+        });
+
+        // Função para validar campo individual
+        function validateField(field) {
+            const errorElement = document.getElementById(field.id + 'Error');
+            
+            // Verificar se o campo é obrigatório e está vazio
+            if (field.hasAttribute('required') && !field.value.trim()) {
+                field.classList.add('input-error');
+                errorElement.innerHTML = '<i class="fas fa-exclamation-circle error-icon"></i> Este campo é obrigatório';
+                return false;
+            }
+            
+            // Validação específica para email
+            if (field.type === 'email' && field.value) {
+                const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+                if (!emailPattern.test(field.value)) {
+                    field.classList.add('input-error');
+                    errorElement.innerHTML = '<i class="fas fa-exclamation-circle error-icon"></i> Digite um email válido';
+                    return false;
+                }
+            }
+            
+            // Se passou em todas as validações
+            field.classList.remove('input-error');
+            errorElement.innerHTML = '';
+            return true;
+        }
+    </script>
+</body>
+</html>
