@@ -85,7 +85,7 @@ export default function Nutricao() {
               </p>
             </div>
 
-            <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-green-100 dark:bg-green-900 text-green-900 dark:text-green-100">
+            <div className="flex flex-col items-center justify-center p-4 rounded-lg bg-primary/10 dark:bg-primary/80 text-primary dark:text-primary-foreground">
               <DollarSign className="w-8 h-8 mb-2" />
               <div className="text-sm">Custo com Ração</div>
               <p className="text-2xl font-bold">
@@ -105,16 +105,18 @@ export default function Nutricao() {
           {/* Grid com planos e gráfico */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {/* Planos de Alimentação */}
-            <div className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+            <div className="p-4 border rounded-lg bg-white/95 border-primary/20 dark:bg-gray-800">
               <h3 className="font-semibold mb-3">📋 Planos de Alimentação</h3>
               <div className="space-y-3">
                 {planos.length === 0 ? (
-                  <p className="text-gray-500 text-sm">Nenhum plano disponível.</p>
+                  <p className="text-gray-500 text-sm">
+                    Nenhum plano disponível.
+                  </p>
                 ) : (
                   planos.map((p) => (
                     <div
                       key={p.id}
-                      className="p-3 rounded-lg border bg-white dark:bg-gray-900 dark:border-gray-700 hover:shadow transition"
+                      className="p-3 rounded-lg border border-primary/20 bg-white/95 dark:bg-gray-900 dark:border-gray-700 hover:shadow transition"
                     >
                       <h4 className="font-semibold">{p.nome}</h4>
                       <p className="text-sm text-gray-600 dark:text-gray-400">
@@ -127,7 +129,7 @@ export default function Nutricao() {
             </div>
 
             {/* Histórico de Pesagem */}
-            <div className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800">
+            <div className="p-4 border rounded-lg bg-white/95 border-primary/20 dark:bg-gray-800">
               <h3 className="font-semibold mb-3">📈 Histórico de Pesagem</h3>
               <ResponsiveContainer width="100%" height={250}>
                 <LineChart data={dadosPeso}>

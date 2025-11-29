@@ -25,7 +25,9 @@ export default function Dashboard() {
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Vacinas Pendentes</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Vacinas Pendentes
+            </CardTitle>
             <span className="text-blue-500 text-2xl">💉</span>
           </CardHeader>
           <CardContent>
@@ -36,7 +38,9 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Alertas Ativos</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Alertas Ativos
+            </CardTitle>
             <span className="text-yellow-500 text-2xl">⚠️</span>
           </CardHeader>
           <CardContent>
@@ -48,7 +52,7 @@ export default function Dashboard() {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Tarefas Hoje</CardTitle>
-            <span className="text-green-500 text-2xl">📝</span>
+            <span className="text-primary text-2xl">📝</span>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{tarefasHoje}</div>
@@ -58,7 +62,9 @@ export default function Dashboard() {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Ganho Médio Diário (GMD)</CardTitle>
+            <CardTitle className="text-sm font-medium">
+              Ganho Médio Diário (GMD)
+            </CardTitle>
             <span className="text-emerald-500 text-2xl">📈</span>
           </CardHeader>
           <CardContent>
@@ -76,12 +82,19 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="space-y-3">
             {proximosEventos.length === 0 ? (
-              <p className="text-sm text-muted-foreground">Nenhum evento registrado.</p>
+              <p className="text-sm text-muted-foreground">
+                Nenhum evento registrado.
+              </p>
             ) : (
               proximosEventos.map((evento, i) => (
-                <div key={i} className="flex justify-between items-center border-b pb-2">
+                <div
+                  key={i}
+                  className="flex justify-between items-center border-b pb-2"
+                >
                   <span>{evento.nome}</span>
-                  <span className="text-sm text-muted-foreground">{evento.data}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {evento.data}
+                  </span>
                 </div>
               ))
             )}
@@ -122,15 +135,21 @@ export default function Dashboard() {
           </CardHeader>
           <CardContent className="grid grid-cols-3 text-center">
             <div>
-              <p className="text-2xl font-bold text-green-600">{statusRebanho.saudavel}%</p>
+              <p className="text-2xl font-bold text-primary">
+                {statusRebanho.saudavel}%
+              </p>
               <p className="text-xs text-muted-foreground">Saudável</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-yellow-600">{statusRebanho.tratamento}%</p>
+              <p className="text-2xl font-bold text-yellow-600">
+                {statusRebanho.tratamento}%
+              </p>
               <p className="text-xs text-muted-foreground">Em tratamento</p>
             </div>
             <div>
-              <p className="text-2xl font-bold text-red-600">{statusRebanho.isolados}%</p>
+              <p className="text-2xl font-bold text-red-600">
+                {statusRebanho.isolados}%
+              </p>
               <p className="text-xs text-muted-foreground">Isolados</p>
             </div>
           </CardContent>

@@ -25,7 +25,7 @@ export default function Login({ setIsAuthenticated }) {
     <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-green-50 to-green-100 p-4">
       <Card className="w-full max-w-md shadow-lg rounded-2xl border border-gray-200 bg-white">
         <CardHeader>
-          <CardTitle className="text-2xl font-semibold text-center text-green-700">
+          <CardTitle className="text-2xl font-semibold text-center text-primary">
             Login - AgroTech
           </CardTitle>
         </CardHeader>
@@ -47,13 +47,13 @@ export default function Login({ setIsAuthenticated }) {
             />
             <Button
               type="submit"
-              className="w-full bg-green-700 hover:bg-green-800 text-white font-semibold"
+              className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
             >
               Entrar
             </Button>
             <p className="text-sm text-center text-gray-600">
               Não tem conta?{" "}
-              <Link to="/register" className="text-green-700 hover:underline">
+              <Link to="/register" className="text-primary hover:underline">
                 Registrar-se
               </Link>
             </p>

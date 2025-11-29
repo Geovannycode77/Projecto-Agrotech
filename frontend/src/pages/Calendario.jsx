@@ -70,7 +70,7 @@ export default function Calendario() {
       return "bg-red-200 text-red-900 border border-red-400";
     if (vacina?.tipo === "opcional")
       return "bg-yellow-200 text-yellow-900 border border-yellow-400";
-    return "bg-white text-gray-800 border border-gray-200";
+    return "bg-white/95 text-gray-800 border border-primary/20";
   };
 
   const diasSemana = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];

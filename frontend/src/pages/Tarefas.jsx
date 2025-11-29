@@ -39,7 +39,7 @@ export default function Tarefas() {
       : tasks.filter((t) => !t.completed);
 
   return (
-    <div className="max-w-5xl mx-auto bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+    <div className="max-w-5xl mx-auto bg-white/95 border border-primary/20 dark:bg-gray-800 p-6 rounded-2xl shadow-md">
       {/* Cabeçalho */}
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">
@@ -92,7 +92,7 @@ export default function Tarefas() {
               key={task.id}
               className={`flex justify-between items-center p-3 rounded-lg border transition ${
                 task.completed
-                  ? "bg-green-50 dark:bg-green-900/30 border-green-400"
+                  ? "bg-primary/10 dark:bg-primary/80 border-primary/20"
                   : "bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-700"
               }`}
             >
