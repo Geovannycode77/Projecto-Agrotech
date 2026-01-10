@@ -1,4 +1,43 @@
 # Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+env/
+venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+.Python
+
+# Django
+db.sqlite3
+media/
+*.log
+
+# Node
+node_modules/
+dist/
+build/
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Frontend locks
+pnpm-lock.yaml
+package-lock.json
+
+# Environment files
+.env
+.env.*
+
+# Mac
+.Spotlight-V100
+# Python
 venv/
 .venv/
 env/
