@@ -307,7 +307,7 @@ export default function SaudeAnimal() {
               <select
                 value={filterRegion}
                 onChange={(e) => setFilterRegion(e.target.value)}
-                className="w-full border rounded p-2"
+                className="w-full border rounded p-2  bg-slate-900/80 border-primary/20 dark:bg-gray-800 text-white"
               >
                 <option value="">Todas regiões</option>
                 <option value="Norte">Norte</option>
@@ -390,7 +390,7 @@ export default function SaudeAnimal() {
             {incidents.map((inc) => (
               <div
                 key={inc.id}
-                className="p-3 rounded-lg border border-primary/20 bg-white/95 dark:bg-gray-900 dark:border-gray-700 flex justify-between items-start"
+                className="p-3 rounded-lg border border-primary/20 bg-slate-900/80 dark:bg-gray-900 dark:border-gray-700 flex justify-between items-start text-white"
               >
                 <div>
                   <div className="font-semibold">

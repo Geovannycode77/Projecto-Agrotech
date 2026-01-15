@@ -40,7 +40,7 @@ export default function Perfil() {
       <div className="max-w-6xl mx-auto grid grid-cols-12 gap-6">
         {/* Left: Farmer card + settings menu */}
         <aside className="col-span-3">
-          <Card className="p-4 bg-white/95 border border-primary/20 shadow">
+          <Card className="p-4 bg-slate-900/80 border border-primary/20 shadow text-white">
             <div className="flex flex-col items-center text-center">
               <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xl">
                 {profile.name ? profile.name.charAt(0).toUpperCase() : "U"}
@@ -114,7 +114,7 @@ export default function Perfil() {
 
         {/* Right: Content */}
         <section className="col-span-9">
-          <Card className="p-6 bg-white/95 border border-primary/20 shadow">
+          <Card className="p-6 bg-slate-900/80 border border-primary/20 shadow text-white">
             <CardHeader>
               <CardTitle className="text-xl font-semibold">Perfil</CardTitle>
             </CardHeader>

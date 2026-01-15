@@ -142,7 +142,7 @@ export default function Reproducao() {
       </section>
 
       {/* Formulário para registro de coberturas / inseminações */}
-      <section className="p-4 border rounded-lg bg-white/95 border-primary/20 dark:bg-gray-800">
+      <section className="p-4 border rounded-lg bg-slate-900/80 border-primary/20 dark:bg-gray-800 text-white">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-3">
           <Input
             placeholder="Matriz (tag)"
@@ -182,7 +182,7 @@ export default function Reproducao() {
       </section>
 
       {/* Lista de registros de reprodução */}
-      <section className="p-4 border rounded-lg bg-white/95 border-primary/20 dark:bg-gray-800">
+      <section className="p-4 border rounded-lg bg-slate-900/80 border-primary/20 dark:bg-gray-800 text-white">
         <h3 className="font-semibold mb-3">Eventos de Reprodução</h3>
         {records.length === 0 ? (
           <p className="text-sm text-muted-foreground">
@@ -193,7 +193,7 @@ export default function Reproducao() {
             {records.map((r) => (
               <div
                 key={r.id}
-                className="p-3 rounded-lg border border-primary/20 bg-white/95 dark:bg-gray-900 dark:border-gray-700"
+                className="p-3 rounded-lg border border-primary/20 bg-slate-900/80 dark:bg-gray-900 dark:border-gray-700 text-white"
               >
                 <div className="flex justify-between items-center">
                   <div>

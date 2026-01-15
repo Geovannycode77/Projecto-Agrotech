@@ -51,36 +51,83 @@ function Sidebar({ onLogout }) {
   ];
 
   return (
-    <aside className="w-64 fixed top-0 left-0 h-screen bg-gradient-to-b from-primary/90 via-primary/80 to-primary/70 text-white flex flex-col justify-between p-4 shadow-lg">
-      {/* Cabeçalho */}
+    <aside
+      className="w-72 fixed top-0 left-0 h-screen flex flex-col justify-between p-6 shadow-2xl overflow-y-auto"
+      style={{
+        background:
+          "linear-gradient(135deg, #0a3d62 0%, #0f5a8a 50%, #1e7a8f 100%)",
+        borderRight: "3px solid #10c876",
+      }}
+    >
+      {/* LOGO HEADER */}
       <div>
-        <div className="flex items-center gap-3 mb-4">
+        <div
+          className="flex items-center gap-3 mb-10 p-4 rounded-3xl"
+          style={{
+            background:
+              "linear-gradient(135deg, rgba(16, 200, 118, 0.2), rgba(30, 122, 143, 0.2))",
+            border: "2px solid rgba(16, 200, 118, 0.4)",
+            backdropFilter: "blur(10px)",
+          }}
+        >
           <img
-            src="/logo192.png"
+            src="/celeiro-removebg(1).png"
             alt="AgroTech"
-            className="h-10 w-10 rounded"
+            className="h-14 w-14 rounded-full shadow-xl"
+            style={{
+              boxShadow:
+                "0 0 20px rgba(12, 180, 116, 0.4), 0 0 40px rgba(16, 200, 118, 0.3)",
+            }}
           />
           <div>
-            <h1 className="text-xl font-bold">AgroTech</h1>
-            <p className="text-xs opacity-80">Gestão Agropecuária</p>
+            <h1
+              className="text-2xl font-black neon-text"
+              style={{ color: "#fff" }}
+            >
+              AgroTech
+            </h1>
+            <p
+              className="text-xs font-semibold opacity-80"
+              style={{ color: "#10c876" }}
+            >
+              Inteligência Agrícola
+            </p>
           </div>
         </div>
-        <nav className="flex flex-col gap-2">
+
+        {/* NAVEGAÇÃO */}
+        <nav className="flex flex-col gap-2 mb-6">
           {navItems.map(({ path, label, Icon }) => {
             const isActive = location.pathname === path;
-            const base =
-              "justify-start w-full flex items-center gap-3 px-3 py-2 rounded";
-            const classes = isActive
-              ? `${base} bg-primary shadow-md text-white`
-              : `${base} hover:bg-primary/80 hover:text-white/90`;
             return (
-              <Link key={path} to={path}>
+              <Link key={path} to={path} className="group relative">
+                <div
+                  className="absolute inset-0 rounded-2xl opacity-0 group-hover:opacity-100 transition-opacity duration-300 blur"
+                  style={{
+                    background: isActive
+                      ? "linear-gradient(135deg, #10c876, #1e7a8f)"
+                      : "linear-gradient(135deg, rgba(16, 200, 118, 0.3), rgba(30, 122, 143, 0.3))",
+                  }}
+                />
                 <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className={classes}
+                  className={`w-full justify-start gap-3 rounded-2xl relative z-10 font-semibold text-base h-12 transition-all duration-300 ${
+                    isActive
+                      ? "text-white shadow-xl"
+                      : "text-white hover:text-green-200"
+                  }`}
+                  style={{
+                    background: isActive
+                      ? "linear-gradient(135deg, #10c876, #1e7a8f)"
+                      : "rgba(255, 255, 255, 0.12)",
+                    border: isActive
+                      ? "none"
+                      : "2px solid rgba(16, 200, 118, 0.4)",
+                    backdropFilter: "blur(10px)",
+                    transform: isActive ? "scale(1.05)" : "scale(1)",
+                  }}
                 >
-                  {Icon && <Icon className="h-4 w-4 opacity-90" />}
-                  <span className="ml-1">{label}</span>
+                  {Icon && <Icon className="h-5 w-5" />}
+                  <span>{label}</span>
                 </Button>
               </Link>
             );
@@ -88,37 +135,44 @@ function Sidebar({ onLogout }) {
         </nav>
       </div>
 
-      {/* Botão de Logout e Perfil */}
-      <div className="pt-4 border-t border-primary/30 flex items-center gap-3 justify-between">
-        <div className="flex gap-2 items-center">
-          {/* Avatar button (compact) */}
-          <Link to="/perfil" title="Perfil">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-sm shadow"
-            >
-              {(() => {
-                try {
-                  const raw = localStorage.getItem("perfil_data");
-                  const name = raw ? JSON.parse(raw).name : null;
-                  return name ? name[0].toUpperCase() : "U";
-                } catch (e) {
-                  return "U";
-                }
-              })()}
-            </Button>
-          </Link>
-          <div className="w-24">
-            <Button
-              variant="destructive"
-              onClick={onLogout}
-              className="w-full font-semibold"
-            >
-              🚪 Sair
-            </Button>
-          </div>
-        </div>
+      {/* LOGOUT AREA */}
+      <div className="pt-4 border-t border-white/10 flex items-center gap-3 justify-between group">
+        <Link to="/perfil" title="Ver Perfil" className="relative">
+          <div
+            className="absolute inset-0 rounded-full blur opacity-0 group-hover:opacity-100 transition-opacity"
+            style={{
+              background: "linear-gradient(135deg, #10c876, #1e7a8f)",
+            }}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-12 w-12 rounded-full relative z-10 font-bold text-lg shadow-lg transition-all duration-300 text-white hover:scale-110"
+            style={{
+              background: "linear-gradient(135deg, #10c876, #1e7a8f)",
+            }}
+          >
+            {(() => {
+              try {
+                const raw = localStorage.getItem("perfil_data");
+                const name = raw ? JSON.parse(raw).name : null;
+                return name ? name[0].toUpperCase() : "U";
+              } catch (e) {
+                return "U";
+              }
+            })()}
+          </Button>
+        </Link>
+        <Button
+          variant="destructive"
+          onClick={onLogout}
+          className="flex-1 font-bold rounded-xl h-12 text-base transition-all duration-300 text-white"
+          style={{
+            background: "linear-gradient(130deg, #1e7a8f, #10c876)",
+          }}
+        >
+          SAIR
+        </Button>
       </div>
     </aside>
   );
@@ -131,11 +185,9 @@ function ProtectedLayout({ isAuthenticated, setIsAuthenticated }) {
     return <Navigate to="/login" replace />;
   }
   const onLogout = () => {
-    // Clear any client-side cached app data when logging out
     try {
       localStorage.removeItem("insumos_items");
       localStorage.removeItem("repro_records");
-      // other keys that may contain user data
     } catch {
       // ignore
     }
@@ -144,10 +196,17 @@ function ProtectedLayout({ isAuthenticated, setIsAuthenticated }) {
   };
 
   return (
-    <div className="flex bg-gradient-to-br from-green-50 to-green-100 text-gray-900 dark:text-gray-100 min-h-screen">
+    <div className="flex h-screen bg-gray-950 text-white">
       <Sidebar onLogout={onLogout} />
-      <main className="flex-1 ml-64 p-6 overflow-y-auto">
-        <div className="max-w-7xl mx-auto rounded-2xl bg-white/90 dark:bg-gray-800/70 p-6 shadow-lg border border-primary/20">
+      <main
+        className="flex-1 ml-72 overflow-y-auto gradient-shift"
+        style={{
+          background:
+            "linear-gradient(135deg, #0f0f23 0%, #1a0f2e 25%, #2d1b4e 50%, #1a0f2e 75%, #0f0f23 100%)",
+          backgroundSize: "400% 400%",
+        }}
+      >
+        <div className="p-10">
           <Routes>
             <Route path="/" element={<Dashboard />} />
             <Route path="/saude" element={<SaudeAnimal />} />

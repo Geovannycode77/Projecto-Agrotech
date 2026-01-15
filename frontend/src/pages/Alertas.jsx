@@ -170,7 +170,7 @@ export default function Alertas() {
         <select
           value={severity}
           onChange={(e) => setSeverity(e.target.value)}
-          className="border rounded p-2"
+          className="border rounded p-2  bg-slate-900/80 border-primary/20 dark:bg-gray-800 text-white"
         >
           <option value="">Todas severidades</option>
           <option value="critical">Crítica</option>
@@ -180,7 +180,7 @@ export default function Alertas() {
         <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="border rounded p-2"
+          className="border rounded p-2  bg-slate-900/80 border-primary/20 dark:bg-gray-800 text-white"
         >
           <option value="">Todos status</option>
           <option value="active">Ativos</option>
@@ -239,7 +239,7 @@ export default function Alertas() {
               <div
                 id={`alert-${a.id}`}
                 key={a.id}
-                className="p-3 rounded-lg border border-primary/20 bg-white/95 dark:bg-gray-900 dark:border-gray-700 flex justify-between items-start"
+                className="p-3 rounded-lg border border-primary/20 bg-slate-900/80 dark:bg-gray-900 dark:border-gray-700 flex justify-between items-start text-white"
               >
                 <div>
                   <div className="flex items-center gap-2">

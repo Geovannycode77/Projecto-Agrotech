@@ -23,3 +23,8 @@ db.sqlite3
 # OS
 .DS_Store
 Thumbs.db
+node_modules/
+frontend/node_modules/
+package-lock.json
+npm-debug.log
+.env

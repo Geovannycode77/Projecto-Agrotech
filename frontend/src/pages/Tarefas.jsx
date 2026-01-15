@@ -39,10 +39,10 @@ export default function Tarefas() {
       : tasks.filter((t) => !t.completed);
 
   return (
-    <div className="max-w-5xl mx-auto bg-white/95 border border-primary/20 dark:bg-gray-800 p-6 rounded-2xl shadow-md">
+    <div className="max-w-5xl mx-auto bg-slate-900/80 border border-green-500/30 dark:bg-gray-800 p-6 rounded-2xl shadow-md text-white">
       {/* Cabeçalho */}
       <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-semibold text-gray-800 dark:text-gray-100">
+        <h2 className="text-2xl font-semibold  dark:text-gray-100">
           Gestão de Tarefas
         </h2>
         <div className="flex gap-2">

@@ -174,7 +174,7 @@ export default function Insumos() {
                   })
                 }
               >
-                Exemplo: adicionar item
+                adicionar item
               </Button>
             </div>
           </CardContent>
@@ -190,7 +190,7 @@ export default function Insumos() {
         <select
           value={category}
           onChange={(e) => setCategory(e.target.value)}
-          className="border rounded p-2"
+          className="border rounded p-2  bg-slate-900/80 border-primary/20 dark:bg-gray-800 text-white"
         >
           {categories.map((c) => (
             <option key={c} value={c}>
