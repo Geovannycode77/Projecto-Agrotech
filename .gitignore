@@ -1,5 +1,45 @@
 # Python
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+env/
 venv/
+.venv/
+ENV/
+env.bak/
+venv.bak/
+.Python
+
+# Django
+db.sqlite3
+media/
+*.log
+
+# Node
+node_modules/
+dist/
+build/
+
+# Editor/OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Frontend locks
+pnpm-lock.yaml
+package-lock.json
+
+# Environment files
+.env
+.env.*
+
+# Mac
+.Spotlight-V100
+# Python
+venv/
+.venv/
 env/
 *.pyc
 __pycache__/
@@ -23,8 +63,16 @@ db.sqlite3
 # OS
 .DS_Store
 Thumbs.db
+<<<<<<< HEAD
 node_modules/
 frontend/node_modules/
 package-lock.json
 npm-debug.log
 .env
+=======
+
+# Node
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+>>>>>>> eef0aff6ef00c066cd64b8fd4bac9445cf9ddccf

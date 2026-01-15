@@ -37,10 +37,13 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'Login-cadastro',
-    'Dashboard',
+    'login_cadastro',
+    'Deshboard',
     'rest_framework',
 ]
+
+# Custom user model
+AUTH_USER_MODEL = 'login_cadastro.CustomUser'
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
