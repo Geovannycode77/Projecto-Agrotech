@@ -48,3 +48,12 @@ class CustomUser(AbstractUser):
 
     def __str__(self):
         return self.email
+class Perfil(models.Model):
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    nome_completo = models.CharField(max_length=100)
+    data_nascimento = models.DateField(null=True, blank=True)
+    telefone = PhoneNumberField(null=True, blank=True)
+    endereco = models.CharField(max_length=255, null=True, blank=True)
+
+    def __str__(self):
+        return self.nome_completo
