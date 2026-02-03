@@ -18,9 +18,6 @@ media/
 
 # Node
 node_modules/
-
-# Frontend
-frontend/
 dist/
 build/
 
