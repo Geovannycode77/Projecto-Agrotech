@@ -2,7 +2,13 @@ import { useState } from "react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Link, useNavigate } from "react-router-dom";
 
 export default function Register() {
@@ -11,46 +17,17 @@ export default function Register() {
   const [form, setForm] = useState({
     nome_completo: "",
     email: "",
+    palavra_passe: "",
+    senha: "",
     data_nascimento: "",
     contacto: "",
     fazenda: "",
-    provincia: "",
-    municipio: "",
     tipo_gado: "",
-    palavra_passe: "",
-    senha: "",
+    tamanho_gado: "",
   });
-
-  const [municipios, setMunicipios] = useState([]);
-
-  const dados = {
-    Luanda: ["Belas", "Cacuaco", "Cazenga", "Ícolo e Bengo", "Luanda", "Quissama", "Talatona", "Viana"],
-    Bengo: ["Ambriz", "Bula Atumba", "Dande", "Dembos", "Nambuangongo", "Pango Aluquém"],
-    Benguela: ["Baía Farta", "Balombo", "Benguela", "Bocoio", "Caimbambo", "Catumbela", "Chongoroi", "Cubal", "Ganda", "Lobito"],
-    Bié: ["Andulo", "Camacupa", "Catabola", "Chinguar", "Chitembo", "Cuemba", "Cunhinga", "Kuito"],
-    Cabinda: ["Belize", "Buco-Zau", "Cabinda", "Cacongo"],
-    "Cuando Cubango": ["Calai", "Cuangar", "Cuchi", "Cuito Cuanavale", "Dirico", "Mavinga", "Menongue", "Rivungo"],
-    "Cuanza Norte": ["Ambaca", "Banga", "Bolongongo", "Cambambe", "Cazengo", "Golungo Alto", "Lucala", "Quiculungo", "Samba Cajú"],
-    "Cuanza Sul": ["Amboim", "Cassongue", "Conda", "Ebo", "Libolo", "Mussende", "Porto Amboim", "Quibala", "Quilenda", "Seles", "Sumbe"],
-    Cunene: ["Cahama", "Cuanhama", "Curoca", "Cuvelai", "Namacunde", "Ombadja"],
-    Huambo: ["Bailundo", "Caála", "Ecunha", "Huambo", "Londuimbali", "Longonjo", "Mungo", "Tchicala Tcholohanga", "Tchindjenje", "Ukuma"],
-    Huíla: ["Caconda", "Cacula", "Caluquembe", "Chiange", "Chibia", "Chicomba", "Chipindo", "Humpata", "Jamba", "Lubango", "Matala", "Quilengues", "Quipungo"],
-    "Lunda Norte": ["Cambulo", "Capenda-Camulemba", "Caungula", "Chitato", "Cuango", "Cuilo", "Lubalo", "Lucapa", "Xá-Muteba"],
-    "Lunda Sul": ["Cacolo", "Dala", "Muconda", "Saurimo"],
-    Malanje: ["Cacuso", "Calandula", "Cambundi-Catembo", "Cangandala", "Caombo", "Cunda-Dia-Baze", "Luquembo", "Malanje", "Marimba", "Massango", "Quela", "Quirima"],
-    Moxico: ["Alto Zambeze", "Bundas", "Camanongue", "Cameia", "Léua", "Luau", "Luacano", "Luchazes", "Moxico"],
-    Namibe: ["Bibala", "Camucuio", "Moçâmedes", "Tômbwa", "Virei"],
-    Uíge: ["Alto Cauale", "Ambuíla", "Bembe", "Buengas", "Bungo", "Damba", "Maquela do Zombo", "Mucaba", "Negage", "Puri", "Quimbele", "Quitexe", "Sanza Pombo", "Songo", "Uíge", "Zombo"],
-    Zaire: ["Cuimba", "Mabanza Kongo", "Nóqui", "Nzeto", "Soyo", "Tomboco"],
-  };
 
   const handleChange = (key, value) => {
     setForm({ ...form, [key]: value });
-
-    if (key === "provincia") {
-      setMunicipios(dados[value] || []);
-      setForm({ ...form, provincia: value, municipio: "" });
-    }
   };
 
   const handleSubmit = (e) => {
@@ -60,79 +37,134 @@ export default function Register() {
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen bg-gray-100 px-4">
-      <Card className="w-full max-w-lg p-6">
-        <CardHeader>
-          <CardTitle className="text-center text-2xl font-bold">Registro - AgroTech</CardTitle>
-        </CardHeader>
+    <div className="min-h-screen bg-gray-100 grid md:grid-cols-2">
+      {/* LADO ESQUERDO - IMAGEM */}
+      <div className="hidden md:flex items-center justify-center  rounded-r-3xl overflow-hidden">
+        <img
+          src="/fundo.jpeg"
+          alt="AgroTech"
+          className="h-full w-full object-cover"
+        />
+      </div>
 
-        <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-3">
-            <Input placeholder="Nome completo" value={form.nome_completo} onChange={(e) => handleChange("nome_completo", e.target.value)} required />
+      {/* LADO DIREITO - FORMULÁRIO */}
+      <div className="flex items-center justify-center bg-gray-100 px-4">
+        <Card className="w-full max-w-xl p-6">
+          <CardHeader>
+            <CardTitle className="text-center text-2xl font-bold">
+              Criar conta
+            </CardTitle>
+          </CardHeader>
 
-            <Input type="email" placeholder="Email" value={form.email} onChange={(e) => handleChange("email", e.target.value)} required />
+          <CardContent>
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Nome + Email */}
+              <div className="grid md:grid-cols-2 gap-3">
+                <Input
+                  placeholder="Nome completo"
+                  value={form.nome_completo}
+                  onChange={(e) =>
+                    handleChange("nome_completo", e.target.value)
+                  }
+                  required
+                />
 
-            <label className="text-sm font-medium text-gray-700">Data de fundação da fazenda</label>
-            <Input type="date" value={form.data_nascimento} onChange={(e) => handleChange("data_nascimento", e.target.value)} required />
+                <Input
+                  type="email"
+                  placeholder="Email"
+                  value={form.email}
+                  onChange={(e) => handleChange("email", e.target.value)}
+                  required
+                />
+              </div>
 
-            <Input placeholder="Contato (opcional)" value={form.contacto} onChange={(e) => handleChange("contacto", e.target.value)} />
+              {/* Senha + Confirmar */}
+              <div className="grid md:grid-cols-2 gap-3">
+                <Input
+                  type="password"
+                  placeholder="Senha"
+                  value={form.palavra_passe}
+                  onChange={(e) =>
+                    handleChange("palavra_passe", e.target.value)
+                  }
+                  required
+                />
 
-            <Input placeholder="Nome da Fazenda (opcional)" value={form.fazenda} onChange={(e) => handleChange("fazenda", e.target.value)} />
+                <Input
+                  type="password"
+                  placeholder="Confirmar senha"
+                  value={form.senha}
+                  onChange={(e) => handleChange("senha", e.target.value)}
+                  required
+                />
+              </div>
 
-            <Select onValueChange={(v) => handleChange("provincia", v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione uma província" />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.keys(dados).map((prov) => (
-                  <SelectItem key={prov} value={prov}>
-                    {prov}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {/* Data + Contacto */}
+              <div className="grid md:grid-cols-2 gap-3">
+                <Input
+                  type="date"
+                  value={form.data_nascimento}
+                  onChange={(e) =>
+                    handleChange("data_nascimento", e.target.value)
+                  }
+                  required
+                />
 
-            <Select onValueChange={(v) => handleChange("municipio", v)} disabled={!form.provincia}>
-              <SelectTrigger>
-                <SelectValue placeholder={form.provincia ? "Selecione o município" : "Selecione uma província primeiro"} />
-              </SelectTrigger>
-              <SelectContent>
-                {municipios.map((mun) => (
-                  <SelectItem key={mun} value={mun}>
-                    {mun}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <Input
+                  placeholder="Contacto"
+                  value={form.contacto}
+                  onChange={(e) => handleChange("contacto", e.target.value)}
+                />
+              </div>
 
-            <Select onValueChange={(v) => handleChange("tipo_gado", v)}>
-              <SelectTrigger>
-                <SelectValue placeholder="Tipo de gado" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="corte">Corte</SelectItem>
-                <SelectItem value="leiteiro">Leiteiro</SelectItem>
-                <SelectItem value="ambos">Corte e Leiteiro</SelectItem>
-              </SelectContent>
-            </Select>
+              {/* Fazenda */}
+              <Input
+                placeholder="Nome da Fazenda"
+                value={form.fazenda}
+                onChange={(e) => handleChange("fazenda", e.target.value)}
+              />
 
-            <Input type="password" placeholder="Senha" value={form.palavra_passe} onChange={(e) => handleChange("palavra_passe", e.target.value)} required />
+              {/* Selects */}
+              <div className="grid md:grid-cols-2 gap-3">
+                <Select onValueChange={(v) => handleChange("tipo_gado", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tipo de gado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="corte">Corte</SelectItem>
+                    <SelectItem value="leiteiro">Leiteiro</SelectItem>
+                    <SelectItem value="ambos">Misto</SelectItem>
+                  </SelectContent>
+                </Select>
 
-            <Input type="password" placeholder="Confirme a senha" value={form.senha} onChange={(e) => handleChange("senha", e.target.value)} required />
+                <Select onValueChange={(v) => handleChange("tamanho_gado", v)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Tamanho do gado" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="pequeno">Até 30 cabeças</SelectItem>
+                    <SelectItem value="medio">31–100 cabeças</SelectItem>
+                    <SelectItem value="grande">Mais de 100 cabeças</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <Button type="submit" className="w-full">
-              Registrar
-            </Button>
+              {/* Botão */}
+              <Button type="submit" className="w-full mt-2">
+                Registrar
+              </Button>
 
-            <p className="text-center text-sm mt-2">
-              Já tem uma conta?{" "}
-              <Link to="/login" className="text-blue-600 hover:underline">
-                Entrar
-              </Link>
-            </p>
-          </form>
-        </CardContent>
-      </Card>
+              {/* Link login */}
+              <p className="text-center text-sm text-gray-600">
+                Já tem uma conta?{" "}
+                <Link to="/login"className="text-primary hover:underline">
+                  Entrar
+                </Link>
+              </p>
+            </form>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

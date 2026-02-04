@@ -33,6 +33,8 @@ import Insumos from "./pages/Insumos";
 import Alertas from "./pages/Alertas";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import logo from "@/assets/logo.png";
+
 
 // =================== SIDEBAR ===================
 function Sidebar({ onLogout }) {
@@ -51,76 +53,86 @@ function Sidebar({ onLogout }) {
   ];
 
   return (
-    <aside className="w-64 fixed top-0 left-0 h-screen bg-gradient-to-b from-primary/90 via-primary/80 to-primary/70 text-white flex flex-col justify-between p-4 shadow-lg">
-      {/* Cabeçalho */}
-      <div>
-        <div className="flex items-center gap-3 mb-4">
-          <img
-            src="/logo192.png"
-            alt="AgroTech"
-            className="h-10 w-10 rounded"
-          />
-          <div>
-            <h1 className="text-xl font-bold">AgroTech</h1>
-            <p className="text-xs opacity-80">Gestão Agropecuária</p>
-          </div>
-        </div>
-        <nav className="flex flex-col gap-2">
-          {navItems.map(({ path, label, Icon }) => {
-            const isActive = location.pathname === path;
-            const base =
-              "justify-start w-full flex items-center gap-3 px-3 py-2 rounded";
-            const classes = isActive
-              ? `${base} bg-primary shadow-md text-white`
-              : `${base} hover:bg-primary/80 hover:text-white/90`;
-            return (
-              <Link key={path} to={path}>
-                <Button
-                  variant={isActive ? "secondary" : "ghost"}
-                  className={classes}
-                >
-                  {Icon && <Icon className="h-4 w-4 opacity-90" />}
-                  <span className="ml-1">{label}</span>
-                </Button>
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
+    <aside className="w-64 fixed top-0 left-0 h-screen bg-gray-50 text-gray-800 flex flex-col justify-between p-4 border-r">
+  {/* Cabeçalho */}
+  <div>
+    <div className="flex items-center gap-3 mb-6">
+      <img
+        src={logo}
+        alt="AgroTech"
+        className="h-16 w-16 rounded-full object-cover"
+      />
 
-      {/* Botão de Logout e Perfil */}
-      <div className="pt-4 border-t border-primary/30 flex items-center gap-3 justify-between">
-        <div className="flex gap-2 items-center">
-          {/* Avatar button (compact) */}
-          <Link to="/perfil" title="Perfil">
+      <div>
+        <h1 className="text-lg font-semibold">AgroTech</h1>
+        <p className="text-xs text-gray-500">Gestão Agropecuária</p>
+      </div>
+    </div>
+    
+    <div className="my-3 h-px bg-gray-300" />
+
+    <nav className="flex flex-col gap-1">
+      {navItems.map(({ path, label, Icon }) => {
+        const isActive = location.pathname === path;
+
+        const base =
+          "justify-start w-full flex items-center gap-3 px-3 py-2 rounded-md text-sm transition-colors";
+
+        const classes = isActive
+          ? `${base} bg-gray-200 text-gray-900 font-medium`
+          : `${base} text-gray-600 hover:bg-gray-100 hover:text-gray-800`;
+
+        return (
+          <Link key={path} to={path}>
             <Button
               variant="ghost"
-              size="icon"
-              className="h-10 w-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center font-semibold text-sm shadow"
+              className={classes}
             >
-              {(() => {
-                try {
-                  const raw = localStorage.getItem("perfil_data");
-                  const name = raw ? JSON.parse(raw).name : null;
-                  return name ? name[0].toUpperCase() : "U";
-                } catch (e) {
-                  return "U";
-                }
-              })()}
+              {Icon && <Icon className="h-4 w-4 opacity-70" />}
+              <span className="ml-1">{label}</span>
             </Button>
           </Link>
-          <div className="w-24">
-            <Button
-              variant="destructive"
-              onClick={onLogout}
-              className="w-full font-semibold"
-            >
-              🚪 Sair
-            </Button>
-          </div>
-        </div>
+        );
+      })}
+    </nav>
+  </div>
+
+   <div className="my-3 h-px bg-gray-300" />
+   
+  {/* Botão de Logout e Perfil */}
+  <div className="pt-4  border-gray-200 flex items-center gap-3 justify-between">
+    <div className="flex gap-2 items-center">
+      {/* Avatar */}
+      <Link to="/perfil" title="Perfil">
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-10 w-10 rounded-full bg-gray-200 text-gray-700 flex items-center justify-center font-semibold text-sm"
+        >
+          {(() => {
+            try {
+              const raw = localStorage.getItem("perfil_data");
+              const name = raw ? JSON.parse(raw).name : null;
+              return name ? name[0].toUpperCase() : "U";
+            } catch {
+              return "U";
+            }
+          })()}
+        </Button>
+      </Link>
+
+      <div className="w-24">
+        <Button
+          variant="outline"
+          onClick={onLogout}
+          className="w-full text-sm font-medium"
+        >
+          Sair
+        </Button>
       </div>
-    </aside>
+    </div>
+  </div>
+</aside>
   );
 }
 

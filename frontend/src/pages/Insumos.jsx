@@ -174,7 +174,7 @@ export default function Insumos() {
                   })
                 }
               >
-                Exemplo: adicionar item
+                Adicionar item
               </Button>
             </div>
           </CardContent>
