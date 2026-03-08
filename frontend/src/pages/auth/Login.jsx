@@ -47,6 +47,11 @@ export default function Login({ setIsAuthenticated }) {
             <form className="space-y-4" onSubmit={handleSubmit} noValidate>
               <Input type="email" placeholder="Email" value={email} onChange={(e) => setEmail(e.target.value)} required />
               <Input type="password" placeholder="Senha" value={senha} onChange={(e) => setSenha(e.target.value)} required />
+              <div className="text-right">
+                <Link to="/esqueceu-palavra-passe" className="text-sm text-primary hover:underline">
+                  Esqueceu a senha?
+                </Link>
+              </div>
               <Button type="submit" className="w-full bg-primary hover:bg-primary/90 text-primary-foreground font-semibold" disabled={loading}>
                 {loading ? "Entrando..." : "Entrar"}
               </Button>
