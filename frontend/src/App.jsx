@@ -1,126 +1,107 @@
-// src/App.jsx
-import {
-  BrowserRouter as Router,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-import { useState, useEffect } from "react";
-import { ConfirmProvider } from "@/components/ui/ConfirmContext.jsx";
-import { isAuthenticated as checkAuth } from "@/services/api";
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import { useAuth } from './hooks/useAuth';
 
-// Páginas públicas
-import Login from "@/pages/auth/Login";
-import Register from "@/pages/auth/registro";
-import ForgotPassword from "@/pages/auth/esqueceu-palavra-passe";
-import ResetPassword from "@/pages/auth/resetar-palavra-passe";
-import VerificacaoEmail from "@/pages/auth/verificacao-email";
+// Auth Pages
+import Login from './pages/auth/Login';
+import Register from './pages/auth/register';
+import PendingApproval from './pages/auth/pendingApproval';
+import ConfirmEmail from './pages/auth/ConfirmEmail';
+import CompleteProfile from './pages/auth/CompleteProfile';
+import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';  // <-- ADICIONE ESTA LINHA
 
-// Layout protegido com sidebar e dashboard
-import DashboardLayout from "@/pages/dashboard/DashboardLayout";
+// Admin Pages
+import AdminLayout from './components/layouts/AdminLayout';
+import AdminDashboard from './pages/admin/Dashboard';
+import Users from './pages/admin/Users';
+import Settings from './pages/admin/Settings';
+import Reports from './pages/admin/Reports';
+import Backups from './pages/admin/Backups';
 
-// Componente para proteger rotas
-function ProtectedRoute({ children, isAuthenticated }) {
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-  return children;
-}
+// Role-based Dashboards
+import ProdutorDashboard from './pages/dashboard/ProdutorDashboard';
+import VeterinarioDashboard from './pages/dashboard/VeterinarioDashboard';
+import FuncionarioDashboard from './pages/dashboard/FuncionarioDashboard';
+import GestorFinanceiroDashboard from './pages/dashboard/GestorFinanceiroDashboard';
 
-// Componente para redirecionar se já estiver autenticado
-function PublicRoute({ children, isAuthenticated }) {
-  if (isAuthenticated) {
-    return <Navigate to="/" replace />;
-  }
-  return children;
-}
-
-function App() {
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [loading, setLoading] = useState(true);
-
-  // Verificar autenticação ao carregar a app
-  useEffect(() => {
-    const auth = checkAuth();
-    setIsAuthenticated(auth);
-    setLoading(false);
-  }, []);
-
-  // Função de logout
-  const handleLogout = () => {
-    localStorage.removeItem("authToken");
-    setIsAuthenticated(false);
-  };
+const PrivateRoute = ({ children, allowedRoles = [] }) => {
+  const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="text-lg font-semibold text-gray-600">Carregando...</div>
-      </div>
-    );
+    return <div className="flex justify-center items-center h-screen">Carregando...</div>;
   }
 
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
+
+  if (!user?.email_confirmed) {
+    return <Navigate to="/pending-confirmation" />;
+  }
+
+  if (allowedRoles.length > 0 && !allowedRoles.includes(user?.role) && !user?.is_superuser) {
+    return <Navigate to="/dashboard" />;
+  }
+
+  return children;
+};
+
+const DashboardRouter = () => {
+  const { user } = useAuth();
+  
+  const dashboards = {
+    administrador: <AdminLayout><AdminDashboard /></AdminLayout>,
+    produtor: <ProdutorDashboard />,
+    veterinario: <VeterinarioDashboard />,
+    funcionario: <FuncionarioDashboard />,
+    gestor_financeiro: <GestorFinanceiroDashboard />
+  };
+
+  return dashboards[user?.role] || <Navigate to="/login" />;
+};
+
+function App() {
   return (
     <Router>
-      <ConfirmProvider>
+      <AuthProvider>
         <Routes>
-          {/* Rotas públicas - apenas para usuários não autenticados */}
-          <Route
-            path="/login"
-            element={
-              <PublicRoute isAuthenticated={isAuthenticated}>
-                <Login setIsAuthenticated={setIsAuthenticated} />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/register"
-            element={
-              <PublicRoute isAuthenticated={isAuthenticated}>
-                <Register />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/esqueceu-palavra-passe"
-            element={
-              <PublicRoute isAuthenticated={isAuthenticated}>
-                <ForgotPassword />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/resetar-palavra-passe/:token"
-            element={
-              <PublicRoute isAuthenticated={isAuthenticated}>
-                <ResetPassword />
-              </PublicRoute>
-            }
-          />
-          <Route
-            path="/verificacao-email/:token"
-            element={
-              <PublicRoute isAuthenticated={isAuthenticated}>
-                <VerificacaoEmail />
-              </PublicRoute>
-            }
-          />
-
-          {/* Rotas protegidas - apenas para usuários autenticados */}
-          <Route
-            path="/*"
-            element={
-              <ProtectedRoute isAuthenticated={isAuthenticated}>
-                <DashboardLayout
-                  isAuthenticated={isAuthenticated}
-                  setIsAuthenticated={setIsAuthenticated}
-                  onLogout={handleLogout}
-                />
-              </ProtectedRoute>
-            }
-          />
+          {/* Auth Routes */}
+          <Route path="/login" element={<Login />} />
+          <Route path="/register" element={<Register />} />
+          <Route path="/pending-approval" element={<PendingApproval />} />
+          <Route path="/confirm-email/:token" element={<ConfirmEmail />} />
+          <Route path="/complete-profile/:role" element={<CompleteProfile />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />  {/* <-- ADICIONE ESTA LINHA */}
+          
+          {/* Dashboard */}
+          <Route path="/dashboard" element={
+            <PrivateRoute>
+              <DashboardRouter />
+            </PrivateRoute>
+          } />
+          
+          {/* Admin Routes */}
+          <Route path="/admin" element={
+            <PrivateRoute allowedRoles={['administrador']}>
+              <AdminLayout />
+            </PrivateRoute>
+          }>
+            <Route index element={<Navigate to="/admin/dashboard" />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+            <Route path="users" element={<Users />} />
+            <Route path="settings" element={<Settings />} />
+            <Route path="reports" element={<Reports />} />
+            <Route path="backups" element={<Backups />} />
+          </Route>
+          
+          {/* Default */}
+          <Route path="/" element={<Navigate to="/dashboard" />} />
+          <Route path="*" element={<Navigate to="/dashboard" />} />
         </Routes>
-      </ConfirmProvider>
+      </AuthProvider>
     </Router>
   );
 }
