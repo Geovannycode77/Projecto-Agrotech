@@ -1,18 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { adminService } from '../../services/api';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { adminService } from '../../services/api';
+import { 
+  Search, 
+  Filter,
+  CheckCircle,
+  Trash2,
+  AlertCircle
+} from 'lucide-react';
 
-export default function Users() {
+export default function AdminUsers() {
   const [users, setUsers] = useState([]);
-  const [pendingUsers, setPendingUsers] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('all');
-  const [message, setMessage] = useState('');
+  const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterRole, setFilterRole] = useState('');
 
   useEffect(() => {
     fetchUsers();
@@ -20,14 +25,13 @@ export default function Users() {
 
   const fetchUsers = async () => {
     try {
-      const [allUsers, pending] = await Promise.all([
-        adminService.getUsers(),
-        adminService.getPendingUsers()
-      ]);
-      setUsers(allUsers);
-      setPendingUsers(pending);
-    } catch (error) {
-      console.error('Erro ao carregar usuários:', error);
+      setLoading(true);
+      setError(null);
+      const data = await adminService.getUsers();
+      setUsers(data || []);
+    } catch (err) {
+      console.error('Erro:', err);
+      setError('Não foi possível carregar os usuários.');
     } finally {
       setLoading(false);
     }
@@ -36,22 +40,10 @@ export default function Users() {
   const handleApprove = async (userId) => {
     try {
       await adminService.approveUser(userId);
-      setMessage({ type: 'success', text: 'Usuário aprovado com sucesso!' });
       fetchUsers();
-      setTimeout(() => setMessage(''), 3000);
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Erro ao aprovar usuário' });
-    }
-  };
-
-  const handleRoleChange = async (userId, newRole) => {
-    try {
-      await adminService.updateUserRole(userId, newRole);
-      setMessage({ type: 'success', text: 'Função atualizada com sucesso!' });
-      fetchUsers();
-      setTimeout(() => setMessage(''), 3000);
-    } catch (error) {
-      setMessage({ type: 'error', text: 'Erro ao atualizar função' });
+    } catch (err) {
+      console.error('Erro ao aprovar:', err);
+      alert('Erro ao aprovar usuário. Tente novamente.');
     }
   };
 
@@ -59,135 +51,181 @@ export default function Users() {
     if (window.confirm('Tem certeza que deseja deletar este usuário?')) {
       try {
         await adminService.deleteUser(userId);
-        setMessage({ type: 'success', text: 'Usuário deletado com sucesso!' });
         fetchUsers();
-        setTimeout(() => setMessage(''), 3000);
-      } catch (error) {
-        setMessage({ type: 'error', text: 'Erro ao deletar usuário' });
+      } catch (err) {
+        console.error('Erro ao deletar:', err);
+        alert('Erro ao deletar usuário. Tente novamente.');
       }
     }
   };
 
+  const filteredUsers = users.filter(user => {
+    const matchesSearch = user.email?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesRole = filterRole ? user.role === filterRole : true;
+    return matchesSearch && matchesRole;
+  });
+
   const getRoleBadge = (role) => {
     const colors = {
-      administrador: 'bg-red-500',
-      produtor: 'bg-blue-500',
-      veterinario: 'bg-green-500',
-      funcionario: 'bg-yellow-500',
-      gestor_financeiro: 'bg-purple-500'
+      administrador: 'bg-red-100 text-red-800',
+      produtor: 'bg-green-100 text-green-800',
+      veterinario: 'bg-blue-100 text-blue-800',
+      funcionario: 'bg-yellow-100 text-yellow-800',
+      gestor_financeiro: 'bg-purple-100 text-purple-800'
     };
-    return (
-      <Badge className={colors[role] || 'bg-gray-500'}>
-        {role}
-      </Badge>
-    );
+    return colors[role] || 'bg-gray-100 text-gray-800';
   };
 
-  const displayUsers = activeTab === 'pending' ? pendingUsers : users;
-
   if (loading) {
-    return <div className="flex justify-center items-center h-64">Carregando...</div>;
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-gray-500">Carregando usuários...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex justify-center items-center h-96">
+        <div className="text-center">
+          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+          <p className="text-gray-700">{error}</p>
+          <button 
+            onClick={fetchUsers}
+            className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    );
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Gestão de Utilizadores</h1>
-        <p className="text-gray-600 mt-2">Gerencie todos os usuários da plataforma</p>
+        <h1 className="text-3xl font-bold text-gray-800">Gestão de Utilizadores</h1>
+        <p className="text-gray-500 mt-1">Gerencie todos os usuários da plataforma</p>
       </div>
 
-      {message && (
-        <Alert className={message.type === 'success' ? 'bg-green-50' : 'bg-red-50'}>
-          <AlertDescription className={message.type === 'success' ? 'text-green-800' : 'text-red-800'}>
-            {message.text}
-          </AlertDescription>
-        </Alert>
-      )}
+      {/* Filtros */}
+      <Card>
+        <CardContent className="p-4">
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+              <Input
+                placeholder="Buscar por email..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <select
+              value={filterRole}
+              onChange={(e) => setFilterRole(e.target.value)}
+              className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
+            >
+              <option value="">Todas as funções</option>
+              <option value="administrador">Administrador</option>
+              <option value="produtor">Produtor</option>
+              <option value="veterinario">Veterinário</option>
+              <option value="funcionario">Funcionário</option>
+              <option value="gestor_financeiro">Gestor Financeiro</option>
+            </select>
+            <Button variant="outline" className="gap-2" onClick={fetchUsers}>
+              <Filter className="w-4 h-4" />
+              Atualizar
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
 
-      <div className="flex space-x-2 border-b">
-        <button
-          className={`px-4 py-2 ${activeTab === 'all' ? 'border-b-2 border-green-500 text-green-600' : 'text-gray-500'}`}
-          onClick={() => setActiveTab('all')}
-        >
-          Todos ({users.length})
-        </button>
-        <button
-          className={`px-4 py-2 ${activeTab === 'pending' ? 'border-b-2 border-green-500 text-green-600' : 'text-gray-500'}`}
-          onClick={() => setActiveTab('pending')}
-        >
-          Pendentes ({pendingUsers.length})
-        </button>
-      </div>
-
+      {/* Lista de Usuários */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Função</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Data Registro</TableHead>
-                <TableHead>Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {displayUsers.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">{user.email}</TableCell>
-                  <TableCell>
-                    {getRoleBadge(user.role)}
-                  </TableCell>
-                  <TableCell>
-                    {user.is_approved ? (
-                      <Badge className="bg-green-500">Aprovado</Badge>
-                    ) : (
-                      <Badge variant="secondary">Pendente</Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {new Date(user.date_joined).toLocaleDateString('pt-PT')}
-                  </TableCell>
-                  <TableCell className="space-x-2">
-                    {!user.is_approved && (
-                      <Button
-                        size="sm"
-                        onClick={() => handleApprove(user.id)}
-                        className="bg-green-500 hover:bg-green-600"
-                      >
-                        Aprovar
-                      </Button>
-                    )}
-                    <Select
-                      value={user.role}
-                      onValueChange={(value) => handleRoleChange(user.id, value)}
-                      disabled={user.is_superuser}
-                    >
-                      <SelectTrigger className="w-32">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="produtor">Produtor</SelectItem>
-                        <SelectItem value="veterinario">Veterinário</SelectItem>
-                        <SelectItem value="funcionario">Funcionário</SelectItem>
-                        <SelectItem value="gestor_financeiro">Gestor Financeiro</SelectItem>
-                        <SelectItem value="administrador">Administrador</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    {!user.is_superuser && (
-                      <Button
-                        size="sm"
-                        variant="destructive"
-                        onClick={() => handleDelete(user.id)}
-                      >
-                        Deletar
-                      </Button>
-                    )}
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b">
+                <tr>
+                  <th className="text-left p-4 text-sm font-medium text-gray-600">Usuário</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-600">Função</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-600">Status</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-600">Registro</th>
+                  <th className="text-left p-4 text-sm font-medium text-gray-600">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredUsers.length > 0 ? (
+                  filteredUsers.map((user) => (
+                    <tr key={user.id} className="border-b hover:bg-gray-50 transition-colors">
+                      <td className="p-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center">
+                            <span className="text-white font-medium">
+                              {user.email?.charAt(0).toUpperCase() || '?'}
+                            </span>
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-800">{user.email}</p>
+                            <p className="text-xs text-gray-500">ID: {user.id}</p>
+                          </div>
+                        </div>
+                       </td>
+                      <td className="p-4">
+                        <Badge className={getRoleBadge(user.role)}>
+                          {user.role}
+                        </Badge>
+                       </td>
+                      <td className="p-4">
+                        {user.is_approved ? (
+                          <Badge className="bg-green-100 text-green-800">Ativo</Badge>
+                        ) : (
+                          <Badge className="bg-yellow-100 text-yellow-800">Pendente</Badge>
+                        )}
+                       </td>
+                      <td className="p-4 text-sm text-gray-600">
+                        {user.date_joined ? new Date(user.date_joined).toLocaleDateString('pt-PT') : '-'}
+                       </td>
+                      <td className="p-4">
+                        <div className="flex gap-2">
+                          {!user.is_approved && (
+                            <Button
+                              size="sm"
+                              onClick={() => handleApprove(user.id)}
+                              className="bg-green-500 hover:bg-green-600"
+                            >
+                              <CheckCircle className="w-4 h-4 mr-1" />
+                              Aprovar
+                            </Button>
+                          )}
+                          {!user.is_superuser && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDelete(user.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
+                          )}
+                        </div>
+                       </td>
+                    </tr>
+                  ))
+                ) : (
+                  <tr>
+                    <td colSpan="5" className="text-center p-8 text-gray-500">
+                      Nenhum usuário encontrado
+                    </td>
+                  </tr>
+                )}
+              </tbody>
+            </table>
+          </div>
         </CardContent>
       </Card>
     </div>

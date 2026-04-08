@@ -152,6 +152,35 @@ export const adminService = {
     const response = await api.get('admin/stats/');
     return response.data;
   },
+
+   
+  // Backups
+  getBackups: async () => {
+    const response = await api.get('admin/backups/');
+    return response.data;
+  },
+  
+  createBackup: async () => {
+    const response = await api.post('admin/backups/create/');
+    return response.data;
+  },
+  
+  downloadBackup: async (id) => {
+    const response = await api.get(`admin/backups/${id}/download/`, {
+      responseType: 'blob'
+    });
+    return response.data;
+  },
+  
+  deleteBackup: async (id) => {
+    const response = await api.delete(`admin/backups/${id}/`);
+    return response.data;
+  },
+  
+  updateBackupSchedule: async (schedule) => {
+    const response = await api.post('admin/backups/schedule/', schedule);
+    return response.data;
+  },
 };
 
 export default api;
