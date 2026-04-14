@@ -65,14 +65,21 @@ export const authService = {
     return response.data;
   },
 
-  logout: async () => {
-    const refresh = localStorage.getItem('refresh_token');
-    if (refresh) {
+ logout: async () => {
+  const refresh = localStorage.getItem('refresh_token');
+  if (refresh) {
+    try {
       await api.post('logout/', { refresh });
+    } catch (error) {
+      console.error('Erro no logout:', error);
     }
-    localStorage.clear();
-    window.location.href = '/login';
-  },
+  }
+  // Remove apenas os tokens, sem redirecionar
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user');
+  // NÃO coloque window.location.href aqui
+},
 
   getCurrentUser: async () => {
     const response = await api.get('me/');

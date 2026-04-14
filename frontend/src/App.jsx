@@ -18,7 +18,6 @@ import ForgotPassword from "./pages/auth/ForgotPassword";
 import ResetPassword from "./pages/auth/ResetPassword";
 
 // Admin Pages
-import AdminLayout from "./components/layouts/AdminLayout";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminUsers from "./pages/admin/Users";
 import SystemSettings from "./pages/admin/SystemSettings";
@@ -29,20 +28,33 @@ import Security from "./pages/admin/Security";
 import Monitoring from "./pages/admin/Monitoring";
 
 // Role-based Dashboards
+import DashboardLayout from "./components/layouts/DashboardLayout";
 import ProdutorDashboard from "./pages/dashboard/ProdutorDashboard";
 import VeterinarioDashboard from "./pages/dashboard/VeterinarioDashboard";
 import FuncionarioDashboard from "./pages/dashboard/FuncionarioDashboard";
 import GestorFinanceiroDashboard from "./pages/dashboard/GestorFinanceiroDashboard";
 
+// Componentes específicos do produtor
+import CadastroAnimais from "./pages/dashboard/components/CadastroAnimais";
+import GestaoFinanceira from "./pages/dashboard/components/GestaoFinanceira";
+import AlimentacaoGado from "./pages/dashboard/components/AlimentacaoGado";
+import RelatorioProducao from "./pages/dashboard/components/RelatorioProducao";
+import AlertasNotificacoes from "./pages/dashboard/components/AlertasNotificacoes";
+
+const LoadingSpinner = () => (
+  <div className="flex justify-center items-center h-screen">
+    <div className="text-center">
+      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
+      <p className="mt-4 text-gray-600">Carregando...</p>
+    </div>
+  </div>
+);
+
 const PrivateRoute = ({ children, allowedRoles = [] }) => {
   const { isAuthenticated, user, loading } = useAuth();
 
   if (loading) {
-    return (
-      <div className="flex justify-center items-center h-screen">
-        Carregando...
-      </div>
-    );
+    return <LoadingSpinner />;
   }
 
   if (!isAuthenticated) {
@@ -64,22 +76,30 @@ const PrivateRoute = ({ children, allowedRoles = [] }) => {
   return children;
 };
 
-const DashboardRouter = () => {
-  const { user } = useAuth();
-
-  const dashboards = {
-    administrador: (
-      <AdminLayout>
-        <AdminDashboard />
-      </AdminLayout>
-    ),
-    produtor: <ProdutorDashboard />,
-    veterinario: <VeterinarioDashboard />,
-    funcionario: <FuncionarioDashboard />,
-    gestor_financeiro: <GestorFinanceiroDashboard />,
-  };
-
-  return dashboards[user?.role] || <Navigate to="/login" />;
+// Componente que renderiza o dashboard correto baseado no papel
+const RoleBasedDashboard = () => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return <LoadingSpinner />;
+  }
+  
+  const role = user?.role || 'produtor';
+  
+  switch (role) {
+    case 'administrador':
+      return <AdminDashboard />;
+    case 'produtor':
+      return <ProdutorDashboard />;
+    case 'veterinario':
+      return <VeterinarioDashboard />;
+    case 'funcionario':
+      return <FuncionarioDashboard />;
+    case 'gestor_financeiro':
+      return <GestorFinanceiroDashboard />;
+    default:
+      return <ProdutorDashboard />;
+  }
 };
 
 function App() {
@@ -96,22 +116,48 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           
-          {/* Dashboard */}
+          {/* Dashboard Routes com Layout */}
           <Route
             path="/dashboard"
             element={
               <PrivateRoute>
-                <DashboardRouter />
+                <DashboardLayout />
               </PrivateRoute>
             }
-          />
+          >
+            {/* Rotas do Produtor */}
+            <Route index element={<RoleBasedDashboard />} />
+            <Route path="animais" element={<CadastroAnimais />} />
+            <Route path="financeiro" element={<GestaoFinanceira />} />
+            <Route path="alimentacao" element={<AlimentacaoGado />} />
+            <Route path="relatorios" element={<RelatorioProducao />} />
+            <Route path="alertas" element={<AlertasNotificacoes alertas={[]} />} />
+            <Route path="saude" element={<ProdutorDashboard />} />
+            <Route path="calendario" element={<ProdutorDashboard />} />
+            <Route path="tarefas" element={<ProdutorDashboard />} />
+            <Route path="insumos" element={<ProdutorDashboard />} />
+            <Route path="perfil" element={<ProdutorDashboard />} />
+            
+            {/* Rotas do Veterinário */}
+            <Route path="consultas" element={<VeterinarioDashboard />} />
+            <Route path="vacinas" element={<VeterinarioDashboard />} />
+            <Route path="prontuarios" element={<VeterinarioDashboard />} />
+            <Route path="emergencias" element={<VeterinarioDashboard />} />
+            
+            {/* Rotas do Funcionário */}
+            <Route path="tarefas" element={<FuncionarioDashboard />} />
+            
+            {/* Rotas do Gestor */}
+            <Route path="projecoes" element={<GestorFinanceiroDashboard />} />
+            <Route path="configuracoes" element={<GestorFinanceiroDashboard />} />
+          </Route>
           
           {/* Admin Routes */}
           <Route
             path="/admin"
             element={
               <PrivateRoute allowedRoles={["administrador"]}>
-                <AdminLayout />
+                <DashboardLayout />
               </PrivateRoute>
             }
           >

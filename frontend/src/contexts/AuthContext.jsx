@@ -14,28 +14,30 @@ export const AuthProvider = ({ children }) => {
     checkAuth();
   }, []);
 
- const checkAuth = async () => {
-  const token = localStorage.getItem('access_token');
-  if (token) {
-    try {
-      const userData = await authService.getCurrentUser();
-      setUser(userData);
-      setIsAuthenticated(true);
-      
-      // Verificar se o usuário precisa definir senha
-      // (usuário do Google sem senha definida)
-      const needsPassword = userData.needs_password === true;
-      if (needsPassword && window.location.pathname !== '/set-password') {
-        window.location.href = '/set-password';
+  const checkAuth = async () => {
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      try {
+        const userData = await authService.getCurrentUser();
+        setUser(userData);
+        setIsAuthenticated(true);
+        
+        // REMOVA COMPLETAMENTE ESTE BLOCO
+        // Verificar se o usuário precisa definir senha
+        // (usuário do Google sem senha definida)
+        // const needsPassword = userData.needs_password === true;
+        // if (needsPassword && window.location.pathname !== '/set-password') {
+        //   window.location.href = '/set-password';
+        // }
+        
+      } catch (error) {
+        localStorage.clear();
+        setUser(null);
+        setIsAuthenticated(false);
       }
-    } catch (error) {
-      localStorage.clear();
-      setUser(null);
-      setIsAuthenticated(false);
     }
-  }
-  setLoading(false);
-};
+    setLoading(false);
+  };
 
   const login = async (email, password) => {
     try {
@@ -59,49 +61,48 @@ export const AuthProvider = ({ children }) => {
   };
 
   const googleLogin = async (credential) => {
-  try {
-    const response = await authService.googleLogin({ credential });
-    
-    if (response.access) {
-      localStorage.setItem('access_token', response.access);
-      localStorage.setItem('refresh_token', response.refresh);
-      localStorage.setItem('user', JSON.stringify(response.user));
-      setUser(response.user);
-      setIsAuthenticated(true);
-      return { success: true, user: response.user };
-    }
-    
-    // Caso a conta não exista
-    if (response.requires_registration) {
+    try {
+      const response = await authService.googleLogin({ credential });
+      
+      if (response.access) {
+        localStorage.setItem('access_token', response.access);
+        localStorage.setItem('refresh_token', response.refresh);
+        localStorage.setItem('user', JSON.stringify(response.user));
+        setUser(response.user);
+        setIsAuthenticated(true);
+        return { success: true, user: response.user };
+      }
+      
+      if (response.requires_registration) {
+        return { 
+          success: false, 
+          requires_registration: true,
+          email: response.email,
+          name: response.name,
+          picture: response.picture,
+          google_id: response.google_id,
+          error: response.error 
+        };
+      }
+      
+      if (response.requires_confirmation) {
+        return { 
+          success: false, 
+          requires_confirmation: true,
+          email: response.email,
+          error: response.error || 'Email não confirmado' 
+        };
+      }
+      
+      return { success: false, error: response.error || 'Erro ao autenticar com Google' };
+    } catch (error) {
+      console.error('Google login error:', error);
       return { 
         success: false, 
-        requires_registration: true,
-        email: response.email,
-        name: response.name,
-        picture: response.picture,
-        google_id: response.google_id,
-        error: response.error 
+        error: error.response?.data?.error || 'Erro ao fazer login com Google' 
       };
     }
-    
-    if (response.requires_confirmation) {
-      return { 
-        success: false, 
-        requires_confirmation: true,
-        email: response.email,
-        error: response.error || 'Email não confirmado' 
-      };
-    }
-    
-    return { success: false, error: response.error || 'Erro ao autenticar com Google' };
-  } catch (error) {
-    console.error('Google login error:', error);
-    return { 
-      success: false, 
-      error: error.response?.data?.error || 'Erro ao fazer login com Google' 
-    };
-  }
-};
+  };
 
   const register = async (userData) => {
     try {
@@ -131,7 +132,6 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // NOVA FUNÇÃO: Confirmar Email
   const confirmEmail = async (token) => {
     try {
       const response = await authService.confirmEmail(token);
@@ -184,7 +184,7 @@ export const AuthProvider = ({ children }) => {
     googleLogin,
     register,
     completeProfile,
-    confirmEmail,  // Adicionado
+    confirmEmail,
     googleRegister,
     logout,
     isAdmin: user?.role === 'administrador' || user?.is_superuser,
@@ -201,5 +201,4 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// Exportação padrão do Provider (opcional)
 export default AuthProvider;

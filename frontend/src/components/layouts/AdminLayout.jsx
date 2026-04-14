@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
-import { useAuth } from '../../hooks/useAuth';
-import { Button } from '@/components/ui/button';
+import React, { useState } from "react";
+import { Outlet, NavLink, useNavigate } from "react-router-dom";
+import { useAuth } from "../../hooks/useAuth";
+import { Button } from "@/components/ui/button";
 import {
   LayoutDashboard,
   Users,
@@ -16,18 +16,58 @@ import {
   User,
   Lock,
   BarChart3,
-  HardDrive
-} from 'lucide-react';
+  HardDrive,
+} from "lucide-react";
 
 const menuItems = [
-  { path: '/admin/dashboard', icon: LayoutDashboard, label: 'Dashboard', color: 'text-emerald-600' },
-  { path: '/admin/users', icon: Users, label: 'Gestão de Utilizadores', color: 'text-blue-600' },
-  { path: '/admin/permissions', icon: Shield, label: 'Permissões', color: 'text-purple-600' },
-  { path: '/admin/settings', icon: Settings, label: 'Configuração do Sistema', color: 'text-orange-600' },
-  { path: '/admin/backups', icon: Database, label: 'Backups', color: 'text-teal-600' },
-  { path: '/admin/reports', icon: FileText, label: 'Relatórios Gerais', color: 'text-rose-600' },
-  { path: '/admin/security', icon: Lock, label: 'Segurança', color: 'text-red-600' },
-  { path: '/admin/monitoring', icon: BarChart3, label: 'Monitoramento', color: 'text-indigo-600' },
+  {
+    path: "/admin/dashboard",
+    icon: LayoutDashboard,
+    label: "Dashboard",
+    color: "text-emerald-600",
+  },
+  {
+    path: "/admin/users",
+    icon: Users,
+    label: "Gestão de Utilizadores",
+    color: "text-blue-600",
+  },
+  {
+    path: "/admin/permissions",
+    icon: Shield,
+    label: "Permissões",
+    color: "text-purple-600",
+  },
+  {
+    path: "/admin/settings",
+    icon: Settings,
+    label: "Configuração do Sistema",
+    color: "text-orange-600",
+  },
+  {
+    path: "/admin/backups",
+    icon: Database,
+    label: "Backups",
+    color: "text-teal-600",
+  },
+  {
+    path: "/admin/reports",
+    icon: FileText,
+    label: "Relatórios Gerais",
+    color: "text-rose-600",
+  },
+  {
+    path: "/admin/security",
+    icon: Lock,
+    label: "Segurança",
+    color: "text-red-600",
+  },
+  {
+    path: "/admin/monitoring",
+    icon: BarChart3,
+    label: "Monitoramento",
+    color: "text-indigo-600",
+  },
 ];
 
 export default function AdminLayout() {
@@ -37,7 +77,7 @@ export default function AdminLayout() {
 
   const handleLogout = async () => {
     await logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   return (
@@ -83,8 +123,8 @@ export default function AdminLayout() {
               className={({ isActive }) =>
                 `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                   isActive
-                    ? 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 shadow-sm'
-                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                    ? "bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 shadow-sm"
+                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                 }`
               }
             >
@@ -100,7 +140,9 @@ export default function AdminLayout() {
               <User className="w-4 h-4 text-white" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-800 truncate">{user?.email}</p>
+              <p className="text-sm font-medium text-gray-800 truncate">
+                {user?.email}
+              </p>
               <p className="text-xs text-gray-500 capitalize">{user?.role}</p>
             </div>
           </div>
@@ -118,7 +160,10 @@ export default function AdminLayout() {
       {/* Mobile Sidebar */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)}></div>
+          <div
+            className="fixed inset-0 bg-black/50"
+            onClick={() => setSidebarOpen(false)}
+          ></div>
           <div className="fixed left-0 top-0 h-full w-72 bg-white shadow-xl z-50">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -143,8 +188,8 @@ export default function AdminLayout() {
                   className={({ isActive }) =>
                     `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                       isActive
-                        ? 'bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 shadow-sm'
-                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                        ? "bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 shadow-sm"
+                        : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
                     }`
                   }
                 >
