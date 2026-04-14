@@ -40,6 +40,8 @@ INSTALLED_APPS = [
     'login_cadastro',
     'Deshboard',
     'rest_framework',
+    'produtor',
+    'produtor_dashboard',
 ]
 
 # Custom user model
@@ -59,7 +61,7 @@ ROOT_URLCONF = 'Agrotech.urls'
 
 TEMPLATES = [
     {
-        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'BACKEND': 'django.template.backends.djangoTemplates',
         'DIRS': [],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -131,3 +133,4 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
