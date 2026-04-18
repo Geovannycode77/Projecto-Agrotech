@@ -26,20 +26,13 @@ import AdminBackups from "./pages/admin/Backups";
 import Permissions from "./pages/admin/Permissions";
 import Security from "./pages/admin/Security";
 import Monitoring from "./pages/admin/Monitoring";
+import AdminLayout from "./components/layouts/AdminLayout";
 
-// Role-based Dashboards
-import DashboardLayout from "./components/layouts/DashboardLayout";
+// Dashboards dos usuários (sem layout wrapper)
 import ProdutorDashboard from "./pages/dashboard/ProdutorDashboard";
 import VeterinarioDashboard from "./pages/dashboard/VeterinarioDashboard";
 import FuncionarioDashboard from "./pages/dashboard/FuncionarioDashboard";
 import GestorFinanceiroDashboard from "./pages/dashboard/GestorFinanceiroDashboard";
-
-// Componentes específicos do produtor
-import CadastroAnimais from "./pages/dashboard/components/CadastroAnimais";
-import GestaoFinanceira from "./pages/dashboard/components/GestaoFinanceira";
-import AlimentacaoGado from "./pages/dashboard/components/AlimentacaoGado";
-import RelatorioProducao from "./pages/dashboard/components/RelatorioProducao";
-import AlertasNotificacoes from "./pages/dashboard/components/AlertasNotificacoes";
 
 const LoadingSpinner = () => (
   <div className="flex justify-center items-center h-screen">
@@ -70,14 +63,14 @@ const PrivateRoute = ({ children, allowedRoles = [] }) => {
     !allowedRoles.includes(user?.role) &&
     !user?.is_superuser
   ) {
-    return <Navigate to="/dashboard" />;
+    return <Navigate to="/" />;
   }
 
   return children;
 };
 
-// Componente que renderiza o dashboard correto baseado no papel
-const RoleBasedDashboard = () => {
+// Componente que redireciona para o dashboard correto baseado no papel
+const DashboardRedirect = () => {
   const { user, loading } = useAuth();
   
   if (loading) {
@@ -87,18 +80,18 @@ const RoleBasedDashboard = () => {
   const role = user?.role || 'produtor';
   
   switch (role) {
-    case 'administrador':
-      return <AdminDashboard />;
     case 'produtor':
-      return <ProdutorDashboard />;
+      return <Navigate to="/produtor" />;
     case 'veterinario':
-      return <VeterinarioDashboard />;
+      return <Navigate to="/veterinario" />;
     case 'funcionario':
-      return <FuncionarioDashboard />;
+      return <Navigate to="/funcionario" />;
     case 'gestor_financeiro':
-      return <GestorFinanceiroDashboard />;
+      return <Navigate to="/gestor" />;
+    case 'administrador':
+      return <Navigate to="/admin/dashboard" />;
     default:
-      return <ProdutorDashboard />;
+      return <Navigate to="/produtor" />;
   }
 };
 
@@ -116,48 +109,37 @@ function App() {
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password/:token" element={<ResetPassword />} />
           
-          {/* Dashboard Routes com Layout */}
-          <Route
-            path="/dashboard"
-            element={
-              <PrivateRoute>
-                <DashboardLayout />
-              </PrivateRoute>
-            }
-          >
-            {/* Rotas do Produtor */}
-            <Route index element={<RoleBasedDashboard />} />
-            <Route path="animais" element={<CadastroAnimais />} />
-            <Route path="financeiro" element={<GestaoFinanceira />} />
-            <Route path="alimentacao" element={<AlimentacaoGado />} />
-            <Route path="relatorios" element={<RelatorioProducao />} />
-            <Route path="alertas" element={<AlertasNotificacoes alertas={[]} />} />
-            <Route path="saude" element={<ProdutorDashboard />} />
-            <Route path="calendario" element={<ProdutorDashboard />} />
-            <Route path="tarefas" element={<ProdutorDashboard />} />
-            <Route path="insumos" element={<ProdutorDashboard />} />
-            <Route path="perfil" element={<ProdutorDashboard />} />
-            
-            {/* Rotas do Veterinário */}
-            <Route path="consultas" element={<VeterinarioDashboard />} />
-            <Route path="vacinas" element={<VeterinarioDashboard />} />
-            <Route path="prontuarios" element={<VeterinarioDashboard />} />
-            <Route path="emergencias" element={<VeterinarioDashboard />} />
-            
-            {/* Rotas do Funcionário */}
-            <Route path="tarefas" element={<FuncionarioDashboard />} />
-            
-            {/* Rotas do Gestor */}
-            <Route path="projecoes" element={<GestorFinanceiroDashboard />} />
-            <Route path="configuracoes" element={<GestorFinanceiroDashboard />} />
-          </Route>
+          {/* Rotas dos Dashboards (sem layout wrapper) */}
+          <Route path="/produtor" element={
+            <PrivateRoute allowedRoles={["produtor"]}>
+              <ProdutorDashboard />
+            </PrivateRoute>
+          } />
           
-          {/* Admin Routes */}
+          <Route path="/veterinario" element={
+            <PrivateRoute allowedRoles={["veterinario"]}>
+              <VeterinarioDashboard />
+            </PrivateRoute>
+          } />
+          
+          <Route path="/funcionario" element={
+            <PrivateRoute allowedRoles={["funcionario"]}>
+              <FuncionarioDashboard />
+            </PrivateRoute>
+          } />
+          
+          <Route path="/gestor" element={
+            <PrivateRoute allowedRoles={["gestor_financeiro"]}>
+              <GestorFinanceiroDashboard />
+            </PrivateRoute>
+          } />
+          
+          {/* Admin Routes (com AdminLayout) */}
           <Route
             path="/admin"
             element={
               <PrivateRoute allowedRoles={["administrador"]}>
-                <DashboardLayout />
+                <AdminLayout />
               </PrivateRoute>
             }
           >
@@ -172,9 +154,9 @@ function App() {
             <Route path="monitoring" element={<Monitoring />} />
           </Route>
           
-          {/* Default */}
-          <Route path="/" element={<Navigate to="/dashboard" />} />
-          <Route path="*" element={<Navigate to="/dashboard" />} />
+          {/* Redirect padrão */}
+          <Route path="/" element={<DashboardRedirect />} />
+          <Route path="*" element={<Navigate to="/" />} />
         </Routes>
       </AuthProvider>
     </Router>

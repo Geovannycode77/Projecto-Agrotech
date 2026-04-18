@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -11,33 +11,53 @@ import {
   DollarSign, 
   FileText, 
   Bell,
-  AlertTriangle,
-  Plus,
-  Eye,
   Calendar,
   Activity,
   TrendingUp,
   ArrowUp,
   ArrowDown,
+  Clock,
   CheckCircle,
-  XCircle
+  LayoutDashboard,
+  LogOut,
+  Menu,
+  X,
+  User,
+  Settings,
+  Syringe,
+  Loader2
 } from 'lucide-react';
-import { produtorService } from '../../services/ProdutorService';
+import { produtorService } from '@/services/ProdutorService';
 import CadastroAnimais from './components/CadastroAnimais';
 import GestaoFinanceira from './components/GestaoFinanceira';
 import AlimentacaoGado from './components/AlimentacaoGado';
 import RelatorioProducao from './components/RelatorioProducao';
 import AlertasNotificacoes from './components/AlertasNotificacoes';
+import PerfilProdutor from './components/PerfilProdutor';
+import AlertasLembretesSaude from './components/AlertasLembretesSaude'; 
 
 function ProdutorDashboard() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
-  const [dashboardData, setDashboardData] = useState(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dashboardData, setDashboardData] = useState({
+    rebanho: { total: 0, novos_ultimo_mes: 0 },
+    alimentacao: { consumo_mensal: 0, estoque_atual: 0 }
+  });
   const [animais, setAnimais] = useState([]);
   const [alertas, setAlertas] = useState([]);
-  const [resumoFinanceiro, setResumoFinanceiro] = useState(null);
-  const [relatorioProducao, setRelatorioProducao] = useState(null);
-  const [atividadesRecentes, setAtividadesRecentes] = useState([]);
+  const [resumoFinanceiro, setResumoFinanceiro] = useState({
+    total_receitas: 0,
+    total_despesas: 0,
+    saldo: 0
+  });
+  const [relatorioProducao, setRelatorioProducao] = useState({
+    nascimentos: 0,
+    mortes: 0,
+    vendas: 0,
+    peso_medio: 0
+  });
   const [abaAtiva, setAbaAtiva] = useState('dashboard');
 
   useEffect(() => {
@@ -48,120 +68,93 @@ function ProdutorDashboard() {
     setLoading(true);
     try {
       const dashboard = await produtorService.getDashboard();
-      setDashboardData(dashboard.data);
-
-      const animaisData = await produtorService.getAnimais({ limit: 5, status: 'ativo' });
-      setAnimais(animaisData.data.results || animaisData.data);
-
+      setDashboardData({
+        rebanho: {
+          total: dashboard.rebanho?.total || 0,
+          novos_ultimo_mes: dashboard.rebanho?.novos_ultimo_mes || 0
+        },
+        alimentacao: {
+          consumo_mensal: dashboard.alimentacao?.consumo_mensal || 0,
+          estoque_atual: dashboard.alimentacao?.estoque_atual || 0
+        }
+      });
+      
+      const animaisData = await produtorService.getAnimais({ limit: 5 });
+      setAnimais(animaisData.results || animaisData);
+      
       const alertasData = await produtorService.getAlertas();
-      setAlertas(alertasData.data.filter(alerta => !alerta.lido));
-
+      setAlertas(alertasData.filter(alerta => !alerta.lido));
+      
       const financeiroData = await produtorService.getResumoFinanceiro('ultimo_mes');
-      setResumoFinanceiro(financeiroData.data);
-
+      setResumoFinanceiro({
+        total_receitas: financeiroData.total_receitas || 0,
+        total_despesas: financeiroData.total_despesas || 0,
+        saldo: financeiroData.saldo || 0
+      });
+      
       const relatorioData = await produtorService.getRelatoriosProducao({ periodo: 'ultimo_mes' });
-      setRelatorioProducao(relatorioData.data);
-
-      const atividades = await produtorService.getAtividadesRecentes();
-      setAtividadesRecentes(atividades.data);
-
+      setRelatorioProducao({
+        nascimentos: relatorioData.nascimentos || 0,
+        mortes: relatorioData.mortes || 0,
+        vendas: relatorioData.vendas || 0,
+        peso_medio: relatorioData.peso_medio || 0
+      });
+      
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error);
-      setMockData();
     } finally {
       setLoading(false);
     }
   };
 
-  const setMockData = () => {
-    setDashboardData({
-      rebanho: {
-        total: 156,
-        por_especie: { bovino: 120, suino: 25, caprino: 11 },
-        por_status: { ativo: 142, doente: 8, vendido: 4, morto: 2 },
-        machos: 68,
-        femeas: 88,
-        novos_ultimo_mes: 12
-      },
-      alimentacao: {
-        consumo_mensal: 4850,
-        estoque_atual: 3200,
-        custo_mensal: 8750
-      }
-    });
-
-    setAnimais([
-      { id: 1, brinco: 'BR-001', nome: 'Mimosa', especie: 'bovino', sexo: 'F', peso_atual: 450, status: 'ativo' },
-      { id: 2, brinco: 'BR-002', nome: 'Trovão', especie: 'bovino', sexo: 'M', peso_atual: 520, status: 'ativo' },
-      { id: 3, brinco: 'BR-003', nome: 'Pintada', especie: 'suino', sexo: 'F', peso_atual: 180, status: 'ativo' },
-      { id: 4, brinco: 'BR-004', nome: 'Caramelo', especie: 'bovino', sexo: 'M', peso_atual: 380, status: 'doente' },
-      { id: 5, brinco: 'BR-005', nome: 'Branquinha', especie: 'caprino', sexo: 'F', peso_atual: 65, status: 'ativo' }
-    ]);
-
-    setAlertas([
-      { id: 1, tipo: 'saude', mensagem: 'Vacinação do rebanho programada para amanhã', prioridade: 'alta', lido: false },
-      { id: 2, tipo: 'alimentacao', mensagem: 'Estoque de ração está baixo (15% restante)', prioridade: 'media', lido: false },
-      { id: 3, tipo: 'reproducao', mensagem: '3 animais prontos para reprodução', prioridade: 'alta', lido: false }
-    ]);
-
-    setResumoFinanceiro({
-      total_receitas: 45230,
-      total_despesas: 28750,
-      saldo: 16480,
-      receitas_por_categoria: { Venda: 35000, Outros: 10230 },
-      despesas_por_categoria: { Ração: 12000, Veterinário: 5000, Medicamentos: 3000, Outros: 8750 }
-    });
-
-    setRelatorioProducao({
-      periodo: 'Último Mês',
-      total_animais: 156,
-      nascimentos: 8,
-      mortes: 2,
-      vendas: 4,
-      peso_medio: 320,
-      taxa_mortalidade: 1.28,
-      natalidade: 5.13
-    });
-
-    setAtividadesRecentes([
-      { id: 1, tipo: 'Cadastro', descricao: 'Novo animal cadastrado: Mimosa', data: '2026-03-15T10:30:00', usuario: 'João Silva' },
-      { id: 2, tipo: 'Saúde', descricao: 'Vacinação em massa aplicada', data: '2026-03-14T14:20:00', usuario: 'Maria Santos' },
-      { id: 3, tipo: 'Financeiro', descricao: 'Venda de 2 bovinos realizada', data: '2026-03-13T09:15:00', usuario: 'Carlos Lima' }
-    ]);
+  const handleLogout = async () => {
+    await logout();
+    navigate("/login");
   };
+
+  const menuItems = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { id: 'animais', label: 'Animais', icon: PawPrint },
+    { id: 'alimentacao', label: 'Alimentação', icon: Utensils },
+    { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
+    { id: 'relatorios', label: 'Relatórios', icon: FileText },
+    { id: 'alertas', label: 'Alertas', icon: Bell },
+    { id: 'lembretes', label: 'Lembretes de Saúde', icon: Syringe },
+    { id: 'perfil', label: 'Perfil', icon: User },
+  ];
 
   const statsCards = [
     {
       title: 'Total de Animais',
-      value: dashboardData?.rebanho?.total || 0,
+      value: dashboardData.rebanho.total,
       icon: PawPrint,
-      change: `+${dashboardData?.rebanho?.novos_ultimo_mes || 0} este mês`,
+      change: `+${dashboardData.rebanho.novos_ultimo_mes} este mês`,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-100'
     },
     {
-      title: 'Animais em Tratamento',
-      value: dashboardData?.rebanho?.por_status?.doente || 0,
-      icon: Heart,
-      change: `${dashboardData?.rebanho?.por_status?.doente || 0} precisam de atenção`,
-      color: 'text-red-600',
-      bgColor: 'bg-red-100'
-    },
-    {
-      title: 'Consumo de Ração (Mês)',
-      value: `${dashboardData?.alimentacao?.consumo_mensal || 0} kg`,
+      title: 'Consumo de Ração',
+      value: `${dashboardData.alimentacao.consumo_mensal} kg`,
       icon: Utensils,
-      change: `Estoque: ${dashboardData?.alimentacao?.estoque_atual || 0} kg`,
+      change: `Estoque: ${dashboardData.alimentacao.estoque_atual} kg`,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-100'
     },
     {
       title: 'Saldo Atual',
-      value: `R$ ${resumoFinanceiro?.saldo?.toLocaleString() || 0}`,
+      value: `AOA ${resumoFinanceiro.saldo.toLocaleString()}`,
       icon: DollarSign,
-      change: `Receita: R$ ${resumoFinanceiro?.total_receitas?.toLocaleString() || 0}`,
+      change: `Receita: AOA ${resumoFinanceiro.total_receitas.toLocaleString()}`,
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-100'
+    },
+    {
+      title: 'Alertas',
+      value: alertas.length,
+      icon: Bell,
+      change: `${alertas.filter(a => a.prioridade === 'alta').length} urgentes`,
+      color: 'text-red-600',
+      bgColor: 'bg-red-100'
     }
   ];
 
@@ -177,228 +170,258 @@ function ProdutorDashboard() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600 mx-auto"></div>
-          <p className="mt-4 text-gray-600">Carregando dashboard...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-emerald-50 to-green-50">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-emerald-600"></div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
-      <header className="mb-6">
-        <div className="flex justify-between items-center">
-          <div>
-            <h1 className="text-3xl font-bold text-gray-800">Painel do Produtor</h1>
-            <p className="text-gray-500 mt-1">
-              Bem-vindo, {user?.nome || user?.email?.split('@')[0]} | Gerencie seu rebanho de forma eficiente
-            </p>
+    <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-green-50">
+      {/* Mobile Header */}
+      <header className="lg:hidden bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-30">
+        <div className="px-4 py-3 flex items-center justify-between">
+          <button onClick={() => setSidebarOpen(true)} className="p-2 rounded-lg hover:bg-gray-100">
+            <Menu className="w-5 h-5 text-gray-600" />
+          </button>
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-emerald-500 to-green-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">A</span>
+            </div>
+            <span className="font-semibold text-gray-800">AgroTech</span>
           </div>
-          <Badge className="bg-emerald-100 text-emerald-700 px-3 py-1">
-            <Activity className="h-4 w-4 mr-1" />
-            Pecuária
-          </Badge>
+          <div className="w-8"></div>
         </div>
       </header>
 
-      <Tabs value={abaAtiva} onValueChange={setAbaAtiva} className="space-y-6">
-        <TabsList className="grid grid-cols-2 md:grid-cols-6 gap-2 bg-white p-1 rounded-lg shadow-sm">
-          <TabsTrigger value="dashboard" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-            Dashboard
-          </TabsTrigger>
-          <TabsTrigger value="animais" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-            Cadastro de Animais
-          </TabsTrigger>
-          <TabsTrigger value="alimentacao" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-            Alimentação
-          </TabsTrigger>
-          <TabsTrigger value="financeiro" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-            Gestão Financeira
-          </TabsTrigger>
-          <TabsTrigger value="relatorios" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white">
-            Relatórios
-          </TabsTrigger>
-          <TabsTrigger value="alertas" className="data-[state=active]:bg-emerald-600 data-[state=active]:text-white relative">
-            Alertas
-            {alertas.length > 0 && (
-              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                {alertas.length}
-              </span>
-            )}
-          </TabsTrigger>
-        </TabsList>
+      {/* Sidebar Desktop */}
+      <aside className="hidden lg:block fixed left-0 top-0 h-full w-72 bg-white/95 backdrop-blur-sm shadow-xl z-20">
+        <div className="p-6 border-b border-gray-100">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-gradient-to-br from-emerald-500 to-green-600 rounded-2xl flex items-center justify-center shadow-lg">
+              <span className="text-white font-bold text-xl">A</span>
+            </div>
+            <div>
+              <h1 className="text-xl font-bold text-gray-800">AgroTech</h1>
+              <p className="text-xs text-gray-500">Produtor Rural</p>
+            </div>
+          </div>
+        </div>
 
-        <TabsContent value="dashboard" className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-            {statsCards.map((stat, index) => (
-              <Card key={index} className="hover:shadow-xl transition-all duration-300 transform hover:-translate-y-1">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium text-gray-600">
-                    {stat.title}
-                  </CardTitle>
-                  <div className={`p-2 rounded-full ${stat.bgColor}`}>
-                    <stat.icon className={`h-5 w-5 ${stat.color}`} />
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stat.value}</div>
-                  <p className="text-xs text-emerald-600 mt-1">{stat.change}</p>
-                </CardContent>
-              </Card>
-            ))}
+        <nav className="p-4 space-y-1">
+          {menuItems.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setAbaAtiva(item.id)}
+              className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                abaAtiva === item.id
+                  ? "bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 shadow-sm"
+                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+              }`}
+            >
+              <item.icon className={`h-5 w-5 ${abaAtiva === item.id ? "text-emerald-600" : "text-gray-500"}`} />
+              <span className="font-medium">{item.label}</span>
+            </button>
+          ))}
+        </nav>
+
+        <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
+          <div className="flex items-center gap-3 mb-3 p-3 rounded-xl bg-gray-50">
+            <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-full flex items-center justify-center">
+              <User className="w-5 h-5 text-white" />
+            </div>
+            <div className="flex-1">
+              <p className="text-sm font-medium text-gray-800 truncate">
+                {user?.nome || user?.email?.split('@')[0]}
+              </p>
+              <p className="text-xs text-gray-500">Produtor Rural</p>
+            </div>
+          </div>
+          <Button onClick={handleLogout} className="w-full justify-start gap-2 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700">
+            <LogOut className="h-4 w-4" />
+            <span>Sair</span>
+          </Button>
+        </div>
+      </aside>
+
+      {/* Mobile Sidebar */}
+      {sidebarOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden">
+          <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)}></div>
+          <div className="fixed left-0 top-0 h-full w-72 bg-white shadow-xl z-50">
+            <div className="p-4 border-b border-gray-100 flex justify-between items-center">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-600 rounded-xl flex items-center justify-center">
+                  <span className="text-white font-bold text-lg">A</span>
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-gray-800">AgroTech</h1>
+                  <p className="text-xs text-gray-500">Produtor Rural</p>
+                </div>
+              </div>
+              <button onClick={() => setSidebarOpen(false)} className="p-2">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <nav className="p-4 space-y-1">
+              {menuItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => {
+                    setAbaAtiva(item.id);
+                    setSidebarOpen(false);
+                  }}
+                  className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
+                    abaAtiva === item.id
+                      ? "bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 shadow-sm"
+                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  }`}
+                >
+                  <item.icon className="h-5 w-5" />
+                  <span className="font-medium">{item.label}</span>
+                </button>
+              ))}
+            </nav>
+            <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
+              <Button onClick={handleLogout} className="w-full justify-start gap-2 bg-red-50 text-red-600 hover:bg-red-100">
+                <LogOut className="h-4 w-4" />
+                <span>Sair</span>
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Main Content */}
+      <main className="lg:ml-72 min-h-screen">
+        <div className="p-4 md:p-6 lg:p-8">
+          {/* Header da Página */}
+          <div className="mb-6">
+            <h1 className="text-2xl font-bold text-gray-800">Painel do Produtor</h1>
+            <p className="text-gray-500 text-sm mt-1">
+              Bem-vindo, {user?.nome || user?.email?.split('@')[0]}
+            </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between">
-                <CardTitle>Últimos Animais Cadastrados</CardTitle>
-                <Button variant="ghost" size="sm" onClick={() => setAbaAtiva('animais')} className="text-emerald-600">
-                  Ver todos <ArrowUp className="ml-2 h-4 w-4" />
-                </Button>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {animais.map((animal) => (
-                    <div key={animal.id} className="flex items-center justify-between border-b pb-3">
+          {/* Conteúdo condicional baseado na aba ativa */}
+          {abaAtiva === 'dashboard' && (
+            <>
+              {/* Stats Cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+                {statsCards.map((stat, index) => (
+                  <Card key={index} className="hover:shadow-xl transition-all">
+                    <CardHeader className="flex flex-row items-center justify-between pb-2">
+                      <CardTitle className="text-sm font-medium text-gray-600">{stat.title}</CardTitle>
+                      <div className={`p-2 rounded-full ${stat.bgColor}`}>
+                        <stat.icon className={`h-5 w-5 ${stat.color}`} />
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{stat.value}</div>
+                      <p className="text-xs text-emerald-600 mt-1">{stat.change}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+
+              {/* Indicadores Adicionais */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+                <Card className="bg-gradient-to-r from-emerald-500 to-green-600 text-white">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <div className="flex items-center gap-2">
-                          <PawPrint className="h-4 w-4 text-emerald-600" />
-                          <span className="font-semibold">{animal.nome}</span>
-                          <span className="text-xs text-gray-500">({animal.brinco})</span>
-                        </div>
-                        <div className="text-sm text-gray-600 mt-1">
-                          {animal.especie} • {animal.sexo === 'M' ? '♂' : '♀'} • {animal.peso_atual} kg
-                        </div>
+                        <p className="text-emerald-100">Produção do Mês</p>
+                        <p className="text-3xl font-bold">+{relatorioProducao.nascimentos}</p>
                       </div>
-                      <Badge className={getStatusColor(animal.status)}>
-                        {animal.status}
-                      </Badge>
+                      <TrendingUp className="h-8 w-8 text-white/80" />
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-r from-amber-500 to-orange-600 text-white">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-amber-100">Peso Médio</p>
+                        <p className="text-3xl font-bold">{relatorioProducao.peso_medio} kg</p>
+                      </div>
+                      <Activity className="h-8 w-8 text-white/80" />
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card className="bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+                  <CardContent className="pt-6">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-blue-100">Taxa de Natalidade</p>
+                        <p className="text-3xl font-bold">
+                          {relatorioProducao.nascimentos > 0 ? ((relatorioProducao.nascimentos / dashboardData.rebanho.total) * 100).toFixed(2) : 0}%
+                        </p>
+                      </div>
+                      <Heart className="h-8 w-8 text-white/80" />
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
-            <Card>
-              <CardHeader>
-                <CardTitle>Resumo Financeiro do Mês</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-emerald-600" />
-                      <span className="font-medium">Receitas</span>
-                    </div>
-                    <span className="text-xl font-bold text-emerald-600">
-                      R$ {resumoFinanceiro?.total_receitas?.toLocaleString() || 0}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <ArrowDown className="h-5 w-5 text-red-600" />
-                      <span className="font-medium">Despesas</span>
-                    </div>
-                    <span className="text-xl font-bold text-red-600">
-                      R$ {resumoFinanceiro?.total_despesas?.toLocaleString() || 0}
-                    </span>
-                  </div>
-                  <div className="flex justify-between items-center p-3 bg-emerald-100 rounded-lg">
-                    <div className="flex items-center gap-2">
-                      <DollarSign className="h-5 w-5 text-emerald-700" />
-                      <span className="font-medium">Saldo</span>
-                    </div>
-                    <span className="text-xl font-bold text-emerald-700">
-                      R$ {resumoFinanceiro?.saldo?.toLocaleString() || 0}
-                    </span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Relatório de Produção</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="text-center p-3 bg-emerald-50 rounded-lg">
-                    <div className="text-2xl font-bold text-emerald-600">
-                      {relatorioProducao?.nascimentos || 0}
-                    </div>
-                    <div className="text-sm text-gray-600">Nascimentos</div>
-                  </div>
-                  <div className="text-center p-3 bg-red-50 rounded-lg">
-                    <div className="text-2xl font-bold text-red-600">
-                      {relatorioProducao?.mortes || 0}
-                    </div>
-                    <div className="text-sm text-gray-600">Mortes</div>
-                  </div>
-                  <div className="text-center p-3 bg-emerald-50 rounded-lg">
-                    <div className="text-2xl font-bold text-emerald-600">
-                      {relatorioProducao?.vendas || 0}
-                    </div>
-                    <div className="text-sm text-gray-600">Vendas</div>
-                  </div>
-                  <div className="text-center p-3 bg-emerald-50 rounded-lg">
-                    <div className="text-2xl font-bold text-emerald-600">
-                      {relatorioProducao?.peso_medio || 0} kg
-                    </div>
-                    <div className="text-sm text-gray-600">Peso Médio</div>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Atividades Recentes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-3">
-                  {atividadesRecentes.map((atividade) => (
-                    <div key={atividade.id} className="flex items-start gap-3 p-2 hover:bg-emerald-50 rounded transition-colors">
-                      <Calendar className="h-4 w-4 text-emerald-600 mt-1" />
-                      <div className="flex-1">
-                        <p className="text-sm font-medium">{atividade.descricao}</p>
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
-                          <span>{atividade.tipo}</span>
-                          <span>{new Date(atividade.data).toLocaleDateString()}</span>
+              {/* Conteúdo Principal do Dashboard */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Últimos Animais</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {animais.slice(0, 3).map((animal) => (
+                      <div key={animal.id} className="flex items-center justify-between border-b pb-3 mb-3">
+                        <div>
+                          <p className="font-semibold">{animal.nome || animal.brinco}</p>
+                          <p className="text-sm text-gray-500">{animal.especie}</p>
                         </div>
+                        <Badge className={getStatusColor(animal.status)}>{animal.status}</Badge>
+                      </div>
+                    ))}
+                    {animais.length === 0 && (
+                      <div className="text-center py-4 text-gray-500">Nenhum animal cadastrado</div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Resumo Financeiro</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      <div className="flex justify-between p-3 bg-emerald-50 rounded-lg">
+                        <span>Receitas</span>
+                        <span className="font-bold text-emerald-600">AOA {resumoFinanceiro.total_receitas.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between p-3 bg-red-50 rounded-lg">
+                        <span>Despesas</span>
+                        <span className="font-bold text-red-600">AOA {resumoFinanceiro.total_despesas.toLocaleString()}</span>
+                      </div>
+                      <div className="flex justify-between p-3 bg-emerald-100 rounded-lg">
+                        <span>Saldo</span>
+                        <span className="font-bold text-emerald-700">AOA {resumoFinanceiro.saldo.toLocaleString()}</span>
                       </div>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        </TabsContent>
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
 
-        <TabsContent value="animais">
-          <CadastroAnimais />
-        </TabsContent>
-
-        <TabsContent value="alimentacao">
-          <AlimentacaoGado />
-        </TabsContent>
-
-        <TabsContent value="financeiro">
-          <GestaoFinanceira />
-        </TabsContent>
-
-        <TabsContent value="relatorios">
-          <RelatorioProducao />
-        </TabsContent>
-
-        <TabsContent value="alertas">
-          <AlertasNotificacoes alertas={alertas} onAtualizar={carregarDadosDashboard} />
-        </TabsContent>
-      </Tabs>
+          {/* Outras abas */}
+          {abaAtiva === 'animais' && <CadastroAnimais />}
+          {abaAtiva === 'alimentacao' && <AlimentacaoGado />}
+          {abaAtiva === 'financeiro' && <GestaoFinanceira />}
+          {abaAtiva === 'relatorios' && <RelatorioProducao />}
+          {abaAtiva === 'alertas' && <AlertasNotificacoes alertas={alertas} onAtualizar={carregarDadosDashboard} />}
+          {abaAtiva === 'lembretes' && <AlertasLembretesSaude />}
+          {abaAtiva === 'perfil' && <PerfilProdutor />}
+        </div>
+      </main>
     </div>
   );
 }
 
-// VERIFIQUE SE A EXPORTAÇÃO ESTÁ ASSIM:
 export default ProdutorDashboard;
