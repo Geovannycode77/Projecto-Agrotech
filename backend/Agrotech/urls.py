@@ -1,23 +1,12 @@
 from django.contrib import admin
 from django.urls import path, include
-from django.conf import settings
-from django.conf.urls.static import static
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    
-    # Auth
     path('api/auth/', include('login_cadastro.urls')),
-    
-    # Dashboard Admin
-    path('api/admin/', include('dashboard_admin.urls')),  # URLs do admin
-    
-    # Produtor Dashboard - NOVO
+    path('api/dashboard-admin/', include('dashboard_admin.urls')),
     path('api/produtor/', include('produtor_dashboard.urls')),
-    
-    # Dashboard geral
-    path('api/dashboard/', include('Deshboard.urls')),
+path('api/funcionario/', include('funcionario_dashboard.urls')),
+path('api/gestor-financeiro/', include('Gestor_financeiro_dashboard.urls')),
+    path('api/veterinario/', include('veterinario_dashboard.urls')),
 ]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
