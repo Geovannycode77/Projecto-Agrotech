@@ -114,7 +114,7 @@ function VeterinarioDashboard() {
       title: 'Consultas Hoje',
       value: dashboardData.consultas_hoje,
       icon: Stethoscope,
-      change: '+2 em relação a ontem',
+      change: '0% em relação a ontem',
       color: 'text-cyan-600',
       bgColor: 'bg-cyan-100'
     },

@@ -108,7 +108,7 @@ function GestorFinanceiroDashboard() {
       title: 'Receitas do Mês',
       value: `AOA ${dashboardData.receitas_mes.toLocaleString()}`,
       icon: TrendingUp,
-      change: '+12% em relação ao mês anterior',
+      change: '0% em relação ao mês anterior',
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-100'
     },
@@ -116,7 +116,7 @@ function GestorFinanceiroDashboard() {
       title: 'Despesas do Mês',
       value: `AOA ${dashboardData.despesas_mes.toLocaleString()}`,
       icon: TrendingDown,
-      change: '+5% em relação ao mês anterior',
+      change: '0% em relação ao mês anterior',
       color: 'text-red-600',
       bgColor: 'bg-red-100'
     },
@@ -132,7 +132,7 @@ function GestorFinanceiroDashboard() {
       title: 'Margem de Lucro',
       value: `${dashboardData.margem_lucro}%`,
       icon: PieChart,
-      change: '+3% em relação ao mês anterior',
+      change: '0% em relação ao mês anterior',
       color: 'text-amber-600',
       bgColor: 'bg-amber-100'
     }
