@@ -29,12 +29,14 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'login_cadastro',
-    'Deshboard',
-    'rest_framework',
-    'rest_framework_simplejwt',
     'corsheaders',
-    'social_django',
+    'rest_framework',
+    'login_cadastro', 
+    'produtor_dashboard',
+    'funcionario_dashboard',
+    'dashboard_admin',
+    'Gestor_financeiro_dashboard',
+    'veterinario_dashboard',
 ]
 
 # Custom user model
@@ -64,6 +66,7 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
+                'django.template.context_processors.debug',
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
@@ -80,7 +83,7 @@ DATABASES = {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': os.getenv('DB_NAME', 'Agrotech'),
         'USER': os.getenv('DB_USER', 'postgres'),
-        'PASSWORD': os.getenv('DB_PASSWORD', 'geovanny1245'),
+        'PASSWORD': os.getenv('DB_PASSWORD', 'dkka'),
         'HOST': os.getenv('DB_HOST', 'localhost'),
         'PORT': os.getenv('DB_PORT', '5432'),
     }
@@ -113,6 +116,7 @@ STATIC_URL = 'static/'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
 
 # Configuração REST Framework
 REST_FRAMEWORK = {

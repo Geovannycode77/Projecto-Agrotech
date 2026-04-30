@@ -1,0 +1,25 @@
+# Django Core
+DJANGO_SECRET_KEY=django-insecure-oc=k_)sykc8n)2(%16vvl@we^c972&k!!9053n9u76^a9b+*$-
+DEBUG=True
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Database
+DB_NAME=Agrotech
+DB_USER=postgres
+DB_PASSWORD=geovanny1245
+DB_HOST=localhost
+DB_PORT=5432
+
+# JWT
+JWT_SECRET=agrotech_secret_key_2026_muito_longa_e_segura
+JWT_ACCESS_TOKEN_LIFETIME=1
+JWT_REFRESH_TOKEN_LIFETIME=7
+
+# Google OAuth
+GOOGLE_CLIENT_ID=361026496748-ffnl4bne8q1k9nhg96dhdibmj1vprhef.apps.googleusercontent.com
+GOOGLE_CLIENT_SECRET=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
+
+# Frontend
+FRONTEND_URL=http://localhost:5173
+CORS_ALLOWED_ORIGINS=http://localhost:5173,http://localhost:3000
+

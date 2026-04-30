@@ -2,6 +2,15 @@ from django.core.mail import send_mail
 from django.conf import settings
 from django.utils.html import strip_tags
 
+def get_client_ip(request):
+    """Obtém o IP do cliente, considerando proxies"""
+    x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
+    if x_forwarded_for:
+        ip = x_forwarded_for.split(',')[0]
+    else:
+        ip = request.META.get('REMOTE_ADDR')
+    return ip
+
 def send_confirmation_email(user, request):
     """Envia email de confirmação para o usuário"""
     token = user.generate_confirmation_token()

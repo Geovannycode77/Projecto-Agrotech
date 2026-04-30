@@ -108,3 +108,25 @@ class Perfil(models.Model):
     
     def __str__(self):
         return self.nome_completo
+
+
+class UserActivity(models.Model):
+    ACTIVITY_TYPES = [
+        ('login', 'Login'),
+        ('logout', 'Logout'),
+        ('register', 'Registro'),
+        ('password_change', 'Mudança de Senha'),
+        ('profile_update', 'Atualização de Perfil'),
+        ('admin_action', 'Ação Administrativa'),
+    ]
+    
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    activity_type = models.CharField(max_length=20, choices=ACTIVITY_TYPES)
+    ip_address = models.GenericIPAddressField()
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
+    def __str__(self):
+        return f"{self.user.email} - {self.get_activity_type_display()} ({self.created_at})"

@@ -1,24 +1,12 @@
-"""
-URL configuration for Agrotech project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.2/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-# Agrotech/urls.py
 from django.contrib import admin
 from django.urls import path, include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('api/auth/', include('login_cadastro.urls')),  # Todas as rotas de autenticação
+    path('api/auth/', include('login_cadastro.urls')),
+    path('api/dashboard-admin/', include('dashboard_admin.urls')),
+    path('api/produtor/', include('produtor_dashboard.urls')),
+path('api/funcionario/', include('funcionario_dashboard.urls')),
+path('api/gestor-financeiro/', include('Gestor_financeiro_dashboard.urls')),
+    path('api/veterinario/', include('veterinario_dashboard.urls')),
 ]
