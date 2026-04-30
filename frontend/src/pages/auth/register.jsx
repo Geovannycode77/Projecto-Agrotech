@@ -219,7 +219,7 @@ export default function Register() {
                   </div>
                 </div>
               </div>
-              <p className="text-white/60 text-xs mt-8">© 2024 AgroTech</p>
+              <p className="text-white/60 text-xs mt-8">© 2026 AgroTech</p>
             </div>
 
             {/* Lado Direito - Formulário */}

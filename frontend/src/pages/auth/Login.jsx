@@ -269,7 +269,7 @@ export default function Login() {
         {/* Footer */}
         <div className="text-center mt-6">
           <p className="text-xs text-gray-400">
-            © 2024 AgroTech. Todos os direitos reservados.
+            © 2026 AgroTech. Todos os direitos reservados.
           </p>
         </div>
       </div>
