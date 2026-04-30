@@ -1,129 +1,148 @@
-import axios from 'axios';
+import axios from "axios";
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:8000";
 
-const api = axios.create({
+// Cliente para autenticação (baseURL: /api/auth/)
+const authApi = axios.create({
   baseURL: `${API_URL}/api/auth/`,
   headers: {
-    'Content-Type': 'application/json',
+    "Content-Type": "application/json",
   },
 });
 
-// Interceptor para adicionar token
-api.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('access_token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
+// Cliente para dashboards e endpoints da API (baseURL: /api/)
+const api = axios.create({
+  baseURL: `${API_URL}/api/`,
+  headers: {
+    "Content-Type": "application/json",
   },
-  (error) => Promise.reject(error)
-);
+});
 
-// Interceptor para refresh token
-api.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      try {
-        const refresh = localStorage.getItem('refresh_token');
-        const response = await axios.post(`${API_URL}/api/auth/token/refresh/`, {
-          refresh,
-        });
-        localStorage.setItem('access_token', response.data.access);
-        originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
-        return api(originalRequest);
-      } 
-      // eslint-disable-next-line no-unused-vars
-      catch (err) {
-        localStorage.clear();
-        window.location.href = '/login';
+// Interceptor para adicionar token em ambos os clientes
+const addTokenInterceptor = (instance) => {
+  instance.interceptors.request.use(
+    (config) => {
+      const token = localStorage.getItem("access_token");
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`;
       }
-    }
-    return Promise.reject(error);
-  }
-);
+      return config;
+    },
+    (error) => Promise.reject(error),
+  );
+};
+
+// Interceptor para refresh token em ambos os clientes
+const addRefreshInterceptor = (instance) => {
+  instance.interceptors.response.use(
+    (response) => response,
+    async (error) => {
+      const originalRequest = error.config;
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true;
+        try {
+          const refresh = localStorage.getItem("refresh_token");
+          const response = await axios.post(
+            `${API_URL}/api/auth/token/refresh/`,
+            {
+              refresh,
+            },
+          );
+          localStorage.setItem("access_token", response.data.access);
+          originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
+          return instance(originalRequest);
+        } catch (err) {
+          // eslint-disable-next-line no-unused-vars
+          localStorage.clear();
+          window.location.href = "/login";
+        }
+      }
+      return Promise.reject(error);
+    },
+  );
+};
+
+// Aplicar interceptors a ambos os clientes
+addTokenInterceptor(authApi);
+addTokenInterceptor(api);
+addRefreshInterceptor(authApi);
+addRefreshInterceptor(api);
 
 // Serviços de autenticação
 export const authService = {
   register: async (userData) => {
-    const response = await api.post('register/', userData);
+    const response = await authApi.post("register/", userData);
     return response.data;
-    
   },
 
   login: async (email, password) => {
-    const response = await api.post('login/', { email, password });
+    const response = await authApi.post("login/", { email, password });
     if (response.data.access) {
-      localStorage.setItem('access_token', response.data.access);
-      localStorage.setItem('refresh_token', response.data.refresh);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem("access_token", response.data.access);
+      localStorage.setItem("refresh_token", response.data.refresh);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
     }
     return response.data;
   },
 
- logout: async () => {
-  const refresh = localStorage.getItem('refresh_token');
-  if (refresh) {
-    try {
-      await api.post('logout/', { refresh });
-    } catch (error) {
-      console.error('Erro no logout:', error);
+  logout: async () => {
+    const refresh = localStorage.getItem("refresh_token");
+    if (refresh) {
+      try {
+        await authApi.post("logout/", { refresh });
+      } catch (error) {
+        console.error("Erro no logout:", error);
+      }
     }
-  }
-  // Remove apenas os tokens, sem redirecionar
-  localStorage.removeItem('access_token');
-  localStorage.removeItem('refresh_token');
-  localStorage.removeItem('user');
-  // NÃO coloque window.location.href aqui
-},
+    // Remove apenas os tokens, sem redirecionar
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("user");
+    // NÃO coloque window.location.href aqui
+  },
 
   getCurrentUser: async () => {
-    const response = await api.get('me/');
+    const response = await authApi.get("me/");
     return response.data;
   },
 
   updateProfile: async (profileData) => {
-    const response = await api.put('profile/', profileData);
+    const response = await authApi.put("profile/", profileData);
     return response.data;
   },
 
   googleLogin: async (data) => {
-    const response = await api.post('google-login/', data);
+    const response = await authApi.post("google-login/", data);
     if (response.data.access) {
-      localStorage.setItem('access_token', response.data.access);
-      localStorage.setItem('refresh_token', response.data.refresh);
-      localStorage.setItem('user', JSON.stringify(response.data.user));
+      localStorage.setItem("access_token", response.data.access);
+      localStorage.setItem("refresh_token", response.data.refresh);
+      localStorage.setItem("user", JSON.stringify(response.data.user));
     }
     return response.data;
   },
 
   googleRegister: async (data) => {
-  const response = await api.post('google-register/', data);
-  return response.data;
-},
-
-  setPassword: async (data) => {
-    const response = await api.post('set-password/', data);
+    const response = await authApi.post("google-register/", data);
     return response.data;
   },
 
-  // ADICIONE ESTA FUNÇÃO AQUI
+  setPassword: async (data) => {
+    const response = await authApi.post("set-password/", data);
+    return response.data;
+  },
+
   completeProfile: async (data) => {
-    const response = await api.post('complete-profile/', data);
+    const response = await authApi.post("complete-profile/", data);
     return response.data;
   },
 
   confirmEmail: async (token) => {
-  const response = await api.post('confirm-email/', { token });
-  return response.data;
- },
+    const response = await authApi.post("confirm-email/", { token });
+    return response.data;
+  },
 
   resendConfirmation: async (email) => {
-    const response = await api.post('resend-confirmation/', { email });
+    const response = await authApi.post("resend-confirmation/", { email });
     return response.data;
   },
 };
@@ -131,12 +150,12 @@ export const authService = {
 // Serviços de admin
 export const adminService = {
   getUsers: async () => {
-    const response = await api.get('admin/users/');
+    const response = await api.get("admin/users/");
     return response.data;
   },
 
   getPendingUsers: async () => {
-    const response = await api.get('admin/users/pending/');
+    const response = await api.get("admin/users/pending/");
     return response.data;
   },
 
@@ -156,36 +175,35 @@ export const adminService = {
   },
 
   getStats: async () => {
-    const response = await api.get('admin/stats/');
+    const response = await api.get("admin/stats/");
     return response.data;
   },
 
-   
   // Backups
   getBackups: async () => {
-    const response = await api.get('admin/backups/');
+    const response = await api.get("admin/backups/");
     return response.data;
   },
-  
+
   createBackup: async () => {
-    const response = await api.post('admin/backups/create/');
+    const response = await api.post("admin/backups/create/");
     return response.data;
   },
-  
+
   downloadBackup: async (id) => {
     const response = await api.get(`admin/backups/${id}/download/`, {
-      responseType: 'blob'
+      responseType: "blob",
     });
     return response.data;
   },
-  
+
   deleteBackup: async (id) => {
     const response = await api.delete(`admin/backups/${id}/`);
     return response.data;
   },
-  
+
   updateBackupSchedule: async (schedule) => {
-    const response = await api.post('admin/backups/schedule/', schedule);
+    const response = await api.post("admin/backups/schedule/", schedule);
     return response.data;
   },
 };
