@@ -53,10 +53,9 @@ export const AuthProvider = ({ children }) => {
           error: error.response?.data?.error 
         };
       }
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Erro ao fazer login' 
-      };
+let errorMsg = error.response?.data?.error || error.response?.data?.detail || (error.response?.data?.non_field_errors ? error.response.data.non_field_errors[0] : null) || (error.response?.data?.errors && Object.values(error.response.data.errors)[0] ? Object.values(error.response.data.errors)[0][0] : null) || 'Erro ao fazer login';
+      console.error('Login error details:', error.response?.data);
+      return { success: false, error: errorMsg };
     }
   };
 
@@ -97,10 +96,9 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: response.error || 'Erro ao autenticar com Google' };
     } catch (error) {
       console.error('Google login error:', error);
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Erro ao fazer login com Google' 
-      };
+let errorMsg = error.response?.data?.error || error.response?.data?.detail || (error.response?.data?.non_field_errors ? error.response.data.non_field_errors[0] : null) || (error.response?.data?.errors && Object.values(error.response.data.errors)[0] ? Object.values(error.response.data.errors)[0][0] : null) || 'Erro ao fazer login com Google';
+      console.error('Google login error details:', error.response?.data);
+      return { success: false, error: errorMsg };
     }
   };
 
@@ -109,9 +107,13 @@ export const AuthProvider = ({ children }) => {
       const data = await authService.register(userData);
       return { success: true, message: data.message };
     } catch (error) {
+      const errors = error.response?.data;
+let errorMsg = errors?.error || errors?.detail || (errors?.non_field_errors ? errors.non_field_errors[0] : null) || (errors?.errors && Object.values(errors.errors)[0] ? Object.values(errors.errors)[0][0] : null) || 'Erro ao registrar';
+      console.error('Register error details:', errors);
       return { 
         success: false, 
-        error: error.response?.data?.error || 'Erro ao registrar' 
+        error: errorMsg,
+        errors: errors
       };
     }
   };

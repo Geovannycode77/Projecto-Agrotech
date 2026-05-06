@@ -1,40 +1,30 @@
-# TODO - Conexão Frontend-Backend AgroTech
+# TODO.md - Plano de Conexão Backend-Frontend ✅ APROVADO
 
-## Análise do Projeto
+## ✅ **1. Criar ficheiros .env (COMPLETO)** 
+- [x] `frontend/.env` criado com `VITE_API_URL=http://localhost:8000`
+- [x] `backend/.env` criado com configurações Django/CORS
 
-### Estrutura de URLs do Backend:
-- `api/auth/` → login_cadastro (autenticação, registro, perfil)
-- `api/dashboard-admin/` → dashboard_admin (gestão de utilizadores)  
-- `api/produtor/` → produtor_dashboard
-- `api/funcionario/` → funcionario_dashboard
-- `api/gestor-financeiro/` → Gestor_financeiro_dashboard
-- `api/veterinario/` → veterinario_dashboard
+## 🔄 **2. Preparar Backend (EXECUTAR AGORA)**
+```
+cd backend
+python manage.py makemigrations
+python manage.py migrate  
+python manage.py createsuperuser
+python manage.py runserver
+```
 
-### Problemas Identificados:
+## ⏳ **3. Testar Frontend**
+```
+cd frontend
+npm install
+npm run dev
+```
 
-1. **AdminService.js** - Os endpoints usam caminhos incorretos:
-   - `dashboard-admin/stats/` ❌ → O backend usa `/stats/`
-   - `dashboard-admin/users/` ❌ → O backend usa o router
+## ⏳ **4. Verificação Final**
+- [ ] Acessar `http://localhost:5173/login`
+- [ ] Fazer login como produtor
+- [ ] Dashboard carrega dados do backend
 
-2. **Sincronização de Dados:** 
-   - Quando um utilizador faz register → dados vão para login_cadastro
-   - O admin dashboard deve mostrar os utilizadores pendentes
+---
+**ESTADO:** Configuração pronta! Executa os comandos do backend no terminal e partilha o output.
 
-## Plano de Implementação
-
-### Passo 1: Corrigir AdminService.js
-- [ ] Usar os endpoints corretos do backend
-- [ ] Testar a conexão com stats
-
-### Passo 2: Verificar sincronização de dados
-- [ ] Registro → dados inseridos corretamente
-- [ ] Pending users aparecem no admin
-- [ ] Aprovação → utilizador pode acessar dashboard
-
-### Passo 3: Verificar dashboards
-- [ ] ProdutorDashboard mostra dados corretos
-- [ ] FuncionarioDashboard mostra dados corretos
-- [ ] GestorFinanceiroDashboard mostra dados corretos
-- [ ] VeterinarioDashboard mostra dados corretos
-
-## Status: EM ANÁLISE
