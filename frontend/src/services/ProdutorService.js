@@ -1,10 +1,10 @@
 import api from "./api";
 
 export const produtorService = {
-  getDashboard: async () => {
+getDashboard: async () => {
     try {
       const response = await api.get("produtor/dashboard/");
-      return response;
+      return response.data;
     } catch (error) {
       console.error("Erro ao buscar dashboard:", error);
       throw error;

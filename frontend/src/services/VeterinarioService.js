@@ -4,7 +4,7 @@ export const veterinarioService = {
   getDashboard: async () => {
     try {
       const response = await api.get("veterinario/dashboard/");
-      return response;
+      return response.data;
     } catch (error) {
       console.error("Erro ao buscar dashboard:", error);
       throw error;
@@ -19,7 +19,7 @@ export const veterinarioService = {
   getAlertas: async () => {
     try {
       const response = await api.get("veterinario/alertas/");
-      return response;
+      return response.data;
     } catch (error) {
       console.error("Erro ao buscar alertas:", error);
       throw error;
@@ -34,7 +34,7 @@ export const veterinarioService = {
   getAnimais: async (params) => {
     try {
       const response = await api.get("veterinario/animais/", { params });
-      return response;
+      return response.data;
     } catch (error) {
       console.error("Erro ao buscar animais:", error);
       throw error;
@@ -44,7 +44,7 @@ export const veterinarioService = {
   getHistoricoMedico: async (animalId) => {
     try {
       const response = await api.get(`veterinario/historico/${animalId}/`);
-      return response;
+      return response.data;
     } catch (error) {
       console.error("Erro ao buscar histórico:", error);
       throw error;
@@ -55,10 +55,10 @@ export const veterinarioService = {
     const response = await api.get("veterinario/vacinas/", { params });
     return response.data;
   },
-  registrarVacina: async (data) => {
+registrarVacina: async (data) => {
     try {
       const response = await api.post("veterinario/vacinas/", data);
-      return response;
+      return response.data;
     } catch (error) {
       console.error("Erro ao registrar vacina:", error);
       throw error;
@@ -73,7 +73,7 @@ export const veterinarioService = {
   registrarTratamento: async (data) => {
     try {
       const response = await api.post("veterinario/tratamentos/", data);
-      return response;
+      return response.data;
     } catch (error) {
       console.error("Erro ao registrar tratamento:", error);
       throw error;

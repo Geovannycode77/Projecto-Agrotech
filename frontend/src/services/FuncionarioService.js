@@ -1,10 +1,10 @@
 import api from "./api";
 
 export const funcionarioService = {
-  getDashboard: async () => {
+getDashboard: async () => {
     try {
       const response = await api.get("funcionario/dashboard/");
-      return response;
+      return response.data;
     } catch (error) {
       console.error("Erro ao buscar dashboard:", error);
       throw error;

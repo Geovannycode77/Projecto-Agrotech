@@ -147,63 +147,129 @@ export const authService = {
   },
 };
 
-// Serviços de admin
+// Serviços de admin (usa authApi porque os endpoints estão em /api/auth/admin/)
 export const adminService = {
   getUsers: async () => {
-    const response = await api.get("admin/users/");
+    const response = await authApi.get("admin/users/");
     return response.data;
   },
 
   getPendingUsers: async () => {
-    const response = await api.get("admin/users/pending/");
+    const response = await authApi.get("admin/users/pending/");
     return response.data;
   },
 
   approveUser: async (userId) => {
-    const response = await api.post(`admin/users/${userId}/approve/`);
+    const response = await authApi.post(`admin/users/${userId}/approve/`);
     return response.data;
   },
 
   updateUserRole: async (userId, role) => {
-    const response = await api.put(`admin/users/${userId}/role/`, { role });
+    const response = await authApi.put(`admin/users/${userId}/role/`, { role });
     return response.data;
   },
 
   deleteUser: async (userId) => {
-    const response = await api.delete(`admin/users/${userId}/delete/`);
+    const response = await authApi.delete(`admin/users/${userId}/delete/`);
     return response.data;
   },
 
   getStats: async () => {
-    const response = await api.get("admin/stats/");
+    const response = await authApi.get("admin/stats/");
     return response.data;
   },
 
   // Backups
   getBackups: async () => {
-    const response = await api.get("admin/backups/");
+    const response = await authApi.get("admin/backups/");
     return response.data;
   },
 
   createBackup: async () => {
-    const response = await api.post("admin/backups/create/");
+    const response = await authApi.post("admin/backups/create/");
     return response.data;
   },
 
   downloadBackup: async (id) => {
-    const response = await api.get(`admin/backups/${id}/download/`, {
+    const response = await authApi.get(`admin/backups/${id}/download/`, {
       responseType: "blob",
     });
     return response.data;
   },
 
   deleteBackup: async (id) => {
-    const response = await api.delete(`admin/backups/${id}/`);
+    const response = await authApi.delete(`admin/backups/${id}/`);
     return response.data;
   },
 
   updateBackupSchedule: async (schedule) => {
-    const response = await api.post("admin/backups/schedule/", schedule);
+    const response = await authApi.post("admin/backups/schedule/", schedule);
+    return response.data;
+  },
+
+  // Permissões
+  getPermissions: async () => {
+    const response = await authApi.get("permissions/");
+    return response.data;
+  },
+
+  updatePermissions: async (data) => {
+    const response = await authApi.put("permissions/", data);
+    return response.data;
+  },
+
+  // Sistema
+  getSystemStatus: async () => {
+    const response = await authApi.get("system/status/");
+    return response.data;
+  },
+
+  getSystemSettings: async () => {
+    const response = await authApi.get("system/settings/");
+    return response.data;
+  },
+
+  updateSystemSettings: async (data) => {
+    const response = await authApi.put("system/settings/", data);
+    return response.data;
+  },
+
+  resetSystemSettings: async () => {
+    const response = await authApi.post("system/settings/reset/");
+    return response.data;
+  },
+
+  // Segurança
+  getSecuritySettings: async () => {
+    const response = await authApi.get("security/");
+    return response.data;
+  },
+
+  updateSecuritySettings: async (data) => {
+    const response = await authApi.put("security/", data);
+    return response.data;
+  },
+
+  getActivityLog: async () => {
+    const response = await authApi.get("security/log/");
+    return response.data;
+  },
+
+  // Relatórios
+  getRecentReports: async () => {
+    const response = await authApi.get("reports/");
+    return response.data;
+  },
+
+  generateReport: async (reportId, dateRange) => {
+    const response = await authApi.post(`reports/generate/`, { reportId, dateRange });
+    return response.data;
+  },
+
+  exportData: async (format, dateRange) => {
+    const response = await authApi.post(`reports/export/`, { format, dateRange }, {
+      responseType: "blob",
+    });
     return response.data;
   },
 };
