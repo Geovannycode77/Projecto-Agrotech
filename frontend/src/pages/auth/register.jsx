@@ -146,7 +146,17 @@ export default function Register() {
         });
       }
     } else {
-      setError(result.error || 'Erro ao criar conta');
+      // Erros detalhados campo por campo
+      if (result.errors) {
+        let errorMsg = '';
+        if (result.errors.email) errorMsg += 'Email: ' + result.errors.email.join(', ') + '; ';
+        if (result.errors.password) errorMsg += 'Senha: ' + result.errors.password.join(', ') + '; ';
+        if (result.errors.role) errorMsg += 'Tipo de usuário: ' + result.errors.role.join(', ') + '; ';
+        if (result.errors.non_field_errors) errorMsg += result.errors.non_field_errors.join(', ');
+        setError(errorMsg || result.error || 'Erro ao criar conta');
+      } else {
+        setError(result.error || 'Erro ao criar conta');
+      }
     }
 
     setLoading(false);
