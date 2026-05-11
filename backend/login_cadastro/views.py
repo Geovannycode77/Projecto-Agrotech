@@ -43,28 +43,103 @@ def login(request):
     user = authenticate(request, email=email, password=password)
     
     if not user:
-        return Response({
-            'error': 'Email ou senha inválidos'
-        }, status=status.HTTP_401_UNAUTHORIZED)
-    
+        # Não revelamos detalhes sensíveis (ex.: se email existe), mas retornamos motivo completo
+        # com base em status do usuário quando possível.
+        email_user = CustomUser.objects.filter(email=email).first()
+        if not email_user:
+            return Response(
+                {'error': 'Email ou senha inválidos'},
+                status=status.HTTP_401_UNAUTHORIZED
+            )
+
+        # Se existe mas a senha não bate (authenticate falhou), ainda conseguimos indicar
+        # que a credencial estava incorreta, sem expor demais.
+        if not getattr(email_user, 'email_confirmed', False):
+            return Response(
+                {
+                    'error': 'Email não confirmado. Verifique sua caixa de entrada.',
+                    'requires_confirmation': True,
+                    'email': email_user.email,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not getattr(email_user, 'is_active', False):
+            return Response(
+                {'error': 'Conta desativada. Contacte o administrador.'},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if getattr(email_user, 'needs_password_setup', False):
+            return Response(
+                {
+                    'error': 'Usuário precisa definir a senha antes de entrar.',
+                    'requires_password_setup': True,
+                    'email': email_user.email,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        if not getattr(email_user, 'is_approved', True):
+            return Response(
+                {
+                    'error': 'Conta aguardando aprovação do administrador.',
+                    'requires_admin_approval': True,
+                    'email': email_user.email,
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # Caso nenhuma condição de status tenha sido encontrada, devolve o motivo padrão.
+        return Response(
+            {'error': 'Email ou senha inválidos'},
+            status=status.HTTP_401_UNAUTHORIZED,
+        )
+
+    # Usuário autenticado - validar status
     if not user.email_confirmed:
-        return Response({
-            'error': 'Email não confirmado. Verifique sua caixa de entrada.',
-            'requires_confirmation': True,
-            'email': user.email
-        }, status=status.HTTP_403_FORBIDDEN)
-    
+        return Response(
+            {
+                'error': 'Email não confirmado. Verifique sua caixa de entrada.',
+                'requires_confirmation': True,
+                'email': user.email,
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     if not user.is_active:
-        return Response({
-            'error': 'Conta desativada. Contacte o administrador.'
-        }, status=status.HTTP_403_FORBIDDEN)
-    
+        return Response(
+            {'error': 'Conta desativada. Contacte o administrador.'},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if getattr(user, 'needs_password_setup', False):
+        return Response(
+            {
+                'error': 'Usuário precisa definir a senha antes de entrar.',
+                'requires_password_setup': True,
+                'email': user.email,
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    if not getattr(user, 'is_approved', True):
+        return Response(
+            {
+                'error': 'Conta aguardando aprovação do administrador.',
+                'requires_admin_approval': True,
+                'email': user.email,
+            },
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
     refresh = RefreshToken.for_user(user)
     return Response({
         'refresh': str(refresh),
         'access': str(refresh.access_token),
         'user': UserSerializer(user).data
     })
+
 
 @api_view(['GET'])
 def get_current_user(request):
