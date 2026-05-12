@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'dashboard_admin',
     'Gestor_financeiro_dashboard',
     'veterinario_dashboard',
+    'social_django',
 ]
 
 # Custom user model
