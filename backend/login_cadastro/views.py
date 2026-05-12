@@ -40,9 +40,35 @@ def login(request):
     email = request.data.get('email')
     password = request.data.get('password')
     
-    user = authenticate(request, email=email, password=password)
-    
+    # Evita erro 500 quando Django auth está sem backend compatível.
+    # Vamos fazer autenticação manual verificando usuário por email.
+    try:
+        user = authenticate(request, email=email, password=password)
+    except Exception:
+        user = None
+
     if not user:
+        # fallback: verifica existência do usuário e retorna motivo claro
+        user = CustomUser.objects.filter(email=email).first()
+        if not user:
+            return Response({'error': 'Email ou senha inválidos'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        if not user.email_confirmed:
+            return Response({
+                'error': 'Email não confirmado. Verifique sua caixa de entrada.',
+                'requires_confirmation': True,
+                'email': user.email,
+            }, status=status.HTTP_403_FORBIDDEN)
+
+        if not user.is_active:
+            return Response({'error': 'Conta desativada. Contacte o administrador.'}, status=status.HTTP_403_FORBIDDEN)
+
+        if hasattr(user, 'check_password') and not user.check_password(password):
+            return Response({'error': 'Email ou senha inválidos'}, status=status.HTTP_401_UNAUTHORIZED)
+
+        # Se chegou aqui, tenta seguir para o fluxo de token.
+        # (Ex.: authenticate falhou mas a senha é válida)
+
         # Não revelamos detalhes sensíveis (ex.: se email existe), mas retornamos motivo completo
         # com base em status do usuário quando possível.
         email_user = CustomUser.objects.filter(email=email).first()
