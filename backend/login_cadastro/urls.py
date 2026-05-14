@@ -9,6 +9,7 @@ urlpatterns = [
     path('logout/', views.logout, name='logout'),
     path('forgot-password/', views.forgot_password, name='forgot_password'),
     path('reset-password/', views.reset_password, name='reset_password'),
+    path('change-password/', views.change_password, name='change-password'),
     
     # Google OAuth
     path('google-login/', views.google_login, name='google_login'),

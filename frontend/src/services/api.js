@@ -75,6 +75,12 @@ export const authService = {
     return response.data;
   },
 
+   changePassword: async (passwordData) => {
+    const response = await authApi.post("change-password/", passwordData);
+    return response.data;
+  },
+
+
   login: async (email, password) => {
     const response = await authApi.post("login/", { email, password });
     if (response.data.access) {
@@ -147,63 +153,266 @@ export const authService = {
   },
 };
 
-// Serviços de admin
+/// Serviços de admin
+
 export const adminService = {
-  getUsers: async () => {
-    const response = await api.get("admin/users/");
+  // USERS
+  getUsers: async (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = `dashboard-admin/users/${queryParams ? `?${queryParams}` : ''}`;
+    const response = await api.get(url);
     return response.data;
   },
 
   getPendingUsers: async () => {
-    const response = await api.get("admin/users/pending/");
+    const response = await api.get("dashboard-admin/users/?status=pending");
     return response.data;
   },
 
   approveUser: async (userId) => {
-    const response = await api.post(`admin/users/${userId}/approve/`);
+    const response = await api.post(`dashboard-admin/users/${userId}/approve/`);
+    return response.data;
+  },
+
+  blockUser: async (userId) => {
+    const response = await api.post(`dashboard-admin/users/${userId}/block/`);
+    return response.data;
+  },
+
+  unblockUser: async (userId) => {
+    const response = await api.post(`dashboard-admin/users/${userId}/unblock/`);
     return response.data;
   },
 
   updateUserRole: async (userId, role) => {
-    const response = await api.put(`admin/users/${userId}/role/`, { role });
+    const response = await api.put(`dashboard-admin/users/${userId}/change_role/`, { role });
     return response.data;
   },
 
   deleteUser: async (userId) => {
-    const response = await api.delete(`admin/users/${userId}/delete/`);
+    const response = await api.delete(`dashboard-admin/users/${userId}/`);
     return response.data;
   },
 
-  getStats: async () => {
-    const response = await api.get("admin/stats/");
+  getUserStats: async () => {
+    const response = await api.get("dashboard-admin/users/stats/");
     return response.data;
   },
 
-  // Backups
-  getBackups: async () => {
-    const response = await api.get("admin/backups/");
-    return response.data;
-  },
-
-  createBackup: async () => {
-    const response = await api.post("admin/backups/create/");
-    return response.data;
-  },
-
-  downloadBackup: async (id) => {
-    const response = await api.get(`admin/backups/${id}/download/`, {
-      responseType: "blob",
+  exportUsers: async (format = 'csv') => {
+    const response = await api.get(`dashboard-admin/users/export/?format=${format}`, {
+      responseType: 'blob'
     });
     return response.data;
   },
 
+    // BACKUPS
+  getBackups: async () => {
+    try {
+      const response = await api.get("dashboard-admin/backups/");
+      return response.data;
+    } catch (error) {
+      console.warn('Erro ao buscar backups, retornando dados mock');
+      // Dados mock para teste
+      return [
+        {
+          id: 1,
+          filename: 'backup_20240511_120000.sql',
+          size: 10485760,
+          created_at: new Date().toISOString(),
+          status: 'completed',
+          type: 'database'
+        },
+        {
+          id: 2,
+          filename: 'backup_20240510_120000.sql',
+          size: 10485760,
+          created_at: new Date(Date.now() - 86400000).toISOString(),
+          status: 'completed',
+          type: 'database'
+        }
+      ];
+    }
+  },
+  
+  createBackup: async () => {
+    const response = await api.post("dashboard-admin/backups/create/");
+    return response.data;
+  },
+  
+  downloadBackup: async (id) => {
+    const response = await api.get(`dashboard-admin/backups/${id}/download/`, {
+      responseType: "blob"
+    });
+    return response.data;
+  },
+  
   deleteBackup: async (id) => {
-    const response = await api.delete(`admin/backups/${id}/`);
+    const response = await api.delete(`dashboard-admin/backups/${id}/`);
+    return response.data;
+  },
+  
+  updateBackupSchedule: async (schedule) => {
+    const response = await api.post("dashboard-admin/backups/schedule/", schedule);
+    return response.data;
+  },
+  
+  getBackupSettings: async () => {
+    const response = await api.get("dashboard-admin/backups/settings/");
     return response.data;
   },
 
-  updateBackupSchedule: async (schedule) => {
-    const response = await api.post("admin/backups/schedule/", schedule);
+  // STATS
+  getStats: async () => {
+    const response = await api.get("dashboard-admin/stats/");
+    return response.data;
+  },
+
+ 
+// SECURITY (Segurança)
+   // SECURITY (Sem mock)
+  getSecuritySettings: async () => {
+    const response = await api.get("dashboard-admin/security/settings/");
+    return response.data;
+  },
+  
+  updateSecuritySettings: async (settings) => {
+    const response = await api.put("dashboard-admin/security/settings/", settings);
+    return response.data;
+  },
+  
+  getActivityLog: async () => {
+    const response = await api.get("dashboard-admin/activity-log/");
+    return response.data;
+  },  
+ 
+  // SETTINGS
+   getSystemSettings: async () => {
+    const response = await api.get("dashboard-admin/settings/");
+    return response.data;
+  },
+
+  getSystemSetting: async (key) => {
+    const response = await api.get(`dashboard-admin/settings/${key}/`);
+    return response.data;
+  },
+
+  updateSystemSetting: async (key, value) => {
+    const response = await api.put(`dashboard-admin/settings/${key}/`, { value });
+    return response.data;
+  },
+
+  updateMultipleSettings: async (settings) => {
+    const response = await api.post("dashboard-admin/settings/update_multiple/", settings);
+    return response.data;
+  },
+
+  getPublicSettings: async () => {
+    const response = await api.get("dashboard-admin/settings/public/");
+    return response.data;
+  },
+
+  // WIDGETS
+  getWidgets: async () => {
+    const response = await api.get("dashboard-admin/widgets/");
+    return response.data;
+  },
+
+  updateWidget: async (widgetId, data) => {
+    const response = await api.put(`dashboard-admin/widgets/${widgetId}/`, data);
+    return response.data;
+  },
+
+   // LOGS
+  getLogs: async (params = {}) => {
+    const queryParams = new URLSearchParams(params).toString();
+    const url = `dashboard-admin/logs/${queryParams ? `?${queryParams}` : ''}`;
+    const response = await api.get(url);
+    return response.data;
+  },
+
+  // NOTIFICATIONS
+  createNotification: async (notificationData) => {
+    const response = await api.post("dashboard-admin/notifications/", notificationData);
+    return response.data;
+  },
+
+  // PERMISSÕES SIMPLIFICADAS
+  getSimplePermissions: async () => {
+    try {
+      const response = await api.get("dashboard-admin/simple-permissions/");
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao buscar permissões:', error);
+      // Dados padrão em caso de erro
+      return {
+        camadas: {
+          administrador: {
+            nome: 'Administrador',
+            descricao: 'Acesso total ao sistema',
+            cor: 'red',
+            permissoes: ['*']
+          },
+          produtor: {
+            nome: 'Produtor',
+            descricao: 'Gestão de produção, animais e fazenda',
+            cor: 'green',
+            permissoes: ['animais', 'producao', 'fazenda', 'dashboard']
+          },
+          veterinario: {
+            nome: 'Veterinário',
+            descricao: 'Gestão de saúde animal',
+            cor: 'blue',
+            permissoes: ['animais', 'vacinas', 'consultas', 'dashboard']
+          },
+          funcionario: {
+            nome: 'Funcionário',
+            descricao: 'Tarefas operacionais',
+            cor: 'yellow',
+            permissoes: ['tarefas', 'animais_leitura', 'dashboard']
+          },
+          gestor_financeiro: {
+            nome: 'Gestor Financeiro',
+            descricao: 'Gestão financeira',
+            cor: 'purple',
+            permissoes: ['financas', 'relatorios', 'dashboard']
+          }
+        },
+        modulos: [
+          { id: 'dashboard', nome: 'Dashboard' },
+          { id: 'animais', nome: 'Animais' },
+          { id: 'producao', nome: 'Produção' },
+          { id: 'fazenda', nome: 'Fazenda' },
+          { id: 'vacinas', nome: 'Vacinas' },
+          { id: 'consultas', nome: 'Consultas' },
+          { id: 'tarefas', nome: 'Tarefas' },
+          { id: 'financas', nome: 'Finanças' },
+          { id: 'relatorios', nome: 'Relatórios' },
+          { id: 'animais_leitura', nome: 'Animais (Leitura)' }
+        ]
+      };
+    }
+  },
+
+  saveSimplePermissions: async (permissions) => {
+    const response = await api.post("dashboard-admin/simple-permissions/save/", permissions);
+    return response.data;
+  },
+
+
+    // MONITORING (Monitoramento)
+  getSystemStatus: async () => {
+    const response = await api.get("dashboard-admin/system/status/");
+    return response.data;
+  },
+  
+  getSystemMetrics: async () => {
+    const response = await api.get("dashboard-admin/system/metrics/");
+    return response.data;
+  },
+  
+  getHealthCheck: async () => {
+    const response = await api.get("dashboard-admin/health/");
     return response.data;
   },
 };

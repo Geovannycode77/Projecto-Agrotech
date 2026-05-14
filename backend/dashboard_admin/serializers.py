@@ -9,9 +9,10 @@ class AdminUserSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = User
+        # REMOVI 'is_blocked' da lista de fields
         fields = [
             'id', 'email', 'username', 'first_name', 'last_name', 'role', 'role_display',
-            'is_approved', 'is_active', 'is_blocked', 'email_confirmed', 'date_joined',
+            'is_approved', 'is_active', 'email_confirmed', 'date_joined',
             'last_login'
         ]
         read_only_fields = ['id', 'date_joined', 'last_login']
@@ -45,7 +46,7 @@ class AdminStatsSerializer(serializers.Serializer):
     total_users = serializers.IntegerField()
     pending_users = serializers.IntegerField()
     approved_users = serializers.IntegerField()
-    blocked_users = serializers.IntegerField()
     verified_emails = serializers.IntegerField()
     users_by_role = serializers.DictField()
     recent_users = serializers.ListField()
+    # REMOVI 'blocked_users' pois o campo não existe
