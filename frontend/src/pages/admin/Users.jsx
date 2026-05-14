@@ -3,6 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { useToast } from '@/hooks/use-toast';
 import { adminService } from '../../services/api';
 import { 
   Search, 
@@ -18,6 +19,9 @@ export default function AdminUsers() {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterRole, setFilterRole] = useState('');
+  const [deleteConfirm, setDeleteConfirm] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     fetchUsers();
@@ -40,21 +44,43 @@ export default function AdminUsers() {
   const handleApprove = async (userId) => {
     try {
       await adminService.approveUser(userId);
+      toast({
+        title: "Sucesso",
+        description: "Usuário aprovado com sucesso.",
+        variant: "default",
+      });
       fetchUsers();
     } catch (err) {
       console.error('Erro ao aprovar:', err);
-      alert('Erro ao aprovar usuário. Tente novamente.');
+      toast({
+        title: "Erro",
+        description: "Erro ao aprovar usuário. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
-  const handleDelete = async (userId) => {
-    if (window.confirm('Tem certeza que deseja deletar este usuário?')) {
+  const handleDelete = async (userId, userEmail) => {
+    if (window.confirm(`Tem certeza que deseja eliminar permanentemente o utilizador ${userEmail}? Esta ação não pode ser desfeita.`)) {
+      setDeleting(true);
       try {
         await adminService.deleteUser(userId);
+        toast({
+          title: "Eliminado",
+          description: `Usuário ${userEmail} foi eliminado com sucesso.`,
+          variant: "default",
+        });
+        setDeleteConfirm(null);
         fetchUsers();
       } catch (err) {
         console.error('Erro ao deletar:', err);
-        alert('Erro ao deletar usuário. Tente novamente.');
+        toast({
+          title: "Erro",
+          description: err.response?.data?.error || "Erro ao eliminar usuário. Tente novamente.",
+          variant: "destructive",
+        });
+      } finally {
+        setDeleting(false);
       }
     }
   };
@@ -205,9 +231,11 @@ export default function AdminUsers() {
                           {!user.is_superuser && (
                             <Button
                               size="sm"
+                              disabled={deleting}
                               variant="outline"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleDelete(user.id)}
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50 disabled:opacity-50"
+                              onClick={() => handleDelete(user.id, user.email)}
+                              title="Eliminar usuário permanentemente"
                             >
                               <Trash2 className="w-4 h-4" />
                             </Button>

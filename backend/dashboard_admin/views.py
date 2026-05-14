@@ -276,7 +276,27 @@ class DashboardWidgetViewSet(viewsets.ModelViewSet):
     queryset = DashboardWidget.objects.all()
     serializer_class = DashboardWidgetSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
-    
+
+    @action(detail=True, methods=['post'])
+    def deactivate(self, request, pk=None):
+        """Desativar (soft-delete) um widget do dashboard."""
+        widget = self.get_object()
+        if widget.is_active is False:
+            return Response({'message': 'Widget já está desativado.'})
+
+        widget.is_active = False
+        widget.save(update_fields=['is_active'])
+
+        AdminLog.objects.create(
+            admin=request.user,
+            action='settings_change',
+            target_user=None,
+            description=f'Widget "{widget.title}" desativado pelo admin',
+            ip_address=get_client_ip(request)
+        )
+
+        return Response({'message': 'Widget desativado com sucesso.'})
+
     @action(detail=False, methods=['get'])
     def available(self, request):
         """Obter widgets disponíveis para o usuário"""

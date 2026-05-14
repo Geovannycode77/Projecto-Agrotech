@@ -31,11 +31,10 @@ export const adminService = {
   },
 
   deleteUser: async (userId) => {
-    const response = await api.delete(
-      `dashboard-admin/users/${userId}/delete/`,
-    );
+    const response = await api.delete(`dashboard-admin/users/${userId}/delete_user/`);
     return response.data;
   },
+
 
   // Permissões
   getPermissions: async () => {
