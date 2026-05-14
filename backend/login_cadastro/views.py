@@ -1,6 +1,10 @@
 import os
 import json
 import base64
+from rest_framework.permissions import IsAuthenticated, AllowAny
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.response import Response
+from rest_framework import status
 from rest_framework import status, permissions
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
@@ -186,7 +190,24 @@ def logout(request):
         return Response({'message': 'Logout realizado com sucesso'})
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def change_password(request):
+    """Alterar senha do usuário"""
+    user = request.user
+    current_password = request.data.get('current_password')
+    new_password = request.data.get('new_password')
+    
+    if not user.check_password(current_password):
+        return Response(
+            {'error': 'Senha atual incorreta'},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    
+    user.set_password(new_password)
+    user.save()
+    
+    return Response({'message': 'Senha alterada com sucesso'})
 
 # ========== GOOGLE LOGIN ==========
 

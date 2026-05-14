@@ -25,12 +25,53 @@ export default function AdminDashboard() {
     fetchStats();
   }, []);
 
+  // Função auxiliar para extrair valor numérico de qualquer formato
+  const getNumericValue = (value) => {
+    if (typeof value === 'number') return value;
+    if (value && typeof value === 'object') {
+      if ('count' in value) return value.count;
+      if ('display' in value) return parseInt(value.display) || 0;
+    }
+    return Number(value) || 0;
+  };
+
   const fetchStats = async () => {
     try {
       setLoading(true);
       setError(null);
       const data = await adminService.getStats();
-      setStats(data);
+      
+      console.log('Dados da API:', data); // Para debug
+      
+      // Normaliza os dados para o formato esperado
+      const normalizedStats = {
+        total_users: getNumericValue(data.total_users || data.totalUsers || 0),
+        approved_users: getNumericValue(data.approved_users || data.approvedUsers || data.active_users || data.activeUsers || 0),
+        pending_users: getNumericValue(data.pending_users || data.pendingUsers || 0),
+        users_by_role: {}
+      };
+      
+      // Processa users_by_role
+      if (data.users_by_role && typeof data.users_by_role === 'object') {
+        const roles = {};
+        for (const [key, value] of Object.entries(data.users_by_role)) {
+          roles[key] = getNumericValue(value);
+        }
+        normalizedStats.users_by_role = roles;
+      } else {
+        // Se não veio users_by_role, tenta criar a partir de campos individuais
+        const roles = {};
+        if (data.produtores) roles.produtor = getNumericValue(data.produtores);
+        if (data.funcionarios) roles.funcionario = getNumericValue(data.funcionarios);
+        if (data.veterinarios) roles.veterinario = getNumericValue(data.veterinarios);
+        if (data.gestores) roles.gestor = getNumericValue(data.gestores);
+        if (data.admin) roles.admin = getNumericValue(data.admin);
+        if (Object.keys(roles).length > 0) {
+          normalizedStats.users_by_role = roles;
+        }
+      }
+      
+      setStats(normalizedStats);
     } catch (err) {
       console.error('Erro ao carregar estatísticas:', err);
       setError('Não foi possível carregar as estatísticas. Tente novamente mais tarde.');
@@ -132,7 +173,7 @@ export default function AdminDashboard() {
             <div className="space-y-3">
               {Object.entries(stats.users_by_role).map(([role, count]) => (
                 <div key={role} className="flex items-center justify-between">
-                  <span className="capitalize text-gray-600">{role}</span>
+                  <span className="capitalize text-gray-600">{role.replace(/_/g, ' ')}</span>
                   <div className="flex items-center gap-4 flex-1 ml-4">
                     <div className="flex-1 bg-gray-200 rounded-full h-2">
                       <div 
@@ -194,4 +235,4 @@ export default function AdminDashboard() {
       </Card>
     </div>
   );
-}
+} 

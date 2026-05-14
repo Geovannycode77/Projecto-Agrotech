@@ -38,56 +38,60 @@ export default function Security() {
     fetchSecurityData();
   }, []);
 
-  const fetchSecurityData = async () => {
-    try {
-      setLoading(true);
-      setError(null);
-      const [settings, logs] = await Promise.all([
-        adminService.getSecuritySettings(),
-        adminService.getActivityLog()
-      ]);
-      setSecuritySettings(settings);
-      setActivityLog(logs || []);
-    } catch (err) {
-      console.error('Erro ao carregar dados de segurança:', err);
-      setError('Não foi possível carregar as configurações de segurança.');
-    } finally {
-      setLoading(false);
-    }
-  };
+// Security.jsx - Versão sem mock
 
-  const handlePasswordChange = async (e) => {
-    e.preventDefault();
-    if (passwordData.new_password !== passwordData.confirm_password) {
-      alert('As senhas não coincidem');
-      return;
-    }
+const fetchSecurityData = async () => {
+  try {
+    setLoading(true);
+    setError(null);
     
-    try {
-      setSaving(true);
-      await authService.changePassword(passwordData);
-      alert('Senha alterada com sucesso!');
-      setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
-    } catch (err) {
-      console.error('Erro ao alterar senha:', err);
-      alert('Erro ao alterar senha. Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
+    const [settings, logs] = await Promise.all([
+      adminService.getSecuritySettings(),
+      adminService.getActivityLog()
+    ]);
+    
+    setSecuritySettings(settings);
+    setActivityLog(logs || []);
+  } catch (err) {
+    console.error('Erro ao carregar dados de segurança:', err);
+    setError('Não foi possível carregar as configurações de segurança.');
+  } finally {
+    setLoading(false);
+  }
+};
 
-  const handleSaveSettings = async () => {
-    try {
-      setSaving(true);
-      await adminService.updateSecuritySettings(securitySettings);
-      alert('Configurações de segurança salvas!');
-    } catch (err) {
-      console.error('Erro ao salvar configurações:', err);
-      alert('Erro ao salvar configurações. Tente novamente.');
-    } finally {
-      setSaving(false);
-    }
-  };
+const handlePasswordChange = async (e) => {
+  e.preventDefault();
+  if (passwordData.new_password !== passwordData.confirm_password) {
+    alert('As senhas não coincidem');
+    return;
+  }
+  
+  try {
+    setSaving(true);
+    await authService.changePassword(passwordData);
+    alert('Senha alterada com sucesso!');
+    setPasswordData({ current_password: '', new_password: '', confirm_password: '' });
+  } catch (err) {
+    console.error('Erro ao alterar senha:', err);
+    alert(err.response?.data?.error || 'Erro ao alterar senha. Tente novamente.');
+  } finally {
+    setSaving(false);
+  }
+};
+
+const handleSaveSettings = async () => {
+  try {
+    setSaving(true);
+    await adminService.updateSecuritySettings(securitySettings);
+    alert('Configurações de segurança salvas!');
+  } catch (err) {
+    console.error('Erro ao salvar configurações:', err);
+    alert('Erro ao salvar configurações. Tente novamente.');
+  } finally {
+    setSaving(false);
+  }
+};
 
   if (loading) {
     return (
