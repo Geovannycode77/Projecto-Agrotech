@@ -1,10 +1,12 @@
+// src/services/produtorService.js
 import api from "./api";
 
 export const produtorService = {
+  // Dashboard - CORRIGIDO
   getDashboard: async () => {
     try {
       const response = await api.get("produtor/dashboard/");
-      return response;
+      return response.data;
     } catch (error) {
       console.error("Erro ao buscar dashboard:", error);
       throw error;
@@ -34,6 +36,17 @@ export const produtorService = {
 
   deleteAnimal: async (id) => {
     const response = await api.delete(`produtor/animais/${id}/`);
+    return response.data;
+  },
+
+  // Estatísticas dos animais
+  getAnimaisStats: async () => {
+    const response = await api.get("produtor/animais/stats/");
+    return response.data;
+  },
+
+  getUltimosAnimais: async (limit = 5) => {
+    const response = await api.get(`produtor/animais/ultimos/?limit=${limit}`);
     return response.data;
   },
 
@@ -70,9 +83,8 @@ export const produtorService = {
     return response.data;
   },
 
-  //Consumo Diário
-  getConsumoDiario: async () => {
-    const response = await api.get("produtor/alimentacao/consumo_diario/"); // com underline
+  getConsumoMensal: async () => {
+    const response = await api.get("produtor/alimentacao/consumo_mensal/");
     return response.data;
   },
 
@@ -96,16 +108,12 @@ export const produtorService = {
 
   // Relatórios
   getRelatoriosProducao: async (params = {}) => {
-    // Use "relatorios/gerar/" em vez de "relatorios/producao/"
-    const response = await api.get("produtor/relatorios/gerar/", { params });
+    const response = await api.get("produtor/relatorios/", { params });
     return response.data;
   },
 
-  gerarRelatorio: async (tipo, periodo) => {
-    const response = await api.post("produtor/relatorios/gerar/", {
-      tipo,
-      periodo,
-    });
+  gerarRelatorio: async () => {
+    const response = await api.post("produtor/relatorios/gerar/");
     return response.data;
   },
 
@@ -116,23 +124,23 @@ export const produtorService = {
   },
 
   marcarAlertaLido: async (id) => {
-    const response = await api.patch(`produtor/alertas/${id}/marcar-lido/`);
+    const response = await api.post(`produtor/alertas/${id}/marcar_lido/`);
+    return response.data;
+  },
+
+  marcarTodosAlertasLidos: async () => {
+    const response = await api.post("produtor/alertas/marcar_todos_lidos/");
     return response.data;
   },
 
   getAtividadesRecentes: async () => {
-    const response = await api.get("produtor/atividades/recentes/");
+    const response = await api.get("produtor/atividades/");
     return response.data;
   },
 
-  // Preferências de Notificações (para o componente AlertasNotificacoes)
+  // Preferências de Notificações
   getPreferenciasNotificacoes: async () => {
     const response = await api.get("produtor/preferencias/notificacoes/");
-    return response.data;
-  },
-
-  getEstatisticasPerfil: async () => {
-    const response = await api.get("produtor/perfil/estatisticas/");
     return response.data;
   },
 
@@ -141,20 +149,9 @@ export const produtorService = {
     return response.data;
   },
 
-  getIndicadoresProducao: async () => {
-    const response = await api.get("produtor/relatorios/indicadores/");
-    return response.data;
-  },
-
-  getRelatoriosDisponiveis: async () => {
-    const response = await api.get("produtor/relatorios/disponiveis/");
-    return response.data;
-  },
-
-  downloadRelatorio: async (id) => {
-    const response = await api.get(`produtor/relatorios/${id}/download/`, {
-      responseType: "blob",
-    });
+  // Estatísticas do Perfil
+  getEstatisticasPerfil: async () => {
+    const response = await api.get("produtor/perfil/estatisticas/");
     return response.data;
   },
 };

@@ -2,7 +2,11 @@ import uuid
 from django.db import models
 from django.contrib.auth.models import AbstractUser, BaseUserManager
 from django.conf import settings
+from django.core.validators import RegexValidator, MinLengthValidator
+from django.core.exceptions import ValidationError
+from django.utils import timezone
 from phonenumber_field.modelfields import PhoneNumberField
+
 
 class CustomUserManager(BaseUserManager):
     def create_user(self, email, password=None, **extra_fields):
@@ -28,6 +32,7 @@ class CustomUserManager(BaseUserManager):
         extra_fields.setdefault('is_approved', True)
         extra_fields.setdefault('needs_password_setup', False)
         return self.create_user(email, password, **extra_fields)
+
 
 class CustomUser(AbstractUser):
     username = None
@@ -63,6 +68,7 @@ class CustomUser(AbstractUser):
         help_text="Aprovado pelo administrador"
     )
 
+
     # Indica se o usuário está bloqueado (adicionado para compatibilidade com DB existente)
     is_blocked = models.BooleanField(
         default=False,
@@ -72,7 +78,7 @@ class CustomUser(AbstractUser):
     # Campos adicionais
     google_id = models.CharField(max_length=100, blank=True, null=True)
     profile_picture = models.URLField(blank=True, null=True)
-    needs_password_setup = models.BooleanField(default=False)  # Indica se precisa definir senha
+    needs_password_setup = models.BooleanField(default=False)
     
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
@@ -101,19 +107,104 @@ class CustomUser(AbstractUser):
             ("can_manage_backups", "Pode gerenciar backups"),
         ]
 
+
 class Perfil(models.Model):
-    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    nome_completo = models.CharField(max_length=100)
-    telefone = PhoneNumberField(null=True, blank=True)
-    endereco = models.TextField(null=True, blank=True)
-    data_nascimento = models.DateField(null=True, blank=True)
-    fazenda_nome = models.CharField(max_length=100, blank=True, null=True)
-    especialidade = models.CharField(max_length=100, blank=True, null=True)
-    setor = models.CharField(max_length=100, blank=True, null=True)
-    area_atuacao = models.CharField(max_length=100, blank=True, null=True)
+    user = models.OneToOneField(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        related_name='perfil'
+    )
+    
+    # Informações básicas
+    nome_completo = models.CharField(
+        max_length=255,
+        help_text="Nome completo do usuário"
+    )
+    
+    # Telefone usando biblioteca especializada
+    telefone = PhoneNumberField(
+        null=True, 
+        blank=True, 
+        region='AO',
+        help_text="Telefone no formato internacional (ex: +244912345678)"
+    )
+    
+    endereco = models.TextField(
+        null=True, 
+        blank=True,
+        help_text="Endereço completo"
+    )
+    
+    data_nascimento = models.DateField(
+        null=True, 
+        blank=True,
+        help_text="Data de nascimento (não pode ser futura)"
+    )
+    
+    # Campos específicos por role
+    fazenda_nome = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True,
+        help_text="Nome da fazenda (para Produtores)"
+    )
+    
+    especialidade = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True,
+        help_text="Especialidade médica (para Veterinários)"
+    )
+    
+    setor = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True,
+        help_text="Setor de trabalho (para Funcionários)"
+    )
+    
+    area_atuacao = models.CharField(
+        max_length=255, 
+        blank=True, 
+        null=True,
+        help_text="Área de atuação (para Gestores Financeiros)"
+    )
+    
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        verbose_name = 'Perfil'
+        verbose_name_plural = 'Perfis'
+    
+    def clean(self):
+        """Validações customizadas"""
+        from datetime import date
+        
+        # Validação da data de nascimento (não pode ser futura)
+        if self.data_nascimento and self.data_nascimento > date.today():
+            raise ValidationError({
+                'data_nascimento': 'A data de nascimento não pode ser futura.'
+            })
+        
+        # Validação do nome completo (mínimo 3 caracteres)
+        if self.nome_completo and len(self.nome_completo.strip()) < 3:
+            raise ValidationError({
+                'nome_completo': 'O nome completo deve ter pelo menos 3 caracteres.'
+            })
+        
+        # Validação do telefone
+        if self.telefone and len(str(self.telefone)) < 9:
+            raise ValidationError({
+                'telefone': 'O telefone deve ter pelo menos 9 dígitos.'
+            })
+    
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
     
     def __str__(self):
-        return self.nome_completo
+        return self.nome_completo or self.user.email
 
 
 class UserActivity(models.Model):
@@ -124,15 +215,27 @@ class UserActivity(models.Model):
         ('password_change', 'Mudança de Senha'),
         ('profile_update', 'Atualização de Perfil'),
         ('admin_action', 'Ação Administrativa'),
+        ('user_approve', 'Aprovação de Usuário'),
+        ('user_block', 'Bloqueio de Usuário'),
+        ('user_delete', 'Exclusão de Usuário'),
+        ('role_change', 'Mudança de Função'),
+        ('settings_change', 'Alteração de Configurações'),
     ]
     
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    activity_type = models.CharField(max_length=20, choices=ACTIVITY_TYPES)
-    ip_address = models.GenericIPAddressField()
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL, 
+        on_delete=models.CASCADE,
+        related_name='activities'
+    )
+    activity_type = models.CharField(max_length=30, choices=ACTIVITY_TYPES)
+    ip_address = models.GenericIPAddressField(null=True, blank=True)
+    description = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
         ordering = ['-created_at']
+        verbose_name = 'Atividade de Usuário'
+        verbose_name_plural = 'Atividades de Usuários'
     
     def __str__(self):
-        return f"{self.user.email} - {self.get_activity_type_display()} ({self.created_at})"
+        return f"{self.user.email} - {self.get_activity_type_display()} ({self.created_at.strftime('%d/%m/%Y %H:%M')})"

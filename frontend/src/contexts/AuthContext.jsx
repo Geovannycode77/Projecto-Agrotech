@@ -7,6 +7,7 @@ export const AuthContext = createContext();
 // Exporta o Provider como componente
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [perfil, setPerfil] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
@@ -22,17 +23,19 @@ export const AuthProvider = ({ children }) => {
         setUser(userData);
         setIsAuthenticated(true);
         
-        // REMOVA COMPLETAMENTE ESTE BLOCO
-        // Verificar se o usuário precisa definir senha
-        // (usuário do Google sem senha definida)
-        // const needsPassword = userData.needs_password === true;
-        // if (needsPassword && window.location.pathname !== '/set-password') {
-        //   window.location.href = '/set-password';
-        // }
+        // Carregar perfil do usuário
+        try {
+          const perfilData = await authService.getProfile();
+          setPerfil(perfilData);
+        } catch (error) {
+          console.error('Erro ao carregar perfil:', error);
+        }
         
       } catch (error) {
+        console.error('Erro ao verificar autenticação:', error);
         localStorage.clear();
         setUser(null);
+        setPerfil(null);
         setIsAuthenticated(false);
       }
     }
@@ -44,6 +47,15 @@ export const AuthProvider = ({ children }) => {
       const data = await authService.login(email, password);
       setUser(data.user);
       setIsAuthenticated(true);
+      
+      // Carregar perfil após login
+      try {
+        const perfilData = await authService.getProfile();
+        setPerfil(perfilData);
+      } catch (error) {
+        console.error('Erro ao carregar perfil:', error);
+      }
+      
       return { success: true, user: data.user };
     } catch (error) {
       if (error.response?.data?.requires_confirmation) {
@@ -53,10 +65,13 @@ export const AuthProvider = ({ children }) => {
           error: error.response?.data?.error 
         };
       }
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Erro ao fazer login' 
-      };
+
+      let errorMsg = error.response?.data?.error || error.response?.data?.detail || 
+        (error.response?.data?.non_field_errors ? error.response.data.non_field_errors[0] : null) || 
+        (error.response?.data?.errors && Object.values(error.response.data.errors)[0] ? Object.values(error.response.data.errors)[0][0] : null) || 
+        'Erro ao fazer login';
+      console.error('Login error details:', error.response?.data);
+      return { success: false, error: errorMsg };
     }
   };
 
@@ -70,6 +85,15 @@ export const AuthProvider = ({ children }) => {
         localStorage.setItem('user', JSON.stringify(response.user));
         setUser(response.user);
         setIsAuthenticated(true);
+        
+        // Carregar perfil após login Google
+        try {
+          const perfilData = await authService.getProfile();
+          setPerfil(perfilData);
+        } catch (error) {
+          console.error('Erro ao carregar perfil:', error);
+        }
+        
         return { success: true, user: response.user };
       }
       
@@ -97,10 +121,13 @@ export const AuthProvider = ({ children }) => {
       return { success: false, error: response.error || 'Erro ao autenticar com Google' };
     } catch (error) {
       console.error('Google login error:', error);
-      return { 
-        success: false, 
-        error: error.response?.data?.error || 'Erro ao fazer login com Google' 
-      };
+
+      let errorMsg = error.response?.data?.error || error.response?.data?.detail || 
+        (error.response?.data?.non_field_errors ? error.response.data.non_field_errors[0] : null) || 
+        (error.response?.data?.errors && Object.values(error.response.data.errors)[0] ? Object.values(error.response.data.errors)[0][0] : null) || 
+        'Erro ao fazer login com Google';
+      console.error('Google login error details:', error.response?.data);
+      return { success: false, error: errorMsg };
     }
   };
 
@@ -109,6 +136,13 @@ export const AuthProvider = ({ children }) => {
       const data = await authService.register(userData);
       return { success: true, message: data.message };
     } catch (error) {
+
+      const errors = error.response?.data;
+      let errorMsg = errors?.error || errors?.detail || 
+        (errors?.non_field_errors ? errors.non_field_errors[0] : null) || 
+        (errors?.errors && Object.values(errors.errors)[0] ? Object.values(errors.errors)[0][0] : null) || 
+        'Erro ao registrar';
+      console.error('Register error details:', errors);
       return { 
         success: false, 
         error: error.response?.data?.error || 'Erro ao registrar' 
@@ -143,6 +177,14 @@ export const AuthProvider = ({ children }) => {
           localStorage.setItem('user', JSON.stringify(response.user));
           setUser(response.user);
           setIsAuthenticated(true);
+          
+          // Carregar perfil após confirmação de email
+          try {
+            const perfilData = await authService.getProfile();
+            setPerfil(perfilData);
+          } catch (error) {
+            console.error('Erro ao carregar perfil:', error);
+          }
         }
         return { success: true, message: response.message };
       }
@@ -170,14 +212,30 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const updateProfile = async (profileData) => {
+    try {
+      const updated = await authService.updateProfile(profileData);
+      setPerfil(updated);
+      return { success: true, data: updated };
+    } catch (error) {
+      console.error('Update profile error:', error);
+      return { 
+        success: false, 
+        error: error.response?.data?.error || 'Erro ao atualizar perfil' 
+      };
+    }
+  };
+
   const logout = async () => {
     await authService.logout();
     setUser(null);
+    setPerfil(null);
     setIsAuthenticated(false);
   };
 
   const value = {
     user,
+    perfil,
     loading,
     isAuthenticated,
     login,
@@ -186,6 +244,7 @@ export const AuthProvider = ({ children }) => {
     completeProfile,
     confirmEmail,
     googleRegister,
+    updateProfile,
     logout,
     isAdmin: user?.role === 'administrador' || user?.is_superuser,
     isProdutor: user?.role === 'produtor',
