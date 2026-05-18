@@ -39,6 +39,8 @@ INSTALLED_APPS = [
     'veterinario_dashboard',
     'phonenumber_field',
     'components',
+    'social_django',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 
