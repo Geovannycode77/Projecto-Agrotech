@@ -19,14 +19,14 @@ export default function ConfirmEmail() {
   const handleConfirmEmail = async () => {
     try {
       const result = await confirmEmailFromHook(token);
-      
+
       if (result.success) {
         setStatus('success');
         setMessage(result.message);
-        
-        // Redireciona após 3 segundos
+
+        // Redireciona após 3 segundos (como antes: usar a rota '/' que redireciona pelo papel)
         setTimeout(() => {
-          navigate('/dashboard');
+          navigate('/');
         }, 3000);
       } else {
         setStatus('error');
