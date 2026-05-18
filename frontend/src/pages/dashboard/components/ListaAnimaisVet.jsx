@@ -49,7 +49,7 @@ export default function ListaAnimaisVet() {
   };
 
   const filteredAnimais = animais.filter(animal => {
-    const matchesSearch = (animal.nome || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = (animal.raca || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
                          animal.brinco.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFiltro = filtroSaude === 'todos' || animal.status_saude === filtroSaude;
     return matchesSearch && matchesFiltro;
@@ -154,9 +154,8 @@ export default function ListaAnimaisVet() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Brinco</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Nome</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Espécie</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Raça</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Espécie</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Peso</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Status Saúde</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Ações</th>
@@ -166,10 +165,10 @@ export default function ListaAnimaisVet() {
                   {filteredAnimais.map((animal) => (
                     <tr key={animal.id} className="border-t hover:bg-cyan-50 transition-colors">
                       <td className="px-4 py-3 font-medium">{animal.brinco}</td>
-                      <td className="px-4 py-3">{animal.nome || '-'}</td>
-                      <td className="px-4 py-3 capitalize">{animal.especie}</td>
                       <td className="px-4 py-3">{animal.raca || '-'}</td>
+                      <td className="px-4 py-3 capitalize">{animal.especie}</td>
                       <td className="px-4 py-3">{animal.peso_atual} kg</td>
+
                       <td className="px-4 py-3">
                         <Badge className={getStatusColor(animal.status_saude)}>
                           {getStatusLabel(animal.status_saude)}

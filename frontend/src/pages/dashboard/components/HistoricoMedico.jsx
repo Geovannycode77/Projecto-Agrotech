@@ -137,7 +137,7 @@ export default function HistoricoMedico() {
               <option value="">Todos os animais</option>
               {animais.map(animal => (
                 <option key={animal.id} value={animal.id}>
-                  {animal.brinco} - {animal.nome || 'Sem nome'}
+                  {animal.brinco} - {animal.raca || 'Raça não informada'}
                 </option>
               ))}
             </select>

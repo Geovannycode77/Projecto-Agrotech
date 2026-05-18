@@ -132,7 +132,7 @@ export default function RegistroTratamento() {
                       <option value="">Selecione...</option>
                       {animais.map(animal => (
                         <option key={animal.id} value={animal.id}>
-                          {animal.brinco} - {animal.nome || 'Sem nome'}
+                          {animal.brinco} - {animal.raca || 'Raça não informada'}
                         </option>
                       ))}
                     </select>
