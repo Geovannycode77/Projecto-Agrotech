@@ -1,7 +1,9 @@
+// src/services/gestorService.js
 import api from "./api";
 
 export const gestorService = {
-getDashboard: async () => {
+  // Dashboard - CORRIGIDO (o backend espera apenas "dashboard/")
+  getDashboard: async () => {
     try {
       const response = await api.get("gestor-financeiro/dashboard/");
       return response.data;
@@ -11,29 +13,18 @@ getDashboard: async () => {
     }
   },
 
+  // Atividades Recentes - CORRIGIDO
   getUltimasAtividades: async () => {
-    const response = await api.get("gestor-financeiro/atividades/recentes/");
+    const response = await api.get("gestor-financeiro/atividades/");
     return response.data;
   },
+
   // Receitas
   getReceitas: async (params = {}) => {
     const response = await api.get("gestor-financeiro/receitas/", { params });
     return response.data;
   },
-  getPerfil: async () => {
-    const response = await api.get("gestor-financeiro/perfil/");
-    return response.data;
-  },
 
-  atualizarPerfil: async (data) => {
-    const response = await api.put("gestor-financeiro/perfil/", data);
-    return response.data;
-  },
-
-  getEstatisticas: async () => {
-    const response = await api.get("gestor-financeiro/estatisticas/");
-    return response.data;
-  },
   registrarReceita: async (data) => {
     const response = await api.post("gestor-financeiro/receitas/", data);
     return response.data;
@@ -50,9 +41,25 @@ getDashboard: async () => {
     return response.data;
   },
 
-  // Relatórios Financeiros
+  // Metas Financeiras
+  getMetas: async (params = {}) => {
+    const response = await api.get("gestor-financeiro/metas/", { params });
+    return response.data;
+  },
+
+  criarMeta: async (data) => {
+    const response = await api.post("gestor-financeiro/metas/", data);
+    return response.data;
+  },
+
+  atualizarMeta: async (id, data) => {
+    const response = await api.put(`gestor-financeiro/metas/${id}/`, data);
+    return response.data;
+  },
+
+  // Relatórios Financeiros - CORRIGIDO
   getRelatorioFinanceiro: async (periodo) => {
-    const response = await api.get("gestor-financeiro/relatorios/financeiro/", {
+    const response = await api.get("gestor-financeiro/relatorios/gerar/", {
       params: { periodo },
     });
     return response.data;
@@ -60,31 +67,36 @@ getDashboard: async () => {
 
   exportarRelatorio: async (periodo) => {
     const response = await api.get(
-      "gestor-financeiro/relatorios/financeiro/exportar/",
+      "gestor-financeiro/relatorios/gerar/exportar/",
       {
         params: { periodo },
         responseType: "blob",
-      },
+      }
     );
     return response.data;
   },
 
+  // Análise de Lucros - CORRIGIDO (usa o mesmo relatório)
   getAnaliseLucros: async (periodo) => {
-    const response = await api.get("gestor-financeiro/analise/lucros/", {
+    const response = await api.get("gestor-financeiro/relatorios/gerar/", {
       params: { periodo },
     });
     return response.data;
   },
 
-  // Vendas de Gado
-  getVendasGado: async (params = {}) => {
-    const response = await api.get("gestor-financeiro/vendas/gado/", {
-      params,
-    });
+  // Perfil
+  getPerfil: async () => {
+    const response = await api.get("gestor-financeiro/gestores/");
     return response.data;
   },
-  registrarVendaGado: async (data) => {
-    const response = await api.post("gestor-financeiro/vendas/gado/", data);
+
+  atualizarPerfil: async (data) => {
+    const response = await api.put("gestor-financeiro/gestores/", data);
+    return response.data;
+  },
+
+  getEstatisticas: async () => {
+    const response = await api.get("gestor-financeiro/relatorios/estatisticas/");
     return response.data;
   },
 };

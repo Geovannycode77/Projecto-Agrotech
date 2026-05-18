@@ -31,13 +31,16 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'corsheaders',
     'rest_framework',
-    'login_cadastro', 
+    'login_cadastro',
     'produtor_dashboard',
     'funcionario_dashboard',
     'dashboard_admin',
     'Gestor_financeiro_dashboard',
     'veterinario_dashboard',
+    'phonenumber_field',
+    'components',
 ]
+
 
 # Custom user model
 AUTH_USER_MODEL = 'login_cadastro.CustomUser'

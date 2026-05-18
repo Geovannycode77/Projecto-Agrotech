@@ -37,7 +37,7 @@ import PerfilProdutor from './components/PerfilProdutor';
 import AlertasLembretesSaude from './components/AlertasLembretesSaude'; 
 
 function ProdutorDashboard() {
-  const { user, logout } = useAuth();
+  const { user, perfil, logout } = useAuth();  // Adicione perfil aqui
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -67,6 +67,7 @@ function ProdutorDashboard() {
   const carregarDadosDashboard = async () => {
     setLoading(true);
     try {
+      // Dashboard principal
       const dashboard = await produtorService.getDashboard();
       setDashboardData({
         rebanho: {
@@ -79,12 +80,15 @@ function ProdutorDashboard() {
         }
       });
       
-      const animaisData = await produtorService.getAnimais({ limit: 5 });
-      setAnimais(animaisData.results || animaisData);
+      // Últimos animais
+      const animaisData = await produtorService.getUltimosAnimais(5);
+      setAnimais(animaisData);
       
+      // Alertas não lidos
       const alertasData = await produtorService.getAlertas();
       setAlertas(alertasData.filter(alerta => !alerta.lido));
       
+      // Resumo financeiro
       const financeiroData = await produtorService.getResumoFinanceiro('ultimo_mes');
       setResumoFinanceiro({
         total_receitas: financeiroData.total_receitas || 0,
@@ -92,7 +96,8 @@ function ProdutorDashboard() {
         saldo: financeiroData.saldo || 0
       });
       
-      const relatorioData = await produtorService.getRelatoriosProducao({ periodo: 'ultimo_mes' });
+      // Relatório de produção
+      const relatorioData = await produtorService.gerarRelatorio();
       setRelatorioProducao({
         nascimentos: relatorioData.nascimentos || 0,
         mortes: relatorioData.mortes || 0,
@@ -168,6 +173,14 @@ function ProdutorDashboard() {
     return colors[status] || 'bg-gray-100 text-gray-800';
   };
 
+  // Obter o nome para exibição
+  const getNomeExibicao = () => {
+    if (perfil?.nome_completo) return perfil.nome_completo;
+    if (user?.nome) return user.nome;
+    if (user?.email) return user.email.split('@')[0];
+    return 'Produtor';
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-emerald-50 to-green-50">
@@ -232,9 +245,14 @@ function ProdutorDashboard() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-800 truncate">
-                {user?.nome || user?.email?.split('@')[0]}
+                {getNomeExibicao()}
               </p>
               <p className="text-xs text-gray-500">Produtor Rural</p>
+              {perfil?.fazenda_nome && (
+                <p className="text-xs text-emerald-600 mt-1">
+                  🏠 {perfil.fazenda_nome}
+                </p>
+              )}
             </div>
           </div>
           <Button onClick={handleLogout} className="w-full justify-start gap-2 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700">
@@ -295,12 +313,22 @@ function ProdutorDashboard() {
       {/* Main Content */}
       <main className="lg:ml-72 min-h-screen">
         <div className="p-4 md:p-6 lg:p-8">
-          {/* Header da Página */}
+          {/* Header da Página com informações do perfil */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-800">Painel do Produtor</h1>
             <p className="text-gray-500 text-sm mt-1">
-              Bem-vindo, {user?.nome || user?.email?.split('@')[0]}
+              Bem-vindo, {getNomeExibicao()}
             </p>
+            {perfil?.fazenda_nome && (
+              <p className="text-sm text-emerald-600 mt-1">
+                🏠 Fazenda: {perfil.fazenda_nome}
+              </p>
+            )}
+            {perfil?.telefone && (
+              <p className="text-xs text-gray-400 mt-1">
+                📞 Telefone: +244 {perfil.telefone}
+              </p>
+            )}
           </div>
 
           {/* Conteúdo condicional baseado na aba ativa */}

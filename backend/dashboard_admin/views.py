@@ -12,11 +12,12 @@ from login_cadastro.models import CustomUser, Perfil, UserActivity
 from login_cadastro.serializers import UserSerializer
 from .models import AdminLog, SystemSettings, DashboardWidget
 from .serializers import (
-    AdminUserSerializer, AdminLogSerializer, 
+    AdminUserSerializer, AdminLogSerializer,
     SystemSettingsSerializer, DashboardWidgetSerializer,
     AdminStatsSerializer
 )
 from login_cadastro.utils import get_client_ip
+
 
 class AdminUserViewSet(viewsets.ModelViewSet):
     """ViewSet para admin gerenciar usuários"""
@@ -27,7 +28,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
     search_fields = ['email', 'username', 'first_name', 'last_name']
     ordering_fields = ['date_joined', 'email', 'role', 'is_approved']
     ordering = ['-date_joined']
-    
+
     def get_queryset(self):
         queryset = super().get_queryset()
         # Filtrar por status
@@ -41,21 +42,21 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                 queryset = queryset.filter(is_blocked=True)
             elif status_filter == 'active':
                 queryset = queryset.filter(is_active=True)
-        
+
         # Filtrar por role
         role_filter = self.request.query_params.get('role')
         if role_filter:
             queryset = queryset.filter(role=role_filter)
-        
+
         return queryset
-    
+
     @action(detail=True, methods=['post'])
     def approve(self, request, pk=None):
         """Aprovar usuário"""
         user = self.get_object()
         user.is_approved = True
         user.save()
-        
+
         # Registrar log
         AdminLog.objects.create(
             admin=request.user,
@@ -64,21 +65,21 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             description=f'Usuário {user.email} aprovado',
             ip_address=get_client_ip(request)
         )
-        
+
         return Response({'message': f'Usuário {user.email} aprovado com sucesso'})
-    
+
     @action(detail=True, methods=['post'])
     def block(self, request, pk=None):
         """Bloquear usuário"""
         user = self.get_object()
         if user.is_superuser:
-            return Response({'error': 'Não é possível bloquear o superusuário'}, 
-                          status=status.HTTP_403_FORBIDDEN)
-        
+            return Response({'error': 'Não é possível bloquear o superusuário'},
+                              status=status.HTTP_403_FORBIDDEN)
+
         user.is_blocked = True
         user.is_active = False
         user.save()
-        
+
         AdminLog.objects.create(
             admin=request.user,
             action='user_block',
@@ -86,9 +87,9 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             description=f'Usuário {user.email} bloqueado',
             ip_address=get_client_ip(request)
         )
-        
+
         return Response({'message': f'Usuário {user.email} bloqueado com sucesso'})
-    
+
     @action(detail=True, methods=['post'])
     def unblock(self, request, pk=None):
         """Desbloquear usuário"""
@@ -96,7 +97,7 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         user.is_blocked = False
         user.is_active = True
         user.save()
-        
+
         AdminLog.objects.create(
             admin=request.user,
             action='user_unblock',
@@ -104,22 +105,22 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             description=f'Usuário {user.email} desbloqueado',
             ip_address=get_client_ip(request)
         )
-        
+
         return Response({'message': f'Usuário {user.email} desbloqueado com sucesso'})
-    
+
     @action(detail=True, methods=['put'])
     def change_role(self, request, pk=None):
         """Alterar role do usuário"""
         user = self.get_object()
         new_role = request.data.get('role')
-        
+
         if new_role not in ['administrador', 'produtor', 'veterinario', 'funcionario', 'gestor_financeiro']:
             return Response({'error': 'Role inválida'}, status=status.HTTP_400_BAD_REQUEST)
-        
+
         old_role = user.role
         user.role = new_role
         user.save()
-        
+
         AdminLog.objects.create(
             admin=request.user,
             action='role_change',
@@ -127,9 +128,9 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             description=f'Role alterada de {old_role} para {new_role}',
             ip_address=get_client_ip(request)
         )
-        
+
         return Response({'message': f'Role alterada para {new_role}'})
-    
+
     @action(detail=False, methods=['get'])
     def stats(self, request):
         """Estatísticas de usuários"""
@@ -138,15 +139,15 @@ class AdminUserViewSet(viewsets.ModelViewSet):
         approved_users = CustomUser.objects.filter(is_approved=True).count()
         blocked_users = CustomUser.objects.filter(is_blocked=True).count()
         verified_emails = CustomUser.objects.filter(email_confirmed=True).count()
-        
+
         users_by_role = {}
         for role, _ in CustomUser.ROLE_CHOICES:
             users_by_role[role] = CustomUser.objects.filter(role=role).count()
-        
+
         recent_users = CustomUser.objects.order_by('-date_joined')[:10].values(
             'id', 'email', 'username', 'role', 'is_approved', 'date_joined'
         )
-        
+
         return Response({
             'total_users': total_users,
             'pending_users': pending_users,
@@ -156,20 +157,20 @@ class AdminUserViewSet(viewsets.ModelViewSet):
             'users_by_role': users_by_role,
             'recent_users': recent_users,
         })
-    
+
     @action(detail=False, methods=['get'])
     def export(self, request):
         """Exportar usuários para Excel/CSV"""
         format_type = request.query_params.get('format', 'csv')
         users = self.get_queryset()
-        
+
         if format_type == 'csv':
             response = HttpResponse(content_type='text/csv')
             response['Content-Disposition'] = 'attachment; filename="usuarios.csv"'
-            
+
             writer = csv.writer(response)
             writer.writerow(['Email', 'Nome', 'Role', 'Aprovado', 'Email Confirmado', 'Bloqueado', 'Data Cadastro'])
-            
+
             for user in users:
                 writer.writerow([
                     user.email,
@@ -180,23 +181,23 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                     'Sim' if user.is_blocked else 'Não',
                     user.date_joined.strftime('%d/%m/%Y %H:%M')
                 ])
-            
+
             AdminLog.objects.create(
                 admin=request.user,
                 action='export_data',
                 description=f'Exportação de usuários em CSV realizada',
                 ip_address=get_client_ip(request)
             )
-            
+
             return response
-        
+
         elif format_type == 'excel':
             wb = Workbook()
             ws = wb.active
             ws.title = "Usuários"
-            
+
             ws.append(['Email', 'Nome', 'Role', 'Aprovado', 'Email Confirmado', 'Bloqueado', 'Data Cadastro'])
-            
+
             for user in users:
                 ws.append([
                     user.email,
@@ -207,23 +208,24 @@ class AdminUserViewSet(viewsets.ModelViewSet):
                     'Sim' if user.is_blocked else 'Não',
                     user.date_joined.strftime('%d/%m/%Y %H:%M')
                 ])
-            
+
             response = HttpResponse(
                 content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
             )
             response['Content-Disposition'] = 'attachment; filename="usuarios.xlsx"'
             wb.save(response)
-            
+
             AdminLog.objects.create(
                 admin=request.user,
                 action='export_data',
                 description=f'Exportação de usuários em Excel realizada',
                 ip_address=get_client_ip(request)
             )
-            
+
             return response
-        
+
         return Response({'error': 'Formato inválido'}, status=status.HTTP_400_BAD_REQUEST)
+
 
 class AdminLogViewSet(viewsets.ReadOnlyModelViewSet):
     """ViewSet para visualizar logs do admin"""
@@ -235,12 +237,13 @@ class AdminLogViewSet(viewsets.ReadOnlyModelViewSet):
     ordering_fields = ['created_at']
     ordering = ['-created_at']
 
+
 class SystemSettingsViewSet(viewsets.ModelViewSet):
     """ViewSet para gerenciar configurações do sistema"""
     queryset = SystemSettings.objects.all()
     serializer_class = SystemSettingsSerializer
     permission_classes = [IsAuthenticated, IsAdminUser]
-    
+
     @action(detail=False, methods=['get'])
     def public(self, request):
         """Obter configurações públicas (não sensíveis)"""
@@ -248,28 +251,29 @@ class SystemSettingsViewSet(viewsets.ModelViewSet):
         settings = SystemSettings.objects.filter(key__in=public_keys)
         serializer = self.get_serializer(settings, many=True)
         return Response(serializer.data)
-    
+
     @action(detail=False, methods=['post'])
     def update_multiple(self, request):
         """Atualizar múltiplas configurações de uma vez"""
         data = request.data
         updated = []
-        
+
         for key, value in data.items():
             setting, created = SystemSettings.objects.update_or_create(
                 key=key,
                 defaults={'value': value, 'updated_by': request.user}
             )
             updated.append(setting.key)
-        
+
         AdminLog.objects.create(
             admin=request.user,
             action='settings_change',
             description=f'Configurações atualizadas: {", ".join(updated)}',
             ip_address=get_client_ip(request)
         )
-        
+
         return Response({'message': 'Configurações atualizadas', 'updated': updated})
+
 
 class DashboardWidgetViewSet(viewsets.ModelViewSet):
     """ViewSet para gerenciar widgets do dashboard"""
@@ -308,6 +312,7 @@ class DashboardWidgetViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(widgets, many=True)
         return Response(serializer.data)
 
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated, IsAdminUser])
 def get_dashboard_stats(request):
@@ -315,7 +320,7 @@ def get_dashboard_stats(request):
     now = timezone.now()
     last_30_days = now - timedelta(days=30)
     last_7_days = now - timedelta(days=7)
-    
+
     # Estatísticas de usuários
     user_stats = {
         'total': CustomUser.objects.count(),
@@ -326,7 +331,7 @@ def get_dashboard_stats(request):
         'new_last_30_days': CustomUser.objects.filter(date_joined__gte=last_30_days).count(),
         'new_last_7_days': CustomUser.objects.filter(date_joined__gte=last_7_days).count(),
     }
-    
+
     # Usuários por role
     users_by_role = {}
     for role, role_display in CustomUser.ROLE_CHOICES:
@@ -334,7 +339,7 @@ def get_dashboard_stats(request):
             'count': CustomUser.objects.filter(role=role).count(),
             'display': role_display
         }
-    
+
     # Atividades recentes
     recent_activities = UserActivity.objects.select_related('user').order_by('-created_at')[:20]
     activities_data = []
@@ -347,7 +352,7 @@ def get_dashboard_stats(request):
             'ip_address': activity.ip_address,
             'created_at': activity.created_at,
         })
-    
+
     # Logs do admin recentes
     recent_admin_logs = AdminLog.objects.select_related('admin', 'target_user').order_by('-created_at')[:20]
     admin_logs_data = []
@@ -360,7 +365,7 @@ def get_dashboard_stats(request):
             'target_email': log.target_user.email if log.target_user else None,
             'created_at': log.created_at,
         })
-    
+
     # Estatísticas de atividades por tipo
     activities_by_type = {}
     for activity_type, _ in UserActivity.ACTIVITY_TYPES:
@@ -369,7 +374,7 @@ def get_dashboard_stats(request):
             created_at__gte=last_30_days
         ).count()
         activities_by_type[activity_type] = count
-    
+
     return Response({
         'users': user_stats,
         'users_by_role': users_by_role,
@@ -378,6 +383,7 @@ def get_dashboard_stats(request):
         'activities_by_type': activities_by_type,
         'last_updated': now,
     })
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated, IsAdminUser])
@@ -388,19 +394,159 @@ def create_notification(request):
     user_ids = request.data.get('user_ids', [])
     title = request.data.get('title')
     message = request.data.get('message')
-    
+
     if not title or not message:
-        return Response({'error': 'Título e mensagem são obrigatórios'}, 
-                       status=status.HTTP_400_BAD_REQUEST)
-    
+        return Response({'error': 'Título e mensagem são obrigatórios'},
+                        status=status.HTTP_400_BAD_REQUEST)
+
     # Aqui você pode implementar a criação de notificações
     # Seria necessário criar um modelo Notification
-    
+
     AdminLog.objects.create(
         admin=request.user,
         action='settings_change',
         description=f'Notificação criada: {title}',
         ip_address=get_client_ip(request)
     )
-    
+
     return Response({'message': 'Notificação criada com sucesso'})
+
+
+# ------------------------------
+# PERMISSÕES (Admin)
+# ------------------------------
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def get_permissions(request):
+    """Retorna a lista de permissões declaradas (placeholder do admin)."""
+    permissions = []
+    for codename, name in getattr(CustomUser._meta, 'permissions', []):
+        permissions.append({'codename': codename, 'name': name})
+    return Response({'permissions': permissions})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def get_roles_permissions(request):
+    """Retorna roles suportadas e permissões declaradas."""
+    roles = [choice[0] for choice in getattr(CustomUser, 'ROLE_CHOICES', [])]
+
+    declared_permissions = []
+    for codename, name in getattr(CustomUser._meta, 'permissions', []):
+        declared_permissions.append({'codename': codename, 'name': name})
+
+    return Response({'roles': roles, 'permissions': declared_permissions})
+
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def update_role_permissions(request, role_name):
+    """Valida payload e registra log (placeholder, sem persistência)."""
+    valid_roles = [choice[0] for choice in getattr(CustomUser, 'ROLE_CHOICES', [])]
+    if role_name not in valid_roles:
+        return Response({'error': 'Role inválida'}, status=status.HTTP_400_BAD_REQUEST)
+
+    permissions_payload = request.data.get('permissions', [])
+    if not isinstance(permissions_payload, list):
+        return Response({'error': 'permissions deve ser uma lista'}, status=status.HTTP_400_BAD_REQUEST)
+
+    declared = {codename for codename, _ in getattr(CustomUser._meta, 'permissions', [])}
+    unknown = [p for p in permissions_payload if p not in declared]
+    if unknown:
+        return Response({'error': 'Permissões desconhecidas', 'unknown': unknown}, status=status.HTTP_400_BAD_REQUEST)
+
+    AdminLog.objects.create(
+        admin=request.user,
+        action='settings_change',
+        description=f'Atualização de permissões para role {role_name}',
+        ip_address=get_client_ip(request),
+    )
+
+    return Response({'message': 'Permissões validadas com sucesso', 'role': role_name})
+
+
+# ------------------------------
+# SEGURANÇA / SISTEMA (Admin)
+# ------------------------------
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def get_security_settings(request):
+    keys = ['password_min_length', 'max_login_attempts', 'lockout_duration_seconds']
+    qs = SystemSettings.objects.filter(key__in=keys)
+    return Response(SystemSettingsSerializer(qs, many=True).data)
+
+
+@api_view(['PUT', 'POST'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def update_security_settings(request):
+    data = request.data if isinstance(request.data, dict) else {}
+    updated = []
+    for k, v in data.items():
+        if not isinstance(k, str):
+            continue
+        setting, _ = SystemSettings.objects.update_or_create(
+            key=k,
+            defaults={'value': v, 'updated_by': request.user}
+        )
+        updated.append(setting.key)
+
+    AdminLog.objects.create(
+        admin=request.user,
+        action='settings_change',
+        description=f'Configurações de segurança atualizadas: {", ".join(updated)}',
+        ip_address=get_client_ip(request),
+    )
+    return Response({'message': 'Segurança atualizada', 'updated': updated})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def get_activity_log(request):
+    qs = UserActivity.objects.select_related('user').order_by('-created_at')[:100]
+    data = [
+        {
+            'id': a.id,
+            'user_email': a.user.email,
+            'activity_type': a.activity_type,
+            'description': a.description,
+            'ip_address': a.ip_address,
+            'created_at': a.created_at,
+        }
+        for a in qs
+    ]
+    return Response({'activities': data})
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def change_password(request):
+    # Placeholder: não altera senha aqui (falta serializer/fluxo de redefinição).
+    # Mantém contrato da rota para o frontend.
+    return Response({'message': 'Rota change-password disponível (placeholder)'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def get_system_status(request):
+    return Response({'status': 'ok'})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def get_system_metrics(request):
+    return Response({
+        'users_total': CustomUser.objects.count(),
+        'users_blocked': CustomUser.objects.filter(is_blocked=True).count(),
+        'admin_logs_recent': AdminLog.objects.count(),
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def health_check(request):
+    return Response({'health': 'ok'})
+

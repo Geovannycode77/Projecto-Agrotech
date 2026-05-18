@@ -106,6 +106,12 @@ export const authService = {
     localStorage.removeItem("user");
     // NÃO coloque window.location.href aqui
   },
+  
+      getProfile: async () => {
+      const response = await authApi.get('profile/');
+      return response.data;
+    },
+
 
   getCurrentUser: async () => {
     const response = await authApi.get("me/");
