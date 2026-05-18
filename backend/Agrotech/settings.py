@@ -37,6 +37,7 @@ INSTALLED_APPS = [
     'dashboard_admin',
     'Gestor_financeiro_dashboard',
     'veterinario_dashboard',
+    'rest_framework_simplejwt.token_blacklist',
 ]
 
 # Custom user model
