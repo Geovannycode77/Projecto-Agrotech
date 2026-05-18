@@ -429,7 +429,7 @@ function VeterinarioDashboard() {
                         {animaisObservacao.map((animal, index) => (
                           <div key={index} className="p-3 border rounded-lg hover:bg-cyan-50 transition-colors">
                             <div className="flex justify-between items-start mb-2">
-                              <span className="font-semibold">{animal.brinco} - {animal.nome || 'Sem nome'}</span>
+                              <span className="font-semibold">{animal.brinco} - {animal.raca || 'Raça não informada'}</span>
                               <Badge className={getPrioridadeColor(animal.prioridade)}>
                                 {animal.prioridade === 'alta' ? 'Alta Prioridade' : 
                                  animal.prioridade === 'media' ? 'Média Prioridade' : 'Baixa Prioridade'}
