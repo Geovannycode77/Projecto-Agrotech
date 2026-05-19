@@ -194,6 +194,74 @@ class AlimentacaoViewSet(viewsets.ModelViewSet):
                 total=Sum('quantidade_atual_kg')
             )['total'] or 0
         })
+    
+    # ADICIONE ESTE MÉTODO AQUI
+    @action(detail=False, methods=['get'])
+    def consumo_diario(self, request):
+        """Retorna o consumo diário de ração para o frontend"""
+        from datetime import datetime
+        
+        try:
+            fazenda = Fazenda.objects.get(produtor=request.user)
+            
+            hoje = timezone.now().date()
+            inicio_dia = datetime.combine(hoje, datetime.min.time())
+            fim_dia = datetime.combine(hoje, datetime.max.time())
+            
+            # Consumo de hoje
+            consumo_hoje = AlimentacaoRegistro.objects.filter(
+                fazenda=fazenda,
+                created_at__gte=inicio_dia,
+                created_at__lte=fim_dia
+            ).aggregate(
+                total_kg=Sum('quantidade_kg'),
+                total_custo=Sum('custo_total')
+            )
+            
+            # Consumo médio dos últimos 7 dias
+            ultimos_7_dias = timezone.now() - timedelta(days=7)
+            consumo_media = AlimentacaoRegistro.objects.filter(
+                fazenda=fazenda,
+                created_at__gte=ultimos_7_dias
+            ).aggregate(
+                media_kg=Avg('quantidade_kg'),
+                media_custo=Avg('custo_total')
+            )
+            
+            # Total de animais ativos
+            total_animais = Animal.objects.filter(fazenda=fazenda, status='ativo').count()
+            
+            consumo_total_kg = float(consumo_hoje['total_kg'] or 0)
+            custo_total = float(consumo_hoje['total_custo'] or 0)
+            
+            # Calcular consumo por animal
+            consumo_por_animal = consumo_total_kg / total_animais if total_animais > 0 else 0
+            
+            return Response({
+                'total': consumo_total_kg,
+                'por_animal': round(consumo_por_animal, 2),
+                'sacos_por_dia': round(consumo_total_kg / 50, 2),  # Assumindo 50kg por saco
+                'custo_diario': custo_total,
+                'custo_mensal': custo_total * 30,
+            })
+            
+        except Fazenda.DoesNotExist:
+            return Response({
+                'total': 0,
+                'por_animal': 0,
+                'sacos_por_dia': 0,
+                'custo_diario': 0,
+                'custo_mensal': 0
+            }, status=status.HTTP_200_OK)
+        except Exception as e:
+            print(f"Erro no consumo_diario: {e}")
+            return Response({
+                'total': 0,
+                'por_animal': 0,
+                'sacos_por_dia': 0,
+                'custo_diario': 0,
+                'custo_mensal': 0
+            }, status=status.HTTP_200_OK)
 
 class FinanceiroViewSet(viewsets.ModelViewSet):
     serializer_class = TransacaoFinanceiraSerializer
@@ -208,22 +276,52 @@ class FinanceiroViewSet(viewsets.ModelViewSet):
             return TransacaoFinanceira.objects.filter(fazenda__produtor=self.request.user)
         return TransacaoFinanceira.objects.all()
     
-    def perform_create(self, serializer):
-        fazenda = Fazenda.objects.get(produtor=self.request.user)
-        transacao = serializer.save(fazenda=fazenda)
+    def create(self, request, *args, **kwargs):
+        """Criar uma nova transação financeira"""
+        print("=" * 50)
+        print("📝 Dados recebidos:", request.data)
         
-        # Registrar atividade
-        Atividade.objects.create(
-            fazenda=fazenda,
-            tipo='financeiro',
-            descricao=f'{transacao.get_tipo_display()}: {transacao.get_categoria_display()} - R${transacao.valor}',
-            usuario=self.request.user
-        )
+        # Buscar a fazenda do produtor
+        try:
+            fazenda = Fazenda.objects.get(produtor=request.user)
+            print(f"🏠 Fazenda: {fazenda.nome} (ID: {fazenda.id})")
+        except Fazenda.DoesNotExist:
+            print("❌ Fazenda não encontrada!")
+            return Response(
+                {'error': 'Fazenda não encontrada. Complete seu cadastro primeiro.'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        # Criar uma cópia mutável dos dados e adicionar a fazenda
+        data = request.data.copy()
+        data['fazenda'] = fazenda.id
+        
+        print("📦 Dados processados:", data)
+        
+        serializer = self.get_serializer(data=data)
+        if serializer.is_valid():
+            print("✅ Dados válidos")
+            self.perform_create(serializer)
+            headers = self.get_success_headers(serializer.data)
+            return Response(serializer.data, status=status.HTTP_201_CREATED, headers=headers)
+        else:
+            print("❌ Erros de validação:", serializer.errors)
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     @action(detail=False, methods=['get'])
     def resumo(self, request):
         """Resumo financeiro por período - compatível com frontend"""
-        fazenda = Fazenda.objects.get(produtor=self.request.user)
+        try:
+            fazenda = Fazenda.objects.get(produtor=request.user)
+        except Fazenda.DoesNotExist:
+            return Response({
+                'total_receitas': 0,
+                'total_despesas': 0,
+                'saldo': 0,
+                'receitas_por_categoria': {},
+                'despesas_por_categoria': {}
+            })
+        
         periodo = request.query_params.get('periodo', 'ultimo_mes')
         
         hoje = timezone.now().date()
@@ -304,7 +402,11 @@ class RelatorioViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def gerar(self, request):
         """Gerar relatório de produção - compatível com frontend"""
-        fazenda = Fazenda.objects.get(produtor=self.request.user)
+        try:
+            fazenda = Fazenda.objects.get(produtor=request.user)
+        except Fazenda.DoesNotExist:
+            return Response({'error': 'Fazenda não encontrada'}, status=status.HTTP_404_NOT_FOUND)
+        
         periodo = request.query_params.get('periodo', 'ultimo_mes')
         
         hoje = timezone.now().date()
@@ -341,7 +443,35 @@ class RelatorioViewSet(viewsets.ModelViewSet):
         taxa_mortalidade = (mortes / total_animais * 100) if total_animais > 0 else 0
         natalidade = (nascimentos / total_animais * 100) if total_animais > 0 else 0
         
+        # CORRIGIDO: Não colocar 'periodo' dentro do dicionário
+        # pois ele será passado como argumento direto
         relatorio_data = {
+            'total_animais': total_animais,
+            'nascimentos': nascimentos,
+            'mortes': mortes,
+            'vendas': vendas,
+            'peso_medio': float(peso_medio),
+            'taxa_mortalidade': round(taxa_mortalidade, 2),
+            'natalidade': round(natalidade, 2),
+        }
+        
+        # Salvar relatório - periodo é passado diretamente, não via **relatorio_data
+        relatorio = RelatorioProducao.objects.create(
+            fazenda=fazenda,
+            periodo=periodo,
+            data_inicio=data_inicio,
+            data_fim=hoje,
+            total_animais=relatorio_data['total_animais'],
+            nascimentos=relatorio_data['nascimentos'],
+            mortes=relatorio_data['mortes'],
+            vendas=relatorio_data['vendas'],
+            peso_medio=relatorio_data['peso_medio'],
+            taxa_mortalidade=relatorio_data['taxa_mortalidade'],
+            natalidade=relatorio_data['natalidade'],
+        )
+        
+        # Retornar os dados para o frontend
+        response_data = {
             'periodo': periodo,
             'total_animais': total_animais,
             'nascimentos': nascimentos,
@@ -352,17 +482,10 @@ class RelatorioViewSet(viewsets.ModelViewSet):
             'natalidade': round(natalidade, 2),
         }
         
-        # Salvar relatório
-        relatorio = RelatorioProducao.objects.create(
-            fazenda=fazenda,
-            periodo=periodo,
-            data_inicio=data_inicio,
-            data_fim=hoje,
-            **relatorio_data
-        )
-        
-        return Response(relatorio_data, status=status.HTTP_200_OK)
+        return Response(response_data, status=status.HTTP_200_OK)
 
+
+# produtor_dashboard/views.py - Adicione no final do arquivo
 @api_view(['GET'])
 @permission_classes([IsProdutorOrAdmin])
 def get_produtor_dashboard(request):
@@ -373,7 +496,7 @@ def get_produtor_dashboard(request):
         # Criar fazenda automaticamente se não existir
         fazenda = Fazenda.objects.create(
             produtor=request.user,
-            nome=f"Fazenda de {request.user.username}"
+            nome=f"Fazenda de {request.user.username or request.user.email}"
         )
     
     # Dados do rebanho
@@ -461,3 +584,89 @@ def get_produtor_dashboard(request):
     }
     
     return Response(data)
+
+@api_view(['GET'])
+@permission_classes([IsProdutorOrAdmin])
+def get_proximas_vacinas(request):
+    """Lista vacinas programadas para os próximos 30 dias"""
+    try:
+        fazenda = Fazenda.objects.get(produtor=request.user)
+        
+        hoje = timezone.now().date()
+        limite = hoje + timedelta(days=30)
+        
+        # Buscar vacinas do veterinário para esta fazenda
+        # Assumindo que existe um relacionamento com Vacina
+        from veterinario_dashboard.models import Vacina
+        
+        vacinas = Vacina.objects.filter(
+            fazenda=fazenda,
+            data_proxima_dose__isnull=False,
+            data_proxima_dose__gte=hoje,
+            data_proxima_dose__lte=limite
+        ).order_by('data_proxima_dose')
+        
+        resultados = []
+        for vacina in vacinas:
+            dias_restantes = (vacina.data_proxima_dose - hoje).days
+            resultados.append({
+                'id': vacina.id,
+                'nome': vacina.nome_vacina,
+                'animal_nome': vacina.animal.nome if vacina.animal else 'Rebanho',
+                'data_programada': vacina.data_proxima_dose,
+                'dias_restantes': dias_restantes,
+            })
+        
+        return Response({
+            'results': resultados,
+            'count': len(resultados)
+        })
+        
+    except Exception as e:
+        return Response({'results': [], 'count': 0}, status=status.HTTP_200_OK)
+
+
+@api_view(['GET'])
+@permission_classes([IsProdutorOrAdmin])
+def get_alertas_list(request):
+    """Lista todos os alertas do produtor"""
+    try:
+        fazenda = Fazenda.objects.get(produtor=request.user)
+        
+        alertas = Alerta.objects.filter(fazenda=fazenda).order_by('-created_at')
+        
+        resultados = []
+        for alerta in alertas:
+            resultados.append({
+                'id': alerta.id,
+                'titulo': alerta.titulo,
+                'mensagem': alerta.mensagem,
+                'prioridade': alerta.prioridade,
+                'tipo': alerta.tipo,
+                'lido': alerta.lido,
+                'data_criacao': alerta.created_at,
+                'animal_nome': alerta.animal.nome if hasattr(alerta, 'animal') and alerta.animal else None,
+            })
+        
+        return Response({
+            'results': resultados,
+            'count': len(resultados)
+        })
+        
+    except Exception as e:
+        return Response({'results': [], 'count': 0}, status=status.HTTP_200_OK)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsProdutorOrAdmin])
+def marcar_alerta_lido(request, alerta_id):
+    """Marca um alerta como lido"""
+    try:
+        alerta = Alerta.objects.get(id=alerta_id)
+        alerta.lido = True
+        alerta.save()
+        return Response({'message': 'Alerta marcado como lido', 'success': True})
+    except Alerta.DoesNotExist:
+        return Response({'error': 'Alerta não encontrado', 'success': False}, status=status.HTTP_404_NOT_FOUND)
+
+        

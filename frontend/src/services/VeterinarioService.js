@@ -83,7 +83,7 @@ export const veterinarioService = {
   // NOVOS MÉTODOS - ADICIONADOS CORRETAMENTE DENTRO DO OBJETO
   getResumoSaudeRebanho: async () => {
     try {
-      const response = await api.get("../veterinario/saude/resumo/");
+      const response = await api.get("veterinario/saude/resumo/");
       return response.data;
     } catch (error) {
       console.error("Erro ao buscar resumo de saúde:", error);
@@ -93,7 +93,7 @@ export const veterinarioService = {
   marcarAlertaLido: async (id) => {
     try {
       const response = await api.patch(
-        `../veterinario/alertas/${id}/marcar-lido/`,
+        `veterinario/alertas/${id}/marcar-lido/`,
       );
       return response.data;
     } catch (error) {

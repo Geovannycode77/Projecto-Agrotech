@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { adminService } from '../../services/api';
-import { Shield, Save, AlertCircle, CheckCircle } from 'lucide-react';
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
+import { adminService } from "../../services/api";
+import { toast } from "@/hooks/use-toast";
+import { Shield, Save, AlertCircle, CheckCircle } from "lucide-react";
 
 export default function Permissions() {
   const [loading, setLoading] = useState(true);
@@ -21,40 +22,40 @@ export default function Permissions() {
     try {
       setLoading(true);
       setError(null);
-      
+
       const data = await adminService.getSimplePermissions();
-      console.log('Permissões simplificadas:', data);
-      
+      console.log("Permissões simplificadas:", data);
+
       setCamadas(data.camadas || {});
       setModulos(data.modulos || []);
-      
+
       // Inicializar permissões atuais baseado nas camadas
       const permissoesIniciais = {};
-      Object.keys(data.camadas || {}).forEach(camadaId => {
+      Object.keys(data.camadas || {}).forEach((camadaId) => {
         permissoesIniciais[camadaId] = {};
-        (data.modulos || []).forEach(modulo => {
-          const temPermissao = data.camadas[camadaId].permissoes.includes('*') || 
-                               data.camadas[camadaId].permissoes.includes(modulo.id);
+        (data.modulos || []).forEach((modulo) => {
+          const temPermissao =
+            data.camadas[camadaId].permissoes.includes("*") ||
+            data.camadas[camadaId].permissoes.includes(modulo.id);
           permissoesIniciais[camadaId][modulo.id] = temPermissao;
         });
       });
       setPermissoesAtuais(permissoesIniciais);
-      
     } catch (err) {
-      console.error('Erro:', err);
-      setError('Não foi possível carregar as permissões.');
+      console.error("Erro:", err);
+      setError("Não foi possível carregar as permissões.");
     } finally {
       setLoading(false);
     }
   };
 
   const handlePermissaoChange = (camadaId, moduloId, checked) => {
-    setPermissoesAtuais(prev => ({
+    setPermissoesAtuais((prev) => ({
       ...prev,
       [camadaId]: {
         ...prev[camadaId],
-        [moduloId]: checked
-      }
+        [moduloId]: checked,
+      },
     }));
   };
 
@@ -62,10 +63,17 @@ export default function Permissions() {
     try {
       setSaving(true);
       await adminService.saveSimplePermissions(permissoesAtuais);
-      alert('✅ Permissões salvas com sucesso!');
+      toast({
+        title: "Sucesso",
+        description: "Permissões salvas com sucesso!",
+      });
     } catch (err) {
-      console.error('Erro ao salvar:', err);
-      alert('❌ Erro ao salvar permissões.');
+      console.error("Erro ao salvar:", err);
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar permissões.",
+        variant: "destructive",
+      });
     } finally {
       setSaving(false);
     }
@@ -73,13 +81,13 @@ export default function Permissions() {
 
   const getCorCamada = (cor) => {
     const cores = {
-      red: 'bg-red-100 text-red-700',
-      green: 'bg-green-100 text-green-700',
-      blue: 'bg-blue-100 text-blue-700',
-      yellow: 'bg-yellow-100 text-yellow-700',
-      purple: 'bg-purple-100 text-purple-700'
+      red: "bg-red-100 text-red-700",
+      green: "bg-green-100 text-green-700",
+      blue: "bg-blue-100 text-blue-700",
+      yellow: "bg-yellow-100 text-yellow-700",
+      purple: "bg-purple-100 text-purple-700",
     };
-    return cores[cor] || 'bg-gray-100 text-gray-700';
+    return cores[cor] || "bg-gray-100 text-gray-700";
   };
 
   if (loading) {
@@ -99,7 +107,7 @@ export default function Permissions() {
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <p className="text-gray-700">{error}</p>
-          <button 
+          <button
             onClick={fetchPermissions}
             className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
           >
@@ -113,8 +121,12 @@ export default function Permissions() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-gray-800">Permissões por Camada</h1>
-        <p className="text-gray-500 mt-1">Configure o acesso de cada tipo de usuário aos módulos do sistema</p>
+        <h1 className="text-3xl font-bold text-gray-800">
+          Permissões por Camada
+        </h1>
+        <p className="text-gray-500 mt-1">
+          Configure o acesso de cada tipo de usuário aos módulos do sistema
+        </p>
       </div>
 
       <Card>
@@ -129,9 +141,14 @@ export default function Permissions() {
             <table className="w-full border-collapse">
               <thead>
                 <tr className="bg-gray-50 border-b">
-                  <th className="text-left p-3 text-sm font-medium text-gray-700 w-48">Camada / Módulo</th>
-                  {modulos.map(modulo => (
-                    <th key={modulo.id} className="text-center p-3 text-sm font-medium text-gray-700 min-w-[100px]">
+                  <th className="text-left p-3 text-sm font-medium text-gray-700 w-48">
+                    Camada / Módulo
+                  </th>
+                  {modulos.map((modulo) => (
+                    <th
+                      key={modulo.id}
+                      className="text-center p-3 text-sm font-medium text-gray-700 min-w-[100px]"
+                    >
                       {modulo.nome}
                     </th>
                   ))}
@@ -142,20 +159,31 @@ export default function Permissions() {
                   <tr key={camadaId} className="border-b hover:bg-gray-50">
                     <td className="p-3">
                       <div>
-                        <span className={`px-3 py-1 rounded-full text-xs font-medium ${getCorCamada(camada.cor)}`}>
+                        <span
+                          className={`px-3 py-1 rounded-full text-xs font-medium ${getCorCamada(camada.cor)}`}
+                        >
                           {camada.nome}
                         </span>
-                        <p className="text-xs text-gray-500 mt-1">{camada.descricao}</p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          {camada.descricao}
+                        </p>
                       </div>
                     </td>
-                    {modulos.map(modulo => {
-                      const isChecked = permissoesAtuais[camadaId]?.[modulo.id] || false;
-                      const isAdmin = camadaId === 'administrador';
+                    {modulos.map((modulo) => {
+                      const isChecked =
+                        permissoesAtuais[camadaId]?.[modulo.id] || false;
+                      const isAdmin = camadaId === "administrador";
                       return (
                         <td key={modulo.id} className="text-center p-3">
                           <Switch
                             checked={isChecked}
-                            onCheckedChange={(checked) => handlePermissaoChange(camadaId, modulo.id, checked)}
+                            onCheckedChange={(checked) =>
+                              handlePermissaoChange(
+                                camadaId,
+                                modulo.id,
+                                checked,
+                              )
+                            }
                             disabled={isAdmin}
                             className="data-[state=checked]:bg-emerald-500"
                           />
@@ -169,20 +197,20 @@ export default function Permissions() {
           </div>
 
           <div className="mt-6 flex justify-end gap-3">
-            <Button 
-              onClick={fetchPermissions} 
+            <Button
+              onClick={fetchPermissions}
               variant="outline"
               disabled={saving}
             >
               Cancelar
             </Button>
-            <Button 
-              onClick={handleSave} 
+            <Button
+              onClick={handleSave}
               disabled={saving}
               className="bg-emerald-600 hover:bg-emerald-700"
             >
               <Save className="w-4 h-4 mr-2" />
-              {saving ? 'Salvando...' : 'Salvar Permissões'}
+              {saving ? "Salvando..." : "Salvar Permissões"}
             </Button>
           </div>
         </CardContent>
@@ -191,7 +219,9 @@ export default function Permissions() {
       {/* Legenda */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-sm font-medium">Legenda das Camadas</CardTitle>
+          <CardTitle className="text-sm font-medium">
+            Legenda das Camadas
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">

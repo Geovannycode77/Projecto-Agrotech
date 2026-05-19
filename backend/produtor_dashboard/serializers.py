@@ -66,8 +66,8 @@ class TransacaoFinanceiraSerializer(serializers.ModelSerializer):
     
     class Meta:
         model = TransacaoFinanceira
-        fields = '__all__'
-        read_only_fields = ['id', 'fazenda', 'created_at']
+        fields = ['id', 'fazenda', 'tipo', 'categoria', 'valor', 'descricao', 'data', 'created_at', 'tipo_display', 'categoria_display']
+        read_only_fields = ['id', 'created_at']
 
 class AlertaSerializer(serializers.ModelSerializer):
     prioridade_display = serializers.CharField(source='get_prioridade_display', read_only=True)

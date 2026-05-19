@@ -21,6 +21,9 @@ urlpatterns = [
     # Rotas específicas para usuários
     path('users/stats/', views.AdminUserViewSet.as_view({'get': 'stats'}), name='admin-user-stats'),
     path('users/export/', views.AdminUserViewSet.as_view({'get': 'export'}), name='admin-user-export'),
+
+    # ROTA PARA DELETAR USUÁRIO
+    path('users/<int:user_id>/delete/', views.delete_user_by_id, name='delete-user-by-id'),
     
     # PERMISSÕES
     path('permissions/', views.get_permissions, name='admin-permissions'),
@@ -37,4 +40,10 @@ urlpatterns = [
     path('system/status/', views.get_system_status, name='system-status'),
     path('system/metrics/', views.get_system_metrics, name='system-metrics'),
     path('health/', views.health_check, name='health-check'),
+
+    # BACKUPS 
+    path('backups/', views.get_backups, name='admin-backups'),
+    path('backups/create/', views.create_backup, name='admin-backup-create'),
+    path('backups/<int:backup_id>/download/', views.download_backup, name='admin-backup-download'),
+    path('backups/<int:backup_id>/delete/', views.delete_backup, name='admin-backup-delete'),
 ]

@@ -1,18 +1,19 @@
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { adminService } from '../../services/api';
-import { 
-  FileText, 
-  Download, 
+import React, { useState } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { adminService } from "../../services/api";
+import {
+  FileText,
+  Download,
   Calendar,
   Users,
   DollarSign,
   Package,
   Activity,
   Printer,
-  AlertCircle
-} from 'lucide-react';
+  AlertCircle,
+} from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 
 export default function AdminReports() {
   const [loading, setLoading] = useState(false);
@@ -20,15 +21,39 @@ export default function AdminReports() {
   const [error, setError] = useState(null);
   const [recentReports, setRecentReports] = useState([]);
   const [dateRange, setDateRange] = useState({
-    start: new Date().toISOString().split('T')[0],
-    end: new Date().toISOString().split('T')[0]
+    start: new Date().toISOString().split("T")[0],
+    end: new Date().toISOString().split("T")[0],
   });
 
   const reportTypes = [
-    { id: 'users', name: 'Relatório de Usuários', icon: Users, color: 'from-blue-500 to-cyan-500', description: 'Lista completa de usuários cadastrados' },
-    { id: 'financial', name: 'Relatório Financeiro', icon: DollarSign, color: 'from-green-500 to-emerald-500', description: 'Resumo financeiro da fazenda' },
-    { id: 'production', name: 'Relatório de Produção', icon: Package, color: 'from-yellow-500 to-orange-500', description: 'Produção por cultura/período' },
-    { id: 'activity', name: 'Relatório de Atividades', icon: Activity, color: 'from-purple-500 to-pink-500', description: 'Registro de atividades realizadas' }
+    {
+      id: "users",
+      name: "Relatório de Usuários",
+      icon: Users,
+      color: "from-blue-500 to-cyan-500",
+      description: "Lista completa de usuários cadastrados",
+    },
+    {
+      id: "financial",
+      name: "Relatório Financeiro",
+      icon: DollarSign,
+      color: "from-green-500 to-emerald-500",
+      description: "Resumo financeiro da fazenda",
+    },
+    {
+      id: "production",
+      name: "Relatório de Produção",
+      icon: Package,
+      color: "from-yellow-500 to-orange-500",
+      description: "Produção por cultura/período",
+    },
+    {
+      id: "activity",
+      name: "Relatório de Atividades",
+      icon: Activity,
+      color: "from-purple-500 to-pink-500",
+      description: "Registro de atividades realizadas",
+    },
   ];
 
   const fetchRecentReports = async () => {
@@ -36,7 +61,7 @@ export default function AdminReports() {
       const data = await adminService.getRecentReports();
       setRecentReports(data || []);
     } catch (err) {
-      console.error('Erro ao carregar relatórios recentes:', err);
+      console.error("Erro ao carregar relatórios recentes:", err);
     }
   };
 
@@ -45,21 +70,21 @@ export default function AdminReports() {
       setGenerating(true);
       setError(null);
       const blob = await adminService.generateReport(reportId, dateRange);
-      
+
       // Download do relatório
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `relatorio_${reportId}_${dateRange.start}_${dateRange.end}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
-      
+
       fetchRecentReports();
     } catch (err) {
-      console.error('Erro ao gerar relatório:', err);
-      setError('Erro ao gerar relatório. Tente novamente.');
+      console.error("Erro ao gerar relatório:", err);
+      setError("Erro ao gerar relatório. Tente novamente.");
     } finally {
       setGenerating(false);
     }
@@ -69,9 +94,9 @@ export default function AdminReports() {
     try {
       setLoading(true);
       const blob = await adminService.exportData(format, dateRange);
-      
+
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `exportacao_${format}_${dateRange.start}_${dateRange.end}.${format.toLowerCase()}`;
       document.body.appendChild(a);
@@ -79,8 +104,12 @@ export default function AdminReports() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err) {
-      console.error('Erro ao exportar:', err);
-      alert('Erro ao exportar dados. Tente novamente.');
+      console.error("Erro ao exportar:", err);
+      toast({
+        title: "Erro",
+        description: "Erro ao exportar dados. Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -90,7 +119,9 @@ export default function AdminReports() {
     <div className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold text-gray-800">Relatórios Gerais</h1>
-        <p className="text-gray-500 mt-1">Gere e exporte relatórios do sistema</p>
+        <p className="text-gray-500 mt-1">
+          Gere e exporte relatórios do sistema
+        </p>
       </div>
 
       {error && (
@@ -111,20 +142,28 @@ export default function AdminReports() {
         <CardContent>
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
-              <label className="text-sm text-gray-600 block mb-1">Data Inicial</label>
+              <label className="text-sm text-gray-600 block mb-1">
+                Data Inicial
+              </label>
               <input
                 type="date"
                 value={dateRange.start}
-                onChange={(e) => setDateRange({...dateRange, start: e.target.value})}
+                onChange={(e) =>
+                  setDateRange({ ...dateRange, start: e.target.value })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
             <div className="flex-1">
-              <label className="text-sm text-gray-600 block mb-1">Data Final</label>
+              <label className="text-sm text-gray-600 block mb-1">
+                Data Final
+              </label>
               <input
                 type="date"
                 value={dateRange.end}
-                onChange={(e) => setDateRange({...dateRange, end: e.target.value})}
+                onChange={(e) =>
+                  setDateRange({ ...dateRange, end: e.target.value })
+                }
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500"
               />
             </div>
@@ -137,15 +176,25 @@ export default function AdminReports() {
         {reportTypes.map((report) => {
           const Icon = report.icon;
           return (
-            <Card key={report.id} className="cursor-pointer hover:shadow-lg transition-shadow" onClick={() => handleGenerate(report.id)}>
+            <Card
+              key={report.id}
+              className="cursor-pointer hover:shadow-lg transition-shadow"
+              onClick={() => handleGenerate(report.id)}
+            >
               <CardContent className="p-4">
                 <div className="flex items-center gap-4">
-                  <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${report.color} flex items-center justify-center`}>
+                  <div
+                    className={`w-12 h-12 rounded-xl bg-gradient-to-br ${report.color} flex items-center justify-center`}
+                  >
                     <Icon className="w-6 h-6 text-white" />
                   </div>
                   <div className="flex-1">
-                    <h3 className="font-semibold text-gray-800">{report.name}</h3>
-                    <p className="text-sm text-gray-500">{report.description}</p>
+                    <h3 className="font-semibold text-gray-800">
+                      {report.name}
+                    </h3>
+                    <p className="text-sm text-gray-500">
+                      {report.description}
+                    </p>
                   </div>
                   <FileText className="w-5 h-5 text-gray-400" />
                 </div>
@@ -165,19 +214,38 @@ export default function AdminReports() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" onClick={() => handleExport('PDF')} className="gap-2" disabled={loading}>
+            <Button
+              variant="outline"
+              onClick={() => handleExport("PDF")}
+              className="gap-2"
+              disabled={loading}
+            >
               <FileText className="w-4 h-4" />
               Exportar como PDF
             </Button>
-            <Button variant="outline" onClick={() => handleExport('Excel')} className="gap-2" disabled={loading}>
+            <Button
+              variant="outline"
+              onClick={() => handleExport("Excel")}
+              className="gap-2"
+              disabled={loading}
+            >
               <Download className="w-4 h-4" />
               Exportar como Excel
             </Button>
-            <Button variant="outline" onClick={() => handleExport('CSV')} className="gap-2" disabled={loading}>
+            <Button
+              variant="outline"
+              onClick={() => handleExport("CSV")}
+              className="gap-2"
+              disabled={loading}
+            >
               <Download className="w-4 h-4" />
               Exportar como CSV
             </Button>
-            <Button variant="outline" onClick={() => window.print()} className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => window.print()}
+              className="gap-2"
+            >
               <Printer className="w-4 h-4" />
               Imprimir
             </Button>
@@ -197,18 +265,29 @@ export default function AdminReports() {
           <CardContent>
             <div className="space-y-3">
               {recentReports.map((report, index) => (
-                <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                <div
+                  key={index}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                >
                   <div className="flex items-center gap-3">
                     <FileText className="w-5 h-5 text-emerald-600" />
                     <div>
                       <p className="font-medium text-gray-800">{report.name}</p>
                       <div className="flex gap-3 mt-1">
-                        <span className="text-xs text-gray-500">{report.date}</span>
-                        <span className="text-xs text-gray-500">{report.size}</span>
+                        <span className="text-xs text-gray-500">
+                          {report.date}
+                        </span>
+                        <span className="text-xs text-gray-500">
+                          {report.size}
+                        </span>
                       </div>
                     </div>
                   </div>
-                  <Button size="sm" variant="ghost" onClick={() => handleGenerate(report.id)}>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => handleGenerate(report.id)}
+                  >
                     <Download className="w-4 h-4" />
                   </Button>
                 </div>

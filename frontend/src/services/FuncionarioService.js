@@ -24,12 +24,12 @@ export const funcionarioService = {
 
   // Alimentação
   getAlimentacoes: async (params = {}) => {
-    const response = await api.get("funcionario/alimentacoes/", { params });
+    const response = await api.get("funcionario/alimentacao/", { params });
     return response.data;
   },
 
   registrarAlimentacao: async (data) => {
-    const response = await api.post("funcionario/alimentacoes/", data);
+    const response = await api.post("funcionario/alimentacao/", data);
     return response.data;
   },
 
@@ -45,6 +45,11 @@ export const funcionarioService = {
   },
 
   // Atualização de Animais
+  getAnimais: async (params = {}) => {
+    const response = await api.get("funcionario/animais/", { params });
+    return response.data;
+  },
+
   atualizarPeso: async (animalId, peso) => {
     const response = await api.patch(`funcionario/animais/${animalId}/peso/`, {
       peso,

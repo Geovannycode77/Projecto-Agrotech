@@ -62,6 +62,12 @@ class CustomUser(AbstractUser):
         default=False,
         help_text="Aprovado pelo administrador"
     )
+
+    # Indica se o usuário está bloqueado (adicionado para compatibilidade com DB existente)
+    is_blocked = models.BooleanField(
+        default=False,
+        help_text="Indica se o usuário está bloqueado pelo sistema"
+    )
     
     # Campos adicionais
     google_id = models.CharField(max_length=100, blank=True, null=True)

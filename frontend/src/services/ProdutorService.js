@@ -70,9 +70,9 @@ export const produtorService = {
     return response.data;
   },
 
-  // NOVO MÉTODO - Consumo Diário
+  //Consumo Diário
   getConsumoDiario: async () => {
-    const response = await api.get("produtor/alimentacao/consumo-diario/");
+    const response = await api.get("produtor/alimentacao/consumo_diario/"); // com underline
     return response.data;
   },
 
@@ -96,9 +96,8 @@ export const produtorService = {
 
   // Relatórios
   getRelatoriosProducao: async (params = {}) => {
-    const response = await api.get("produtor/relatorios/producao/", {
-      params,
-    });
+    // Use "relatorios/gerar/" em vez de "relatorios/producao/"
+    const response = await api.get("produtor/relatorios/gerar/", { params });
     return response.data;
   },
 
@@ -148,12 +147,12 @@ export const produtorService = {
   },
 
   getRelatoriosDisponiveis: async () => {
-    const response = await api.get("/produtor/relatorios/disponiveis/");
+    const response = await api.get("produtor/relatorios/disponiveis/");
     return response.data;
   },
 
   downloadRelatorio: async (id) => {
-    const response = await api.get(`/produtor/relatorios/${id}/download/`, {
+    const response = await api.get(`produtor/relatorios/${id}/download/`, {
       responseType: "blob",
     });
     return response.data;

@@ -1,21 +1,24 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Database, 
-  Download, 
-  Trash2, 
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import {
+  Database,
+  Download,
+  Trash2,
   RefreshCw,
   Clock,
   HardDrive,
   Cloud,
   Plus,
-  AlertCircle
-} from 'lucide-react';
-import { adminService } from '../../services/api';
+  AlertCircle,
+} from "lucide-react";
+import { adminService } from "../../services/api";
+import { toast } from "@/hooks/use-toast";
+import useConfirm from "@/components/ui/useConfirm";
 
 export default function AdminBackups() {
+  const confirm = useConfirm();
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState(null);
@@ -24,7 +27,7 @@ export default function AdminBackups() {
     lastBackup: null,
     nextBackup: null,
     totalSize: 0,
-    totalBackups: 0
+    totalBackups: 0,
   });
 
   useEffect(() => {
@@ -35,7 +38,7 @@ export default function AdminBackups() {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Buscar backups da API
       const data = await adminService.getBackups();
       setBackups(data.backups || []);
@@ -43,11 +46,11 @@ export default function AdminBackups() {
         lastBackup: data.lastBackup || null,
         nextBackup: data.nextBackup || null,
         totalSize: data.totalSize || 0,
-        totalBackups: data.totalBackups || 0
+        totalBackups: data.totalBackups || 0,
       });
     } catch (err) {
-      console.error('Erro ao carregar backups:', err);
-      setError('Não foi possível carregar os backups.');
+      console.error("Erro ao carregar backups:", err);
+      setError("Não foi possível carregar os backups.");
     } finally {
       setLoading(false);
     }
@@ -57,11 +60,15 @@ export default function AdminBackups() {
     try {
       setCreating(true);
       await adminService.createBackup();
-      alert('Backup criado com sucesso!');
+      toast({ title: "Sucesso", description: "Backup criado com sucesso!" });
       fetchBackups(); // Recarrega a lista
     } catch (err) {
-      console.error('Erro ao criar backup:', err);
-      alert('Erro ao criar backup. Tente novamente.');
+      console.error("Erro ao criar backup:", err);
+      toast({
+        title: "Erro",
+        description: "Erro ao criar backup. Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setCreating(false);
     }
@@ -72,7 +79,7 @@ export default function AdminBackups() {
       const blob = await adminService.downloadBackup(id);
       // Criar link para download
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = `backup_${id}.sql`;
       document.body.appendChild(a);
@@ -80,34 +87,45 @@ export default function AdminBackups() {
       window.URL.revokeObjectURL(url);
       document.body.removeChild(a);
     } catch (err) {
-      console.error('Erro ao baixar backup:', err);
-      alert('Erro ao baixar backup. Tente novamente.');
+      console.error("Erro ao baixar backup:", err);
+      toast({
+        title: "Erro",
+        description: "Erro ao baixar backup. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Tem certeza que deseja excluir este backup?')) {
-      try {
-        await adminService.deleteBackup(id);
-        alert('Backup excluído com sucesso!');
-        fetchBackups(); // Recarrega a lista
-      } catch (err) {
-        console.error('Erro ao deletar backup:', err);
-        alert('Erro ao deletar backup. Tente novamente.');
-      }
+    try {
+      const ok = await confirm(
+        "Confirmar exclusão",
+        "Tem certeza que deseja excluir este backup?",
+      );
+      if (!ok) return;
+      await adminService.deleteBackup(id);
+      toast({ title: "Sucesso", description: "Backup excluído com sucesso!" });
+      fetchBackups(); // Recarrega a lista
+    } catch (err) {
+      console.error("Erro ao deletar backup:", err);
+      toast({
+        title: "Erro",
+        description: "Erro ao deletar backup. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
   const formatFileSize = (bytes) => {
-    if (!bytes) return '0 KB';
-    const sizes = ['B', 'KB', 'MB', 'GB'];
+    if (!bytes) return "0 KB";
+    const sizes = ["B", "KB", "MB", "GB"];
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return `${(bytes / Math.pow(1024, i)).toFixed(2)} ${sizes[i]}`;
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return 'Nenhum';
-    return new Date(dateString).toLocaleString('pt-PT');
+    if (!dateString) return "Nenhum";
+    return new Date(dateString).toLocaleString("pt-PT");
   };
 
   if (loading) {
@@ -127,7 +145,7 @@ export default function AdminBackups() {
         <div className="text-center">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
           <p className="text-gray-700">{error}</p>
-          <button 
+          <button
             onClick={fetchBackups}
             className="mt-4 px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700"
           >
@@ -145,9 +163,13 @@ export default function AdminBackups() {
           <h1 className="text-3xl font-bold text-gray-800">Backups</h1>
           <p className="text-gray-500 mt-1">Gerencie os backups do sistema</p>
         </div>
-        <Button onClick={handleCreateBackup} disabled={creating} className="gap-2">
+        <Button
+          onClick={handleCreateBackup}
+          disabled={creating}
+          className="gap-2"
+        >
           <Plus className="w-4 h-4" />
-          {creating ? 'Criando...' : 'Novo Backup'}
+          {creating ? "Criando..." : "Novo Backup"}
         </Button>
       </div>
 
@@ -163,19 +185,27 @@ export default function AdminBackups() {
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-sm text-gray-600">Último Backup</span>
-              <span className="text-sm font-medium">{formatDate(backupInfo.lastBackup)}</span>
+              <span className="text-sm font-medium">
+                {formatDate(backupInfo.lastBackup)}
+              </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-sm text-gray-600">Próximo Backup</span>
-              <span className="text-sm font-medium">{formatDate(backupInfo.nextBackup) || 'Não agendado'}</span>
+              <span className="text-sm font-medium">
+                {formatDate(backupInfo.nextBackup) || "Não agendado"}
+              </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-sm text-gray-600">Espaço Total</span>
-              <span className="text-sm font-medium">{formatFileSize(backupInfo.totalSize)}</span>
+              <span className="text-sm font-medium">
+                {formatFileSize(backupInfo.totalSize)}
+              </span>
             </div>
             <div className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
               <span className="text-sm text-gray-600">Backups Disponíveis</span>
-              <span className="text-sm font-medium">{backupInfo.totalBackups}</span>
+              <span className="text-sm font-medium">
+                {backupInfo.totalBackups}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -190,21 +220,38 @@ export default function AdminBackups() {
           </CardHeader>
           <CardContent>
             {backups.length === 0 ? (
-              <p className="text-center text-gray-500 py-8">Nenhum backup disponível</p>
+              <p className="text-center text-gray-500 py-8">
+                Nenhum backup disponível
+              </p>
             ) : (
               <div className="space-y-3">
                 {backups.map((backup) => (
-                  <div key={backup.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors">
+                  <div
+                    key={backup.id}
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50 transition-colors"
+                  >
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl flex items-center justify-center">
                         <Database className="w-5 h-5 text-white" />
                       </div>
                       <div>
-                        <p className="font-medium text-gray-800">{backup.name}</p>
+                        <p className="font-medium text-gray-800">
+                          {backup.name}
+                        </p>
                         <div className="flex gap-3 mt-1">
-                          <span className="text-xs text-gray-500">{formatFileSize(backup.size)}</span>
-                          <span className="text-xs text-gray-500">{formatDate(backup.date)}</span>
-                          <Badge variant={backup.type === 'automático' ? 'secondary' : 'default'}>
+                          <span className="text-xs text-gray-500">
+                            {formatFileSize(backup.size)}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {formatDate(backup.date)}
+                          </span>
+                          <Badge
+                            variant={
+                              backup.type === "automático"
+                                ? "secondary"
+                                : "default"
+                            }
+                          >
                             {backup.type}
                           </Badge>
                         </div>
@@ -249,9 +296,9 @@ export default function AdminBackups() {
             <div className="flex items-center gap-3">
               <Clock className="w-5 h-5 text-gray-500" />
               <span className="text-gray-600">
-                {backupInfo.nextBackup 
+                {backupInfo.nextBackup
                   ? `Próximo backup agendado para ${formatDate(backupInfo.nextBackup)}`
-                  : 'Nenhum backup agendado'}
+                  : "Nenhum backup agendado"}
               </span>
             </div>
             <Button variant="outline">
