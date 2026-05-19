@@ -6,6 +6,8 @@ import {
   Navigate,
 } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
+import { ConfirmProvider } from "./components/ui/ConfirmContext";
+import { Toaster } from "./components/ui/toaster";
 import { useAuth } from "./hooks/useAuth";
 
 // Auth Pages
@@ -72,23 +74,23 @@ const PrivateRoute = ({ children, allowedRoles = [] }) => {
 // Componente que redireciona para o dashboard correto baseado no papel
 const DashboardRedirect = () => {
   const { user, loading } = useAuth();
-  
+
   if (loading) {
     return <LoadingSpinner />;
   }
-  
-  const role = user?.role || 'produtor';
-  
+
+  const role = user?.role || "produtor";
+
   switch (role) {
-    case 'produtor':
+    case "produtor":
       return <Navigate to="/produtor" />;
-    case 'veterinario':
+    case "veterinario":
       return <Navigate to="/veterinario" />;
-    case 'funcionario':
+    case "funcionario":
       return <Navigate to="/funcionario" />;
-    case 'gestor_financeiro':
+    case "gestor_financeiro":
       return <Navigate to="/gestor" />;
-    case 'administrador':
+    case "administrador":
       return <Navigate to="/admin/dashboard" />;
     default:
       return <Navigate to="/produtor" />;
@@ -99,65 +101,83 @@ function App() {
   return (
     <Router>
       <AuthProvider>
-        <Routes>
-          {/* Auth Routes */}
-          <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
-          <Route path="/pending-approval" element={<PendingApproval />} />
-          <Route path="/confirm-email/:token" element={<ConfirmEmail />} />
-          <Route path="/complete-profile/:role" element={<CompleteProfile />} />
-          <Route path="/forgot-password" element={<ForgotPassword />} />
-          <Route path="/reset-password/:token" element={<ResetPassword />} />
-          
-          {/* Rotas dos Dashboards (sem layout wrapper) */}
-          <Route path="/produtor" element={
-            <PrivateRoute allowedRoles={["produtor"]}>
-              <ProdutorDashboard />
-            </PrivateRoute>
-          } />
-          
-          <Route path="/veterinario" element={
-            <PrivateRoute allowedRoles={["veterinario"]}>
-              <VeterinarioDashboard />
-            </PrivateRoute>
-          } />
-          
-          <Route path="/funcionario" element={
-            <PrivateRoute allowedRoles={["funcionario"]}>
-              <FuncionarioDashboard />
-            </PrivateRoute>
-          } />
-          
-          <Route path="/gestor" element={
-            <PrivateRoute allowedRoles={["gestor_financeiro"]}>
-              <GestorFinanceiroDashboard />
-            </PrivateRoute>
-          } />
-          
-          {/* Admin Routes (com AdminLayout) */}
-          <Route
-            path="/admin"
-            element={
-              <PrivateRoute allowedRoles={["administrador"]}>
-                <AdminLayout />
-              </PrivateRoute>
-            }
-          >
-            <Route index element={<Navigate to="/admin/dashboard" />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-            <Route path="users" element={<AdminUsers />} />
-            <Route path="permissions" element={<Permissions />} />
-            <Route path="settings" element={<SystemSettings />} />
-            <Route path="reports" element={<AdminReports />} />
-            <Route path="backups" element={<AdminBackups />} />
-            <Route path="security" element={<Security />} />
-            <Route path="monitoring" element={<Monitoring />} />
-          </Route>
-          
-          {/* Redirect padrão */}
-          <Route path="/" element={<DashboardRedirect />} />
-          <Route path="*" element={<Navigate to="/" />} />
-        </Routes>
+        <ConfirmProvider>
+          <Toaster />
+          <Routes>
+            {/* Auth Routes */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route path="/pending-approval" element={<PendingApproval />} />
+            <Route path="/confirm-email/:token" element={<ConfirmEmail />} />
+            <Route
+              path="/complete-profile/:role"
+              element={<CompleteProfile />}
+            />
+            <Route path="/forgot-password" element={<ForgotPassword />} />
+            <Route path="/reset-password/:token" element={<ResetPassword />} />
+
+            {/* Rotas dos Dashboards (sem layout wrapper) */}
+            <Route
+              path="/produtor"
+              element={
+                <PrivateRoute allowedRoles={["produtor"]}>
+                  <ProdutorDashboard />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/veterinario"
+              element={
+                <PrivateRoute allowedRoles={["veterinario"]}>
+                  <VeterinarioDashboard />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/funcionario"
+              element={
+                <PrivateRoute allowedRoles={["funcionario"]}>
+                  <FuncionarioDashboard />
+                </PrivateRoute>
+              }
+            />
+
+            <Route
+              path="/gestor"
+              element={
+                <PrivateRoute allowedRoles={["gestor_financeiro"]}>
+                  <GestorFinanceiroDashboard />
+                </PrivateRoute>
+              }
+            />
+
+            {/* Admin Routes (com AdminLayout) */}
+            <Route
+              path="/admin"
+              element={
+                <PrivateRoute allowedRoles={["administrador"]}>
+                  <AdminLayout />
+                </PrivateRoute>
+              }
+            >
+              <Route index element={<Navigate to="/admin/dashboard" />} />
+              <Route path="dashboard" element={<AdminDashboard />} />
+              <Route path="users" element={<AdminUsers />} />
+              <Route path="permissions" element={<Permissions />} />
+              <Route path="settings" element={<SystemSettings />} />
+              <Route path="reports" element={<AdminReports />} />
+              <Route path="backups" element={<AdminBackups />} />
+              <Route path="security" element={<Security />} />
+              <Route path="monitoring" element={<Monitoring />} />
+            </Route>
+
+            {/* Redirect padrão */}
+            <Route path="/" element={<DashboardRedirect />} />
+            <Route path="*" element={<Navigate to="/" />} />
+          </Routes>
+        </ConfirmProvider>
       </AuthProvider>
     </Router>
   );

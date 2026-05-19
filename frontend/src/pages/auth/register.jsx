@@ -5,7 +5,6 @@ import { GoogleLogin } from '@react-oauth/google';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Alert, AlertDescription } from '@/components/ui/alert';
 import { 
   Leaf, 
   Mail, 
@@ -31,9 +30,10 @@ export default function Register() {
     confirmPassword: '',
     role: ''
   });
-  const [error, setError] = useState('');
+  const [errors, setErrors] = useState({});
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [touched, setTouched] = useState({ email: false, password: false, confirmPassword: false });
   const [focused, setFocused] = useState({ email: false, password: false, confirmPassword: false });
   const { register } = useAuth();
   const navigate = useNavigate();
@@ -43,25 +43,37 @@ export default function Register() {
       value: 'produtor', 
       label: 'Produtor', 
       icon: Tractor,
-      color: 'green'
+      color: 'green',
+      bgColor: 'bg-green-50',
+      borderColor: 'border-green-500',
+      textColor: 'text-green-700'
     },
     { 
       value: 'veterinario', 
       label: 'Veterinário', 
       icon: Stethoscope,
-      color: 'blue'
+      color: 'blue',
+      bgColor: 'bg-blue-50',
+      borderColor: 'border-blue-500',
+      textColor: 'text-blue-700'
     },
     { 
       value: 'funcionario', 
       label: 'Funcionário', 
       icon: Users,
-      color: 'yellow'
+      color: 'yellow',
+      bgColor: 'bg-yellow-50',
+      borderColor: 'border-yellow-500',
+      textColor: 'text-yellow-700'
     },
     { 
       value: 'gestor_financeiro', 
       label: 'Gestor Financeiro', 
       icon: Briefcase,
-      color: 'purple'
+      color: 'purple',
+      bgColor: 'bg-purple-50',
+      borderColor: 'border-purple-500',
+      textColor: 'text-purple-700'
     }
   ];
 
@@ -71,56 +83,110 @@ export default function Register() {
     }
   }, [googleData]);
 
+  // Validação de email
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email) return 'Email é obrigatório';
+    if (!emailRegex.test(email)) return 'Email inválido';
+    return '';
+  };
+
+  // Validação de senha
+  const validatePassword = (password) => {
+    if (!password) return 'Senha é obrigatória';
+    if (password.length < 6) return 'A senha deve ter no mínimo 6 caracteres';
+    return '';
+  };
+
+  // Validação de confirmação de senha
+  const validateConfirmPassword = (confirmPassword, password) => {
+    if (!confirmPassword) return 'Confirme sua senha';
+    if (confirmPassword !== password) return 'As senhas não coincidem';
+    return '';
+  };
+
+  // Validação de role
+  const validateRole = (role) => {
+    if (!role) return 'Selecione um tipo de usuário';
+    return '';
+  };
+
+  const validateField = (field, value) => {
+    switch (field) {
+      case 'email':
+        return validateEmail(value);
+      case 'password':
+        return validatePassword(value);
+      case 'confirmPassword':
+        return validateConfirmPassword(value, formData.password);
+      case 'role':
+        return validateRole(value);
+      default:
+        return '';
+    }
+  };
+
   const handleChange = (e) => {
     const { id, value } = e.target;
     setFormData({ ...formData, [id]: value });
+    
+    // Validar campo em tempo real
+    const error = validateField(id, value);
+    setErrors(prev => ({ ...prev, [id]: error }));
   };
 
-  const handleRoleChange = (e) => {
-    setFormData({ ...formData, role: e.target.value });
-    setError('');
+  const handleRoleChange = (roleValue) => {
+    setFormData({ ...formData, role: roleValue });
+    const error = validateRole(roleValue);
+    setErrors(prev => ({ ...prev, role: error }));
+  };
+
+  const handleBlur = (field) => {
+    setTouched({ ...touched, [field]: true });
+    const error = validateField(field, formData[field]);
+    setErrors(prev => ({ ...prev, [field]: error }));
   };
 
   const handleFocus = (field) => {
     setFocused({ ...focused, [field]: true });
   };
 
-  const handleBlur = (field, value) => {
-    if (!value) setFocused({ ...focused, [field]: false });
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
-    setSuccess('');
-
-    if (!formData.role) {
-      setError('Selecione um tipo de usuário');
+    
+    // Marcar todos os campos como tocados
+    setTouched({ email: true, password: true, confirmPassword: true, role: true });
+    
+    // Validar todos os campos
+    const emailError = validateEmail(formData.email);
+    const passwordError = !googleData ? validatePassword(formData.password) : '';
+    const confirmPasswordError = !googleData ? validateConfirmPassword(formData.confirmPassword, formData.password) : '';
+    const roleError = validateRole(formData.role);
+    
+    const newErrors = {
+      email: emailError,
+      password: passwordError,
+      confirmPassword: confirmPasswordError,
+      role: roleError
+    };
+    
+    setErrors(newErrors);
+    
+    // Verificar se há erros
+    if (Object.values(newErrors).some(error => error)) {
       return;
     }
-
-    if (!googleData && formData.password !== formData.confirmPassword) {
-      setError('As senhas não coincidem');
-      return;
-    }
-
-    if (!googleData && !formData.password) {
-      setError('Senha é obrigatória');
-      return;
-    }
-
-    if (!googleData && formData.password.length < 6) {
-      setError('Mínimo 6 caracteres');
-      return;
-    }
-
+    
     setLoading(true);
 
+    // ENVIAR confirm_password para o backend
     const result = await register({
       email: formData.email,
       password: formData.password,
+      confirm_password: formData.confirmPassword,  // <-- ADICIONE ESTA LINHA
       role: formData.role
     });
+
 
     if (result.success) {
       if (googleData) {
@@ -146,7 +212,16 @@ export default function Register() {
         });
       }
     } else {
-      setError(result.error || 'Erro ao criar conta');
+      // Erros detalhados campo por campo
+      if (result.errors) {
+        const apiErrors = {};
+        if (result.errors.email) apiErrors.email = result.errors.email.join(', ');
+        if (result.errors.password) apiErrors.password = result.errors.password.join(', ');
+        if (result.errors.role) apiErrors.role = result.errors.role.join(', ');
+        setErrors(prev => ({ ...prev, ...apiErrors }));
+      } else {
+        setErrors(prev => ({ ...prev, general: result.error || 'Erro ao criar conta' }));
+      }
     }
 
     setLoading(false);
@@ -154,7 +229,7 @@ export default function Register() {
 
   const handleGoogleSuccess = async (credentialResponse) => {
     if (!formData.role) {
-      setError('Selecione um tipo de usuário');
+      setErrors(prev => ({ ...prev, role: 'Selecione um tipo de usuário' }));
       return;
     }
     
@@ -175,18 +250,17 @@ export default function Register() {
         } 
       });
     } catch (err) {
-      setError('Erro ao processar Google');
+      setErrors(prev => ({ ...prev, general: 'Erro ao processar Google' }));
       setLoading(false);
     }
   };
 
   const handleGoogleError = () => {
-    setError('Erro ao fazer login com Google');
+    setErrors(prev => ({ ...prev, general: 'Erro ao fazer login com Google' }));
   };
 
-  const getRoleColor = (roleValue) => {
-    const role = roles.find(r => r.value === roleValue);
-    return role ? role.color : 'gray';
+  const getFieldError = (field) => {
+    return touched[field] && errors[field] ? errors[field] : '';
   };
 
   return (
@@ -219,7 +293,7 @@ export default function Register() {
                   </div>
                 </div>
               </div>
-              <p className="text-white/60 text-xs mt-8">© 2024 AgroTech</p>
+              <p className="text-white/60 text-xs mt-8">© 2026 AgroTech</p>
             </div>
 
             {/* Lado Direito - Formulário */}
@@ -230,11 +304,11 @@ export default function Register() {
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Mensagens */}
-                {error && (
+                {/* Mensagem geral de erro */}
+                {errors.general && (
                   <div className="flex items-center gap-2 bg-red-50 border border-red-200 rounded-lg p-3">
                     <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />
-                    <p className="text-xs text-red-700 flex-1">{error}</p>
+                    <p className="text-xs text-red-700 flex-1">{errors.general}</p>
                   </div>
                 )}
                 
@@ -245,40 +319,44 @@ export default function Register() {
                   </div>
                 )}
 
-                {/* Seleção de Role - Grid compacto */}
+                {/* Seleção de Role */}
                 <div>
-                  <Label className="text-sm font-medium text-gray-700 mb-2 block">Tipo de Usuário *</Label>
-                  <div className="grid grid-cols-4 gap-2">
+                  <Label className="text-sm font-medium text-gray-700 mb-2 block">
+                    Tipo de Usuário *
+                  </Label>
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                     {roles.map((role) => {
                       const Icon = role.icon;
                       const isSelected = formData.role === role.value;
-                      const color = role.color;
                       return (
                         <button
                           key={role.value}
                           type="button"
-                          onClick={() => handleRoleChange({ target: { value: role.value } })}
+                          onClick={() => handleRoleChange(role.value)}
                           className={`
-                            flex flex-col items-center justify-center p-2 rounded-lg border transition-all
+                            flex flex-col items-center justify-center p-3 rounded-lg border-2 transition-all
                             ${isSelected 
-                              ? `border-${color}-500 bg-${color}-50 shadow-sm` 
+                              ? `${role.bgColor} ${role.borderColor} shadow-sm` 
                               : 'border-gray-200 hover:border-gray-300 hover:bg-gray-50'}
                           `}
                         >
-                          <Icon className={`w-5 h-5 mb-1 ${isSelected ? `text-${color}-600` : 'text-gray-500'}`} />
-                          <span className={`text-xs font-medium ${isSelected ? `text-${color}-700` : 'text-gray-600'}`}>
+                          <Icon className={`w-5 h-5 mb-1 ${isSelected ? role.textColor : 'text-gray-500'}`} />
+                          <span className={`text-xs font-medium ${isSelected ? role.textColor : 'text-gray-600'}`}>
                             {role.label}
                           </span>
                         </button>
                       );
                     })}
                   </div>
+                  {getFieldError('role') && (
+                    <p className="text-xs text-red-500 mt-1">{getFieldError('role')}</p>
+                  )}
                 </div>
 
                 {/* Email */}
                 <div>
                   <Label htmlFor="email" className="text-sm font-medium text-gray-700 mb-1 block">
-                    Email
+                    Email *
                   </Label>
                   <div className="relative">
                     <Input
@@ -288,13 +366,16 @@ export default function Register() {
                       value={formData.email}
                       onChange={handleChange}
                       onFocus={() => handleFocus('email')}
-                      onBlur={(e) => handleBlur('email', e.target.value)}
+                      onBlur={() => handleBlur('email')}
                       disabled={!!googleData}
-                      className={`pl-9 h-10 text-sm border-gray-200 focus:border-green-400 focus:ring-green-400 rounded-lg ${googleData ? 'bg-gray-50' : ''}`}
+                      className={`pl-9 h-11 text-sm border-gray-200 focus:border-green-400 focus:ring-green-400 rounded-lg transition-all ${googleData ? 'bg-gray-50' : ''} ${getFieldError('email') ? 'border-red-500' : ''}`}
                       required
                     />
                     <Mail className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                   </div>
+                  {getFieldError('email') && (
+                    <p className="text-xs text-red-500 mt-1">{getFieldError('email')}</p>
+                  )}
                 </div>
                 
                 {/* Senhas */}
@@ -302,7 +383,7 @@ export default function Register() {
                   <div className="grid grid-cols-2 gap-3">
                     <div>
                       <Label htmlFor="password" className="text-sm font-medium text-gray-700 mb-1 block">
-                        Senha
+                        Senha *
                       </Label>
                       <div className="relative">
                         <Input
@@ -312,17 +393,20 @@ export default function Register() {
                           value={formData.password}
                           onChange={handleChange}
                           onFocus={() => handleFocus('password')}
-                          onBlur={(e) => handleBlur('password', e.target.value)}
-                          className="pl-9 h-10 text-sm border-gray-200 focus:border-green-400 focus:ring-green-400 rounded-lg"
+                          onBlur={() => handleBlur('password')}
+                          className={`pl-9 h-11 text-sm border-gray-200 focus:border-green-400 focus:ring-green-400 rounded-lg transition-all ${getFieldError('password') ? 'border-red-500' : ''}`}
                           required
                         />
                         <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                       </div>
+                      {getFieldError('password') && (
+                        <p className="text-xs text-red-500 mt-1">{getFieldError('password')}</p>
+                      )}
                     </div>
                     
                     <div>
                       <Label htmlFor="confirmPassword" className="text-sm font-medium text-gray-700 mb-1 block">
-                        Confirmar
+                        Confirmar *
                       </Label>
                       <div className="relative">
                         <Input
@@ -332,12 +416,15 @@ export default function Register() {
                           value={formData.confirmPassword}
                           onChange={handleChange}
                           onFocus={() => handleFocus('confirmPassword')}
-                          onBlur={(e) => handleBlur('confirmPassword', e.target.value)}
-                          className="pl-9 h-10 text-sm border-gray-200 focus:border-green-400 focus:ring-green-400 rounded-lg"
+                          onBlur={() => handleBlur('confirmPassword')}
+                          className={`pl-9 h-11 text-sm border-gray-200 focus:border-green-400 focus:ring-green-400 rounded-lg transition-all ${getFieldError('confirmPassword') ? 'border-red-500' : ''}`}
                           required
                         />
                         <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                       </div>
+                      {getFieldError('confirmPassword') && (
+                        <p className="text-xs text-red-500 mt-1">{getFieldError('confirmPassword')}</p>
+                      )}
                     </div>
                   </div>
                 )}
@@ -368,7 +455,7 @@ export default function Register() {
                   </div>
                   <Button 
                     type="submit" 
-                    className="h-10 px-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow transition-all"
+                    className="h-11 px-4 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white text-sm font-medium rounded-lg shadow-sm hover:shadow transition-all"
                     disabled={loading}
                   >
                     {loading ? (

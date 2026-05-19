@@ -21,7 +21,7 @@ import {
   Baby,
   Loader2
 } from 'lucide-react';
-import { funcionarioService } from '@/services/funcionarioService';
+import { funcionarioService } from '@/services/FuncionarioService';
 import ListaTarefas from './components/ListaTarefas';
 import RegistroAlimentacao from './components/RegistroAlimentacao';
 import RegistroOcorrencias from './components/RegistroOcorrencias';

@@ -4,7 +4,15 @@ import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { Leaf, Lock, ArrowRight, CheckCircle2, AlertCircle, ArrowLeft } from "lucide-react";
+import {
+  Leaf,
+  Lock,
+  ArrowRight,
+  CheckCircle2,
+  AlertCircle,
+  ArrowLeft,
+} from "lucide-react";
+import { authService } from "@/services/api";
 
 export default function ResetPassword() {
   const { token } = useParams();
@@ -39,24 +47,13 @@ export default function ResetPassword() {
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:8000/api/auth/reset-password/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ token, new_password: senha })
-      });
-
-      const data = await response.json();
-
-      if (response.ok) {
-        setSuccess(data.message || "Senha redefinida com sucesso!");
-        setTimeout(() => {
-          navigate("/login");
-        }, 3000);
-      } else {
-        setError(data.error || "Token inválido ou expirado.");
-      }
+      const data = await authService.resetPassword(token, senha);
+      setSuccess(data.message || "Senha redefinida com sucesso!");
+      setTimeout(() => {
+        navigate("/login");
+      }, 3000);
     } catch (err) {
-      setError("Erro de conexão com o servidor.");
+      setError(err.response?.data?.error || "Token inválido ou expirado.");
     } finally {
       setLoading(false);
     }
@@ -67,9 +64,16 @@ export default function ResetPassword() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-emerald-50 via-green-50 to-teal-50">
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100 p-8 max-w-md text-center">
           <AlertCircle className="w-16 h-16 text-red-500 mx-auto mb-4" />
-          <h2 className="text-xl font-bold text-gray-900 mb-2">Link Inválido</h2>
-          <p className="text-gray-600 mb-4">O link de recuperação é inválido ou expirou.</p>
-          <Link to="/forgot-password" className="text-green-600 hover:underline">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">
+            Link Inválido
+          </h2>
+          <p className="text-gray-600 mb-4">
+            O link de recuperação é inválido ou expirou.
+          </p>
+          <Link
+            to="/forgot-password"
+            className="text-green-600 hover:underline"
+          >
             Solicitar novo link
           </Link>
         </div>
@@ -110,7 +114,7 @@ export default function ResetPassword() {
                   <p className="text-sm text-red-700 flex-1">{error}</p>
                 </div>
               )}
-              
+
               {success && (
                 <div className="flex items-center gap-3 bg-green-50 border border-green-200 rounded-xl p-3">
                   <CheckCircle2 className="w-5 h-5 text-green-500 flex-shrink-0" />
@@ -148,8 +152,8 @@ export default function ResetPassword() {
                 />
               </div>
 
-              <Button 
-                type="submit" 
+              <Button
+                type="submit"
                 className="w-full h-12 bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-semibold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:-translate-y-0.5"
                 disabled={loading}
               >
@@ -164,7 +168,10 @@ export default function ResetPassword() {
               </Button>
 
               <div className="text-center">
-                <Link to="/login" className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-green-600 transition-colors">
+                <Link
+                  to="/login"
+                  className="inline-flex items-center gap-2 text-sm text-gray-600 hover:text-green-600 transition-colors"
+                >
                   <ArrowLeft className="w-4 h-4" />
                   Voltar para o login
                 </Link>
@@ -183,33 +190,70 @@ export default function ResetPassword() {
 
       <style jsx>{`
         @keyframes fade-in-down {
-          0% { opacity: 0; transform: translateY(-20px); }
-          100% { opacity: 1; transform: translateY(0); }
+          0% {
+            opacity: 0;
+            transform: translateY(-20px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
-        
+
         @keyframes fade-in-up {
-          0% { opacity: 0; transform: translateY(20px); }
-          100% { opacity: 1; transform: translateY(0); }
+          0% {
+            opacity: 0;
+            transform: translateY(20px);
+          }
+          100% {
+            opacity: 1;
+            transform: translateY(0);
+          }
         }
-        
+
         @keyframes blob {
-          0% { transform: translate(0px, 0px) scale(1); }
-          33% { transform: translate(30px, -50px) scale(1.1); }
-          66% { transform: translate(-20px, 20px) scale(0.9); }
-          100% { transform: translate(0px, 0px) scale(1); }
+          0% {
+            transform: translate(0px, 0px) scale(1);
+          }
+          33% {
+            transform: translate(30px, -50px) scale(1.1);
+          }
+          66% {
+            transform: translate(-20px, 20px) scale(0.9);
+          }
+          100% {
+            transform: translate(0px, 0px) scale(1);
+          }
         }
-        
+
         @keyframes shake {
-          0%, 100% { transform: translateX(0); }
-          25% { transform: translateX(-5px); }
-          75% { transform: translateX(5px); }
+          0%,
+          100% {
+            transform: translateX(0);
+          }
+          25% {
+            transform: translateX(-5px);
+          }
+          75% {
+            transform: translateX(5px);
+          }
         }
-        
-        .animate-fade-in-down { animation: fade-in-down 0.6s ease-out; }
-        .animate-fade-in-up { animation: fade-in-up 0.6s ease-out; }
-        .animate-blob { animation: blob 7s infinite; }
-        .animate-shake { animation: shake 0.3s ease-in-out; }
-        .animation-delay-2000 { animation-delay: 2s; }
+
+        .animate-fade-in-down {
+          animation: fade-in-down 0.6s ease-out;
+        }
+        .animate-fade-in-up {
+          animation: fade-in-up 0.6s ease-out;
+        }
+        .animate-blob {
+          animation: blob 7s infinite;
+        }
+        .animate-shake {
+          animation: shake 0.3s ease-in-out;
+        }
+        .animation-delay-2000 {
+          animation-delay: 2s;
+        }
       `}</style>
     </div>
   );

@@ -15,27 +15,75 @@ export default function Login() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [showResend, setShowResend] = useState(false);
+  const [showResetPassword, setShowResetPassword] = useState(false);
   const [unconfirmedEmail, setUnconfirmedEmail] = useState('');
   const [resendMessage, setResendMessage] = useState('');
   const [focused, setFocused] = useState({ email: false, password: false });
+  const [needsPassword, setNeedsPassword] = useState(false);
+  const [needsAdminApproval, setNeedsAdminApproval] = useState(false);
   const { login, googleLogin } = useAuth();
   const navigate = useNavigate();
+
+  // Validação de email
+  const validateEmail = (email) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  // Validação de senha
+  const validatePassword = (password) => {
+    return password.length >= 6;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setShowResend(false);
-    setResendMessage('');
+    setShowResetPassword(false);
+    setNeedsPassword(false);
+    setNeedsAdminApproval(false);
+    
+    // Validações locais
+    if (!validateEmail(email)) {
+      setError('Por favor, insira um email válido.');
+      return;
+    }
+    
+    if (!validatePassword(password)) {
+      setError('A senha deve ter no mínimo 6 caracteres.');
+      return;
+    }
+    
     setLoading(true);
 
     const result = await login(email, password);
     
     if (result.success) {
-      navigate('/dashboard');
+      // Redireciona baseado no role
+      const userRole = result.user?.role;
+      if (userRole === 'administrador') {
+        navigate('/admin/dashboard');
+      } else if (userRole === 'produtor') {
+        navigate('/produtor');
+      } else if (userRole === 'veterinario') {
+        navigate('/veterinario');
+      } else if (userRole === 'funcionario') {
+        navigate('/funcionario');
+      } else if (userRole === 'gestor_financeiro') {
+        navigate('/gestor');
+      } else {
+        navigate('/dashboard');
+      }
     } else {
       if (result.requires_confirmation) {
         setUnconfirmedEmail(email);
         setShowResend(true);
+        setError(result.error);
+      } else if (result.requires_password_setup) {
+        setNeedsPassword(true);
+        setError(result.error);
+      } else if (result.requires_admin_approval) {
+        setNeedsAdminApproval(true);
         setError(result.error);
       } else {
         setError(result.error);
@@ -65,12 +113,26 @@ export default function Login() {
     setLoading(true);
     setError('');
     setShowResend(false);
+    setShowResetPassword(false);
     
     try {
       const result = await googleLogin(credentialResponse.credential);
       
       if (result.success) {
-        navigate('/dashboard');
+        const userRole = result.user?.role;
+        if (userRole === 'administrador') {
+          navigate('/admin/dashboard');
+        } else if (userRole === 'produtor') {
+          navigate('/produtor');
+        } else if (userRole === 'veterinario') {
+          navigate('/veterinario');
+        } else if (userRole === 'funcionario') {
+          navigate('/funcionario');
+        } else if (userRole === 'gestor_financeiro') {
+          navigate('/gestor');
+        } else {
+          navigate('/dashboard');
+        }
       } else if (result.requires_registration) {
         navigate('/register', { 
           state: { 
@@ -86,6 +148,12 @@ export default function Login() {
       } else if (result.requires_confirmation) {
         setUnconfirmedEmail(result.email);
         setShowResend(true);
+        setError(result.error);
+      } else if (result.requires_password_setup) {
+        setNeedsPassword(true);
+        setError(result.error);
+      } else if (result.requires_admin_approval) {
+        setNeedsAdminApproval(true);
         setError(result.error);
       } else {
         setError(result.error || 'Erro ao fazer login com Google');
@@ -134,11 +202,26 @@ export default function Login() {
         {/* Card de login */}
         <div className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-100 p-6 md:p-8 animate-fade-in-up">
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Mensagens */}
+            {/* Mensagens de erro específicas */}
             {error && (
-              <div className="flex items-center gap-3 bg-red-50 border border-red-200 rounded-xl p-4 animate-shake">
-                <AlertCircle className="w-5 h-5 text-red-500 flex-shrink-0" />
-                <p className="text-sm text-red-700 flex-1">{error}</p>
+              <div className={`flex items-center gap-3 border rounded-xl p-4 animate-shake ${
+                needsPassword || needsAdminApproval 
+                  ? 'bg-yellow-50 border-yellow-200' 
+                  : 'bg-red-50 border-red-200'
+              }`}>
+                <AlertCircle className={`w-5 h-5 flex-shrink-0 ${
+                  needsPassword || needsAdminApproval ? 'text-yellow-500' : 'text-red-500'
+                }`} />
+                <div className="flex-1">
+                  <p className={`text-sm ${needsPassword || needsAdminApproval ? 'text-yellow-700' : 'text-red-700'}`}>
+                    {error}
+                  </p>
+                  {needsAdminApproval && (
+                    <p className="text-xs text-yellow-600 mt-1">
+                      Entre em contato com o administrador do sistema para aprovar sua conta.
+                    </p>
+                  )}
+                </div>
               </div>
             )}
             
@@ -269,7 +352,7 @@ export default function Login() {
         {/* Footer */}
         <div className="text-center mt-6">
           <p className="text-xs text-gray-400">
-            © 2024 AgroTech. Todos os direitos reservados.
+            © 2026 AgroTech. Todos os direitos reservados.
           </p>
         </div>
       </div>

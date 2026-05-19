@@ -1,8 +1,15 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { FileText, Download, TrendingUp, BarChart3, Loader2 } from 'lucide-react';
-import { produtorService } from '@/services/produtorService';
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  FileText,
+  Download,
+  TrendingUp,
+  BarChart3,
+  Loader2,
+} from "lucide-react";
+import { produtorService } from "@/services/produtorService";
+import { toast } from "@/hooks/use-toast";
 
 export default function RelatorioProducao() {
   const [loading, setLoading] = useState(true);
@@ -15,12 +22,12 @@ export default function RelatorioProducao() {
     variacao_natalidade: 0,
     variacao_mortalidade: 0,
     variacao_peso: 0,
-    variacao_producao: 0
+    variacao_producao: 0,
   });
   const [relatoriosDisponiveis, setRelatoriosDisponiveis] = useState([]);
   const [formData, setFormData] = useState({
-    tipo: 'producao',
-    periodo: 'mes'
+    tipo: "producao",
+    periodo: "mes",
   });
 
   useEffect(() => {
@@ -40,10 +47,10 @@ export default function RelatorioProducao() {
         variacao_natalidade: data.variacao_natalidade || 0,
         variacao_mortalidade: data.variacao_mortalidade || 0,
         variacao_peso: data.variacao_peso || 0,
-        variacao_producao: data.variacao_producao || 0
+        variacao_producao: data.variacao_producao || 0,
       });
     } catch (error) {
-      console.error('Erro ao carregar indicadores:', error);
+      console.error("Erro ao carregar indicadores:", error);
     } finally {
       setLoading(false);
     }
@@ -54,25 +61,32 @@ export default function RelatorioProducao() {
       const data = await produtorService.getRelatoriosDisponiveis();
       setRelatoriosDisponiveis(data.results || data);
     } catch (error) {
-      console.error('Erro ao carregar relatórios:', error);
+      console.error("Erro ao carregar relatórios:", error);
     }
   };
 
   const handleGerarRelatorio = async () => {
     setGerando(true);
     try {
-      const blob = await produtorService.gerarRelatorio(formData.tipo, formData.periodo);
+      const blob = await produtorService.gerarRelatorio(
+        formData.tipo,
+        formData.periodo,
+      );
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
-      a.download = `relatorio_${formData.tipo}_${formData.periodo}_${new Date().toISOString().split('T')[0]}.pdf`;
+      a.download = `relatorio_${formData.tipo}_${formData.periodo}_${new Date().toISOString().split("T")[0]}.pdf`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Erro ao gerar relatório:', error);
-      alert('Erro ao gerar relatório. Tente novamente.');
+      console.error("Erro ao gerar relatório:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao gerar relatório. Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setGerando(false);
     }
@@ -82,7 +96,7 @@ export default function RelatorioProducao() {
     try {
       const blob = await produtorService.downloadRelatorio(id);
       const url = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
+      const a = document.createElement("a");
       a.href = url;
       a.download = nome;
       document.body.appendChild(a);
@@ -90,8 +104,12 @@ export default function RelatorioProducao() {
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
     } catch (error) {
-      console.error('Erro ao baixar relatório:', error);
-      alert('Erro ao baixar relatório. Tente novamente.');
+      console.error("Erro ao baixar relatório:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao baixar relatório. Tente novamente.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -122,9 +140,14 @@ export default function RelatorioProducao() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-gray-600">Taxa de Natalidade</p>
-              <p className="text-2xl font-bold text-blue-600">{indicadores.taxa_natalidade}%</p>
-              <p className={`text-xs mt-1 ${indicadores.variacao_natalidade >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {indicadores.variacao_natalidade >= 0 ? '↑' : '↓'} {Math.abs(indicadores.variacao_natalidade)}% vs mês anterior
+              <p className="text-2xl font-bold text-blue-600">
+                {indicadores.taxa_natalidade}%
+              </p>
+              <p
+                className={`text-xs mt-1 ${indicadores.variacao_natalidade >= 0 ? "text-green-600" : "text-red-600"}`}
+              >
+                {indicadores.variacao_natalidade >= 0 ? "↑" : "↓"}{" "}
+                {Math.abs(indicadores.variacao_natalidade)}% vs mês anterior
               </p>
             </div>
           </CardContent>
@@ -133,9 +156,14 @@ export default function RelatorioProducao() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-gray-600">Taxa de Mortalidade</p>
-              <p className="text-2xl font-bold text-red-600">{indicadores.taxa_mortalidade}%</p>
-              <p className={`text-xs mt-1 ${indicadores.variacao_mortalidade <= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {indicadores.variacao_mortalidade <= 0 ? '↓' : '↑'} {Math.abs(indicadores.variacao_mortalidade)}% vs mês anterior
+              <p className="text-2xl font-bold text-red-600">
+                {indicadores.taxa_mortalidade}%
+              </p>
+              <p
+                className={`text-xs mt-1 ${indicadores.variacao_mortalidade <= 0 ? "text-green-600" : "text-red-600"}`}
+              >
+                {indicadores.variacao_mortalidade <= 0 ? "↓" : "↑"}{" "}
+                {Math.abs(indicadores.variacao_mortalidade)}% vs mês anterior
               </p>
             </div>
           </CardContent>
@@ -144,9 +172,14 @@ export default function RelatorioProducao() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-gray-600">Peso Médio do Rebanho</p>
-              <p className="text-2xl font-bold text-green-600">{indicadores.peso_medio} kg</p>
-              <p className={`text-xs mt-1 ${indicadores.variacao_peso >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {indicadores.variacao_peso >= 0 ? '↑' : '↓'} {Math.abs(indicadores.variacao_peso)} kg vs mês anterior
+              <p className="text-2xl font-bold text-green-600">
+                {indicadores.peso_medio} kg
+              </p>
+              <p
+                className={`text-xs mt-1 ${indicadores.variacao_peso >= 0 ? "text-green-600" : "text-red-600"}`}
+              >
+                {indicadores.variacao_peso >= 0 ? "↑" : "↓"}{" "}
+                {Math.abs(indicadores.variacao_peso)} kg vs mês anterior
               </p>
             </div>
           </CardContent>
@@ -155,9 +188,14 @@ export default function RelatorioProducao() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-gray-600">Produção Mensal</p>
-              <p className="text-2xl font-bold text-purple-600">+{indicadores.producao_mensal} animais</p>
-              <p className={`text-xs mt-1 ${indicadores.variacao_producao >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                {indicadores.variacao_producao >= 0 ? '↑' : '↓'} {Math.abs(indicadores.variacao_producao)}% vs mês anterior
+              <p className="text-2xl font-bold text-purple-600">
+                +{indicadores.producao_mensal} animais
+              </p>
+              <p
+                className={`text-xs mt-1 ${indicadores.variacao_producao >= 0 ? "text-green-600" : "text-red-600"}`}
+              >
+                {indicadores.variacao_producao >= 0 ? "↑" : "↓"}{" "}
+                {Math.abs(indicadores.variacao_producao)}% vs mês anterior
               </p>
             </div>
           </CardContent>
@@ -190,11 +228,13 @@ export default function RelatorioProducao() {
             ) : (
               <div className="space-y-3">
                 {relatoriosDisponiveis.map((relatorio) => (
-                  <Button 
+                  <Button
                     key={relatorio.id}
-                    variant="outline" 
+                    variant="outline"
                     className="w-full justify-between"
-                    onClick={() => handleDownloadRelatorio(relatorio.id, relatorio.nome)}
+                    onClick={() =>
+                      handleDownloadRelatorio(relatorio.id, relatorio.nome)
+                    }
                   >
                     <span>{relatorio.nome}</span>
                     <Download className="h-4 w-4" />
@@ -213,30 +253,35 @@ export default function RelatorioProducao() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-col sm:flex-row gap-4">
-            <select 
+            <select
               className="flex-1 border rounded-md p-2"
               value={formData.tipo}
-              onChange={(e) => setFormData({...formData, tipo: e.target.value})}
+              onChange={(e) =>
+                setFormData({ ...formData, tipo: e.target.value })
+              }
             >
               <option value="producao">Relatório de Produção</option>
               <option value="financeiro">Relatório Financeiro</option>
               <option value="saude">Relatório de Saúde</option>
               <option value="alimentacao">Relatório de Alimentação</option>
             </select>
-            <select 
+            <select
               className="flex-1 border rounded-md p-2"
               value={formData.periodo}
-              onChange={(e) => setFormData({...formData, periodo: e.target.value})}
+              onChange={(e) =>
+                setFormData({ ...formData, periodo: e.target.value })
+              }
             >
               <option value="mes">Último Mês</option>
               <option value="trimestre">Último Trimestre</option>
               <option value="ano">Último Ano</option>
             </select>
-            <Button 
-              onClick={handleGerarRelatorio}
-              disabled={gerando}
-            >
-              {gerando ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileText className="h-4 w-4 mr-2" />}
+            <Button onClick={handleGerarRelatorio} disabled={gerando}>
+              {gerando ? (
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              ) : (
+                <FileText className="h-4 w-4 mr-2" />
+              )}
               Gerar
             </Button>
           </div>

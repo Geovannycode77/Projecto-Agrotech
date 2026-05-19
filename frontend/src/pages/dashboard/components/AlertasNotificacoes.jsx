@@ -1,19 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Bell, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
-import { produtorService } from '@/services/produtorService';
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Bell, AlertTriangle, CheckCircle, XCircle } from "lucide-react";
+import { produtorService } from "@/services/produtorService";
+import { toast } from "@/hooks/use-toast";
 
-export default function AlertasNotificacoes({ alertas: alertasProps, onAtualizar }) {
+export default function AlertasNotificacoes({
+  alertas: alertasProps,
+  onAtualizar,
+}) {
   const [alertas, setAlertas] = useState(alertasProps || []);
   const [loading, setLoading] = useState(false);
   const [preferencias, setPreferencias] = useState({
     alertas_saude: true,
     alertas_estoque: true,
     alertas_relatorios: false,
-    frequencia_saude: 'imediato',
-    frequencia_estoque: 'imediato',
-    frequencia_relatorios: 'mensal'
+    frequencia_saude: "imediato",
+    frequencia_estoque: "imediato",
+    frequencia_relatorios: "mensal",
   });
   const [salvando, setSalvando] = useState(false);
 
@@ -34,24 +38,24 @@ export default function AlertasNotificacoes({ alertas: alertasProps, onAtualizar
       const data = await produtorService.getPreferenciasNotificacoes();
       setPreferencias(data);
     } catch (error) {
-      console.error('Erro ao carregar preferências:', error);
+      console.error("Erro ao carregar preferências:", error);
     }
   };
 
   const getPrioridadeColor = (prioridade) => {
     const colors = {
-      alta: 'bg-red-100 border-red-300 text-red-800',
-      media: 'bg-yellow-100 border-yellow-300 text-yellow-800',
-      baixa: 'bg-blue-100 border-blue-300 text-blue-800'
+      alta: "bg-red-100 border-red-300 text-red-800",
+      media: "bg-yellow-100 border-yellow-300 text-yellow-800",
+      baixa: "bg-blue-100 border-blue-300 text-blue-800",
     };
-    return colors[prioridade] || 'bg-gray-100';
+    return colors[prioridade] || "bg-gray-100";
   };
 
   const getIcone = (tipo) => {
-    switch(tipo) {
-      case 'saude':
+    switch (tipo) {
+      case "saude":
         return <AlertTriangle className="h-5 w-5 text-red-600" />;
-      case 'alimentacao':
+      case "alimentacao":
         return <Bell className="h-5 w-5 text-yellow-600" />;
       default:
         return <Bell className="h-5 w-5 text-blue-600" />;
@@ -62,19 +66,19 @@ export default function AlertasNotificacoes({ alertas: alertasProps, onAtualizar
     try {
       setLoading(true);
       await produtorService.marcarAlertaLido(id);
-      
+
       // Atualizar a lista localmente
-      const alertasAtualizados = alertas.map(alerta => 
-        alerta.id === id ? { ...alerta, lido: true } : alerta
+      const alertasAtualizados = alertas.map((alerta) =>
+        alerta.id === id ? { ...alerta, lido: true } : alerta,
       );
       setAlertas(alertasAtualizados);
-      
+
       // Notificar o componente pai
       if (onAtualizar) {
         onAtualizar();
       }
     } catch (error) {
-      console.error('Erro ao marcar alerta como lido:', error);
+      console.error("Erro ao marcar alerta como lido:", error);
     } finally {
       setLoading(false);
     }
@@ -84,16 +88,23 @@ export default function AlertasNotificacoes({ alertas: alertasProps, onAtualizar
     try {
       setSalvando(true);
       await produtorService.updatePreferenciasNotificacoes(preferencias);
-      alert('Preferências salvas com sucesso!');
+      toast({
+        title: "Sucesso",
+        description: "Preferências salvas com sucesso!",
+      });
     } catch (error) {
-      console.error('Erro ao salvar preferências:', error);
-      alert('Erro ao salvar preferências. Tente novamente.');
+      console.error("Erro ao salvar preferências:", error);
+      toast({
+        title: "Erro",
+        description: "Erro ao salvar preferências. Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setSalvando(false);
     }
   };
 
-  const alertasNaoLidos = alertas.filter(a => !a.lido);
+  const alertasNaoLidos = alertas.filter((a) => !a.lido);
 
   return (
     <div className="space-y-6">
@@ -118,7 +129,9 @@ export default function AlertasNotificacoes({ alertas: alertasProps, onAtualizar
             <div className="text-center py-8">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
               <p className="text-gray-600">Nenhum alerta pendente!</p>
-              <p className="text-sm text-gray-500">Tudo está em ordem com seu rebanho.</p>
+              <p className="text-sm text-gray-500">
+                Tudo está em ordem com seu rebanho.
+              </p>
             </div>
           ) : (
             <div className="space-y-4">
@@ -126,7 +139,7 @@ export default function AlertasNotificacoes({ alertas: alertasProps, onAtualizar
                 <div
                   key={alerta.id}
                   className={`border-l-4 p-4 rounded-r-lg ${getPrioridadeColor(alerta.prioridade)} ${
-                    alerta.lido ? 'opacity-60' : ''
+                    alerta.lido ? "opacity-60" : ""
                   }`}
                 >
                   <div className="flex items-start justify-between">
@@ -135,11 +148,14 @@ export default function AlertasNotificacoes({ alertas: alertasProps, onAtualizar
                       <div>
                         <p className="font-medium">{alerta.mensagem}</p>
                         <p className="text-sm text-gray-600 mt-1">
-                          Prioridade: {alerta.prioridade?.toUpperCase() || 'NORMAL'}
+                          Prioridade:{" "}
+                          {alerta.prioridade?.toUpperCase() || "NORMAL"}
                         </p>
                         {alerta.data_criacao && (
                           <p className="text-xs text-gray-500 mt-1">
-                            {new Date(alerta.data_criacao).toLocaleDateString('pt-BR')}
+                            {new Date(alerta.data_criacao).toLocaleDateString(
+                              "pt-BR",
+                            )}
                           </p>
                         )}
                       </div>
@@ -171,18 +187,28 @@ export default function AlertasNotificacoes({ alertas: alertasProps, onAtualizar
           <div className="space-y-4">
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={preferencias.alertas_saude}
-                  onChange={(e) => setPreferencias({...preferencias, alertas_saude: e.target.checked})}
-                  className="rounded" 
+                  onChange={(e) =>
+                    setPreferencias({
+                      ...preferencias,
+                      alertas_saude: e.target.checked,
+                    })
+                  }
+                  className="rounded"
                 />
                 <span>Alertas de Saúde do Rebanho</span>
               </label>
-              <select 
+              <select
                 className="text-sm border rounded p-1"
                 value={preferencias.frequencia_saude}
-                onChange={(e) => setPreferencias({...preferencias, frequencia_saude: e.target.value})}
+                onChange={(e) =>
+                  setPreferencias({
+                    ...preferencias,
+                    frequencia_saude: e.target.value,
+                  })
+                }
                 disabled={!preferencias.alertas_saude}
               >
                 <option value="imediato">Imediato</option>
@@ -192,18 +218,28 @@ export default function AlertasNotificacoes({ alertas: alertasProps, onAtualizar
             </div>
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={preferencias.alertas_estoque}
-                  onChange={(e) => setPreferencias({...preferencias, alertas_estoque: e.target.checked})}
-                  className="rounded" 
+                  onChange={(e) =>
+                    setPreferencias({
+                      ...preferencias,
+                      alertas_estoque: e.target.checked,
+                    })
+                  }
+                  className="rounded"
                 />
                 <span>Estoque de Ração Baixo</span>
               </label>
-              <select 
+              <select
                 className="text-sm border rounded p-1"
                 value={preferencias.frequencia_estoque}
-                onChange={(e) => setPreferencias({...preferencias, frequencia_estoque: e.target.value})}
+                onChange={(e) =>
+                  setPreferencias({
+                    ...preferencias,
+                    frequencia_estoque: e.target.value,
+                  })
+                }
                 disabled={!preferencias.alertas_estoque}
               >
                 <option value="imediato">Imediato</option>
@@ -213,18 +249,28 @@ export default function AlertasNotificacoes({ alertas: alertasProps, onAtualizar
             </div>
             <div className="flex items-center justify-between">
               <label className="flex items-center gap-2">
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   checked={preferencias.alertas_relatorios}
-                  onChange={(e) => setPreferencias({...preferencias, alertas_relatorios: e.target.checked})}
-                  className="rounded" 
+                  onChange={(e) =>
+                    setPreferencias({
+                      ...preferencias,
+                      alertas_relatorios: e.target.checked,
+                    })
+                  }
+                  className="rounded"
                 />
                 <span>Relatórios de Produção</span>
               </label>
-              <select 
+              <select
                 className="text-sm border rounded p-1"
                 value={preferencias.frequencia_relatorios}
-                onChange={(e) => setPreferencias({...preferencias, frequencia_relatorios: e.target.value})}
+                onChange={(e) =>
+                  setPreferencias({
+                    ...preferencias,
+                    frequencia_relatorios: e.target.value,
+                  })
+                }
                 disabled={!preferencias.alertas_relatorios}
               >
                 <option value="diario">Diário</option>
@@ -233,12 +279,12 @@ export default function AlertasNotificacoes({ alertas: alertasProps, onAtualizar
               </select>
             </div>
           </div>
-          <Button 
-            className="mt-4" 
+          <Button
+            className="mt-4"
             onClick={salvarPreferencias}
             disabled={salvando}
           >
-            {salvando ? 'Salvando...' : 'Salvar Preferências'}
+            {salvando ? "Salvando..." : "Salvar Preferências"}
           </Button>
         </CardContent>
       </Card>

@@ -3,7 +3,8 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     FazendaViewSet, AnimalViewSet, AlimentacaoViewSet,
     FinanceiroViewSet, AlertaViewSet, AtividadeViewSet,
-    RelatorioViewSet, get_produtor_dashboard
+    RelatorioViewSet, get_produtor_dashboard,
+    get_proximas_vacinas, get_alertas_list, marcar_alerta_lido
 )
 
 router = DefaultRouter()
@@ -18,4 +19,9 @@ router.register(r'relatorios', RelatorioViewSet, basename='relatorio')
 urlpatterns = [
     path('', include(router.urls)),
     path('dashboard/', get_produtor_dashboard, name='produtor_dashboard'),
+
+    # Vacinas e Alertas
+    path('vacinas/proximas/', get_proximas_vacinas, name='vacinas-proximas'),
+    path('alertas/list/', get_alertas_list, name='alertas-list'),
+    path('alertas/<int:alerta_id>/marcar-lido/', marcar_alerta_lido, name='marcar-alerta-lido'),
 ]

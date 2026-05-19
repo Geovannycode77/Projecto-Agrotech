@@ -23,7 +23,7 @@ import {
   Settings,
   Loader2
 } from 'lucide-react';
-import { gestorService } from '@/services/gestorService';
+import { gestorService } from '@/services/GestorService';
 import RegistroReceitas from './components/RegistroReceitas';
 import RegistroDespesas from './components/RegistroDespesas';
 import RelatorioFinanceiro from './components/RelatorioFinanceiro';
@@ -58,36 +58,38 @@ function GestorFinanceiroDashboard() {
     carregarDadosDashboard();
   }, []);
 
-  const carregarDadosDashboard = async () => {
-    setLoading(true);
-    try {
-      const data = await gestorService.getDashboard();
-      setDashboardData({
-        receitas_mes: data.receitas_mes || 0,
-        despesas_mes: data.despesas_mes || 0,
-        lucro_mes: data.lucro_mes || 0,
-        receitas_ano: data.receitas_ano || 0,
-        despesas_ano: data.despesas_ano || 0,
-        lucro_ano: data.lucro_ano || 0,
-        margem_lucro: data.margem_lucro || 0,
-        ultimas_vendas: data.ultimas_vendas || 0,
-        ultimas_despesas: data.ultimas_despesas || 0,
-        metas: {
-          receita_meta: data.metas?.receita_meta || 0,
-          despesa_meta: data.metas?.despesa_meta || 0,
-          lucro_meta: data.metas?.lucro_meta || 0
-        }
-      });
-      
-      const atividades = await gestorService.getUltimasAtividades();
-      setUltimasAtividades(atividades.results || atividades);
-      
-    } catch (error) {
-      console.error('Erro ao carregar dashboard:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  // GestorFinanceiroDashboard.jsx - função carregarDadosDashboard
+const carregarDadosDashboard = async () => {
+  setLoading(true);
+  try {
+    const data = await gestorService.getDashboard();
+    setDashboardData({
+      receitas_mes: data.receitas_mes || 0,
+      despesas_mes: data.despesas_mes || 0,
+      lucro_mes: data.lucro_mes || 0,
+      receitas_ano: data.receitas_ano || 0,
+      despesas_ano: data.despesas_ano || 0,
+      lucro_ano: data.lucro_ano || 0,
+      margem_lucro: data.margem_lucro || 0,
+      ultimas_vendas: data.ultimas_vendas || 0,
+      ultimas_despesas: data.ultimas_despesas || 0,
+      metas: {
+        receita_meta: data.metas?.receita_meta || 0,
+        despesa_meta: data.metas?.despesa_meta || 0,
+        lucro_meta: data.metas?.lucro_meta || 0
+      }
+    });
+    
+    // Atividades recentes
+    const atividades = await gestorService.getUltimasAtividades();
+    setUltimasAtividades(atividades.results || atividades);
+    
+  } catch (error) {
+    console.error('Erro ao carregar dashboard:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleLogout = async () => {
     await logout();
@@ -108,7 +110,7 @@ function GestorFinanceiroDashboard() {
       title: 'Receitas do Mês',
       value: `AOA ${dashboardData.receitas_mes.toLocaleString()}`,
       icon: TrendingUp,
-      change: '+12% em relação ao mês anterior',
+      change: '0% em relação ao mês anterior',
       color: 'text-emerald-600',
       bgColor: 'bg-emerald-100'
     },
@@ -116,7 +118,7 @@ function GestorFinanceiroDashboard() {
       title: 'Despesas do Mês',
       value: `AOA ${dashboardData.despesas_mes.toLocaleString()}`,
       icon: TrendingDown,
-      change: '+5% em relação ao mês anterior',
+      change: '0% em relação ao mês anterior',
       color: 'text-red-600',
       bgColor: 'bg-red-100'
     },
@@ -132,7 +134,7 @@ function GestorFinanceiroDashboard() {
       title: 'Margem de Lucro',
       value: `${dashboardData.margem_lucro}%`,
       icon: PieChart,
-      change: '+3% em relação ao mês anterior',
+      change: '0% em relação ao mês anterior',
       color: 'text-amber-600',
       bgColor: 'bg-amber-100'
     }
