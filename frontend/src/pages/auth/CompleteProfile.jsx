@@ -185,7 +185,7 @@ export default function CompleteProfile() {
       return;
     }
     
-    setError('');
+    setErrors('');
     setSuccessMessage('');
     setLoading(true);
 
