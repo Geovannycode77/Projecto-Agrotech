@@ -1,10 +1,11 @@
+// AuthContext.jsx - Versão corrigida
+
 import React, { createContext, useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { authService } from '../services/api';
 
-// Exporta o contexto separadamente
 export const AuthContext = createContext();
 
-// Exporta o Provider como componente
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [perfil, setPerfil] = useState(null);
@@ -17,29 +18,46 @@ export const AuthProvider = ({ children }) => {
 
   const checkAuth = async () => {
     const token = localStorage.getItem('access_token');
-    if (token) {
-      try {
-        const userData = await authService.getCurrentUser();
-        setUser(userData);
-        setIsAuthenticated(true);
-        
-        // Carregar perfil do usuário
-        try {
-          const perfilData = await authService.getProfile();
-          setPerfil(perfilData);
-        } catch (error) {
-          console.error('Erro ao carregar perfil:', error);
-        }
-        
-      } catch (error) {
-        console.error('Erro ao verificar autenticação:', error);
-        localStorage.clear();
-        setUser(null);
-        setPerfil(null);
-        setIsAuthenticated(false);
-      }
+    
+    // Se não tem token, já pode marcar como não autenticado
+    if (!token) {
+      setLoading(false);
+      setIsAuthenticated(false);
+      return;
     }
-    setLoading(false);
+    
+    try {
+      const userData = await authService.getCurrentUser();
+      setUser(userData);
+      setIsAuthenticated(true);
+      
+      // Carregar perfil do usuário
+      try {
+        const perfilData = await authService.getProfile();
+        setPerfil(perfilData);
+      } catch (error) {
+        console.error('Erro ao carregar perfil:', error);
+      }
+      
+    } catch (error) {
+      console.error('Token inválido ou expirado:', error);
+      // Se o token for inválido, limpa tudo
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
+      localStorage.removeItem('user');
+      setUser(null);
+      setPerfil(null);
+      setIsAuthenticated(false);
+      
+      // Redireciona para login (apenas se não estiver já na página de login)
+      if (window.location.pathname !== '/login' && 
+          window.location.pathname !== '/register' &&
+          !window.location.pathname.includes('/confirm-email')) {
+        window.location.href = '/login';
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   const login = async (email, password) => {
@@ -48,7 +66,6 @@ export const AuthProvider = ({ children }) => {
       setUser(data.user);
       setIsAuthenticated(true);
       
-      // Carregar perfil após login
       try {
         const perfilData = await authService.getProfile();
         setPerfil(perfilData);
@@ -86,7 +103,6 @@ export const AuthProvider = ({ children }) => {
         setUser(response.user);
         setIsAuthenticated(true);
         
-        // Carregar perfil após login Google
         try {
           const perfilData = await authService.getProfile();
           setPerfil(perfilData);
@@ -136,7 +152,6 @@ export const AuthProvider = ({ children }) => {
       const data = await authService.register(userData);
       return { success: true, message: data.message };
     } catch (error) {
-
       const errors = error.response?.data;
       let errorMsg = errors?.error || errors?.detail || 
         (errors?.non_field_errors ? errors.non_field_errors[0] : null) || 
@@ -145,7 +160,8 @@ export const AuthProvider = ({ children }) => {
       console.error('Register error details:', errors);
       return { 
         success: false, 
-        error: error.response?.data?.error || 'Erro ao registrar' 
+        error: errorMsg,
+        errors: errors
       };
     }
   };
@@ -178,7 +194,6 @@ export const AuthProvider = ({ children }) => {
           setUser(response.user);
           setIsAuthenticated(true);
           
-          // Carregar perfil após confirmação de email
           try {
             const perfilData = await authService.getProfile();
             setPerfil(perfilData);
@@ -231,6 +246,8 @@ export const AuthProvider = ({ children }) => {
     setUser(null);
     setPerfil(null);
     setIsAuthenticated(false);
+    // Redirecionar para login
+    window.location.href = '/login';
   };
 
   const value = {

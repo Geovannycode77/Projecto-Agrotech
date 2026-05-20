@@ -4,7 +4,8 @@ from .views import (
     FazendaViewSet, AnimalViewSet, AlimentacaoViewSet,
     FinanceiroViewSet, AlertaViewSet, AtividadeViewSet,
     RelatorioViewSet, get_produtor_dashboard,
-    get_proximas_vacinas, get_alertas_list, marcar_alerta_lido
+    get_proximas_vacinas, get_alertas_list, marcar_alerta_lido,
+    get_indicadores_producao, get_relatorios_disponiveis
 )
 
 router = DefaultRouter()
@@ -24,4 +25,8 @@ urlpatterns = [
     path('vacinas/proximas/', get_proximas_vacinas, name='vacinas-proximas'),
     path('alertas/list/', get_alertas_list, name='alertas-list'),
     path('alertas/<int:alerta_id>/marcar-lido/', marcar_alerta_lido, name='marcar-alerta-lido'),
+
+    # Indicadores e Relatórios
+    path('relatorios/indicadores/', get_indicadores_producao, name='indicadores-producao'),
+    path('relatorios/disponiveis/', get_relatorios_disponiveis, name='relatorios-disponiveis'),
 ]

@@ -97,7 +97,8 @@ function ProdutorDashboard() {
       });
       
       // Relatório de produção
-      const relatorioData = await produtorService.gerarRelatorio();
+      // Em vez de gerarRelatorio, use getRelatoriosProducao
+      const relatorioData = await produtorService.getRelatoriosProducao({ periodo: 'ultimo_mes' });
       setRelatorioProducao({
         nascimentos: relatorioData.nascimentos || 0,
         mortes: relatorioData.mortes || 0,

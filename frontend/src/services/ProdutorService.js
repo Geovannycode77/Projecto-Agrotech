@@ -83,10 +83,28 @@ export const produtorService = {
     return response.data;
   },
 
+  getConsumoDiario: async () => {
+    try {
+      const response = await api.get("produtor/alimentacao/consumo_diario/");
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar consumo diário:", error);
+      // Retornar dados mockados em caso de erro
+      return {
+        total: 0,
+        por_animal: 0,
+        sacos_por_dia: 0,
+        custo_diario: 0,
+        custo_mensal: 0
+      };
+    }
+  },
+
   getConsumoMensal: async () => {
     const response = await api.get("produtor/alimentacao/consumo_mensal/");
     return response.data;
   },
+
 
   // Financeiro
   getTransacoes: async (params = {}) => {
@@ -115,6 +133,23 @@ export const produtorService = {
   gerarRelatorio: async () => {
     const response = await api.post("produtor/relatorios/gerar/");
     return response.data;
+  },
+
+  downloadRelatorio: async (id) => {
+    const response = await api.get(`produtor/relatorios/${id}/download/`, {
+      responseType: "blob",
+    });
+    return response.data;
+  },
+
+  getIndicadoresProducao: async () => {
+    const response = await api.get("produtor/relatorios/indicadores/");
+    return response.data;
+  },
+
+  getRelatoriosDisponiveis: async () => {
+  const response = await api.get("produtor/relatorios/disponiveis/");
+  return response.data;
   },
 
   // Alertas

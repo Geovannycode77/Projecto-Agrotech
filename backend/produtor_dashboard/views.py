@@ -398,8 +398,14 @@ class RelatorioViewSet(viewsets.ModelViewSet):
         if self.request.user.role == 'produtor':
             return RelatorioProducao.objects.filter(fazenda__produtor=self.request.user)
         return RelatorioProducao.objects.all()
+
+         # GET /relatorios/ - para listar relatórios existentes
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset().order_by('-created_at')[:10]
+        serializer = self.get_serializer(queryset, many=True)
+        return Response(serializer.data)
     
-    @action(detail=False, methods=['get'])
+    @action(detail=False, methods=['get', "post"])
     def gerar(self, request):
         """Gerar relatório de produção - compatível com frontend"""
         try:
@@ -669,4 +675,98 @@ def marcar_alerta_lido(request, alerta_id):
     except Alerta.DoesNotExist:
         return Response({'error': 'Alerta não encontrado', 'success': False}, status=status.HTTP_404_NOT_FOUND)
 
+@api_view(['GET'])
+@permission_classes([IsProdutorOrAdmin])
+def get_indicadores_producao(request):
+    """Retorna indicadores de produção para o dashboard"""
+    try:
+        fazenda = Fazenda.objects.get(produtor=request.user)
         
+        hoje = timezone.now().date()
+        mes_anterior = hoje - timedelta(days=30)
+        mes_retrasado = hoje - timedelta(days=60)
+        
+        # Dados do mês atual
+        animais_mes = Animal.objects.filter(
+            fazenda=fazenda,
+            created_at__gte=mes_anterior
+        ).count()
+        
+        mortes_mes = Animal.objects.filter(
+            fazenda=fazenda,
+            status='morto',
+            updated_at__gte=mes_anterior
+        ).count()
+        
+        # Dados do mês anterior
+        animais_mes_anterior = Animal.objects.filter(
+            fazenda=fazenda,
+            created_at__gte=mes_retrasado,
+            created_at__lt=mes_anterior
+        ).count()
+        
+        mortes_mes_anterior = Animal.objects.filter(
+            fazenda=fazenda,
+            status='morto',
+            updated_at__gte=mes_retrasado,
+            updated_at__lt=mes_anterior
+        ).count()
+        
+        total_animais = Animal.objects.filter(fazenda=fazenda).count()
+        peso_medio = Animal.objects.filter(fazenda=fazenda, status='ativo').aggregate(
+            media=Avg('peso_atual')
+        )['media'] or 0
+        
+        # Calcular variações
+        variacao_natalidade = 0
+        if animais_mes_anterior > 0:
+            variacao_natalidade = ((animais_mes - animais_mes_anterior) / animais_mes_anterior) * 100
+        
+        variacao_mortalidade = 0
+        if mortes_mes_anterior > 0:
+            variacao_mortalidade = ((mortes_mes - mortes_mes_anterior) / mortes_mes_anterior) * 100
+        
+        return Response({
+            'taxa_natalidade': round((animais_mes / total_animais * 100) if total_animais > 0 else 0, 2),
+            'taxa_mortalidade': round((mortes_mes / total_animais * 100) if total_animais > 0 else 0, 2),
+            'peso_medio': round(peso_medio, 2),
+            'producao_mensal': animais_mes,
+            'variacao_natalidade': round(variacao_natalidade, 2),
+            'variacao_mortalidade': round(variacao_mortalidade, 2),
+            'variacao_peso': 0,
+            'variacao_producao': round(variacao_natalidade, 2),
+        })
+        
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+@api_view(['GET'])
+@permission_classes([IsProdutorOrAdmin])
+def get_relatorios_disponiveis(request):
+    """Retorna lista de relatórios disponíveis"""
+    try:
+        fazenda = Fazenda.objects.get(produtor=request.user)
+        
+        relatorios = RelatorioProducao.objects.filter(
+            fazenda=fazenda
+        ).order_by('-created_at')
+        
+        resultados = []
+        for relatorio in relatorios:
+            resultados.append({
+                'id': relatorio.id,
+                'nome': f"Relatório {relatorio.get_periodo_display()} - {relatorio.created_at.strftime('%d/%m/%Y')}",
+                'periodo': relatorio.periodo,
+                'data': relatorio.created_at.strftime('%Y-%m-%d'),
+                'tamanho': '1.2 MB',
+                'tipo': 'pdf'
+            })
+        
+        return Response({
+            'results': resultados,
+            'count': len(resultados)
+        })
+        
+    except Exception as e:
+        return Response({'results': [], 'count': 0}, status=status.HTTP_200_OK)
