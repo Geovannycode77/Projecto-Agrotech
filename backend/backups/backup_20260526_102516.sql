@@ -1,0 +1,1 @@
+Backup criado em 20260526_102516

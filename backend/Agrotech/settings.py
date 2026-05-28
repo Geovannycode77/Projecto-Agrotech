@@ -21,6 +21,12 @@ DEBUG = os.getenv('DEBUG', 'True') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Durante testes automatizados Django usa o host 'testserver'. Garantir que
+# esteja presente em `ALLOWED_HOSTS` quando em DEBUG para evitar DisallowedHost.
+if DEBUG:
+    if 'testserver' not in ALLOWED_HOSTS:
+        ALLOWED_HOSTS.append('testserver')
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
