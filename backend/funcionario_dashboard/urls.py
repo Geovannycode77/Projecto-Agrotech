@@ -5,8 +5,9 @@ from .views import (
     FuncionarioViewSet, TarefaViewSet, RegistroAlimentacaoViewSet,
     OcorrenciaViewSet, AtualizacaoAnimalViewSet, NascimentoViewSet,
     get_funcionario_dashboard, get_funcionario_profile,
-    get_funcionario_animais, get_funcionario_tipos_racao
+    get_funcionario_tipos_racao
 )
+
 
 router = DefaultRouter()
 router.register(r'funcionarios', FuncionarioViewSet, basename='funcionario')
