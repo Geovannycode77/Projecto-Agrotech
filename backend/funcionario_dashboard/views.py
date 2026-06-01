@@ -1,13 +1,18 @@
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+
 from rest_framework.permissions import IsAuthenticated
+from django.core.exceptions import ValidationError
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from datetime import timedelta, date
 from django_filters.rest_framework import DjangoFilterBackend
-from login_cadastro.models import CustomUser
+from login_cadastro.models import CustomUser, Perfil
 from produtor_dashboard.models import Fazenda, Animal
+from produtor_dashboard.serializers import AnimalSerializer
 from .models import (
     Funcionario, Tarefa, RegistroAlimentacaoFuncionario,
     Ocorrencia, AtualizacaoAnimal, Nascimento
@@ -17,6 +22,25 @@ from .serializers import (
     OcorrenciaSerializer, AtualizacaoAnimalSerializer, NascimentoSerializer,
     DashboardFuncionarioSerializer
 )
+
+
+@login_required
+def get_funcionario_profile(request):
+    """Retorna o perfil do funcionário em formato JSON"""
+    try:
+        funcionario = Funcionario.objects.get(user=request.user)
+        return JsonResponse({
+            'id': funcionario.id,
+            'nome': funcionario.user.username if hasattr(funcionario, 'user') else '',
+            'email': funcionario.user.email if hasattr(funcionario, 'user') else '',
+        })
+    except Funcionario.DoesNotExist:
+        return JsonResponse({
+            'id': request.user.id,
+            'nome': request.user.username,
+            'email': request.user.email,
+        })
+
 
 class IsFuncionarioOrAdmin(IsAuthenticated):
     """Permissão para funcionários e administradores"""
@@ -217,9 +241,12 @@ class NascimentoViewSet(viewsets.ModelViewSet):
             fazenda = Fazenda.objects.get(produtor=self.request.user)
             serializer.save(fazenda=fazenda)
 
+
+
 @api_view(['GET'])
 @permission_classes([IsFuncionarioOrAdmin])
 def get_funcionario_dashboard(request):
+
     """Dados completos do dashboard do funcionário"""
     user = request.user
     

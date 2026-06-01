@@ -2,11 +2,13 @@ from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.exceptions import NotFound
+from django.core.exceptions import ValidationError
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from datetime import timedelta, date
 from django_filters.rest_framework import DjangoFilterBackend
-from login_cadastro.models import CustomUser
+from login_cadastro.models import CustomUser, Perfil
 from produtor_dashboard.models import Fazenda
 from .models import (
     GestorFinanceiro, Receita, Despesa, 
@@ -17,6 +19,26 @@ from .serializers import (
     MetaFinanceiraSerializer, AtividadeFinanceiraSerializer, 
     RelatorioFinanceiroSerializer
 )
+
+
+def get_or_create_gestor_financeiro(user):
+    gestor = GestorFinanceiro.objects.filter(user=user).first()
+    if gestor:
+        return gestor
+    if user.role != 'gestor_financeiro':
+        raise GestorFinanceiro.DoesNotExist
+
+    fazenda = Fazenda.objects.filter(gestores_financeiros__isnull=True).first()
+    if fazenda:
+        return GestorFinanceiro.objects.create(user=user, fazenda=fazenda)
+    raise GestorFinanceiro.DoesNotExist
+
+
+def get_gestor_financeiro_fazenda(user):
+    if user.role == 'gestor_financeiro':
+        gestor = get_or_create_gestor_financeiro(user)
+        return gestor.fazenda
+    return Fazenda.objects.filter(produtor=user).first()
 
 class IsGestorFinanceiroOrAdmin(IsAuthenticated):
     """Permissão para gestores financeiros e administradores"""
@@ -50,18 +72,17 @@ class ReceitaViewSet(viewsets.ModelViewSet):
     ordering = ['-data']
     
     def get_queryset(self):
-        if self.request.user.role == 'gestor_financeiro':
-            gestor = GestorFinanceiro.objects.get(user=self.request.user)
-            return Receita.objects.filter(fazenda=gestor.fazenda)
-        elif self.request.user.role == 'produtor':
-            fazenda = Fazenda.objects.get(produtor=self.request.user)
-            return Receita.objects.filter(fazenda=fazenda)
+        if self.request.user.role in ['gestor_financeiro', 'produtor']:
+            fazenda = get_gestor_financeiro_fazenda(self.request.user)
+            return Receita.objects.filter(fazenda=fazenda) if fazenda else Receita.objects.none()
         return Receita.objects.all()
     
     def perform_create(self, serializer):
-        if self.request.user.role == 'gestor_financeiro':
-            gestor = GestorFinanceiro.objects.get(user=self.request.user)
-            receita = serializer.save(fazenda=gestor.fazenda, gestor=self.request.user)
+        if self.request.user.role in ['gestor_financeiro', 'produtor']:
+            fazenda = get_gestor_financeiro_fazenda(self.request.user)
+            if not fazenda:
+                raise NotFound('Fazenda não encontrada para o gestor financeiro.')
+            receita = serializer.save(fazenda=fazenda, gestor=self.request.user)
         else:
             fazenda = Fazenda.objects.get(produtor=self.request.user)
             receita = serializer.save(fazenda=fazenda)
@@ -85,18 +106,17 @@ class DespesaViewSet(viewsets.ModelViewSet):
     ordering = ['-data']
     
     def get_queryset(self):
-        if self.request.user.role == 'gestor_financeiro':
-            gestor = GestorFinanceiro.objects.get(user=self.request.user)
-            return Despesa.objects.filter(fazenda=gestor.fazenda)
-        elif self.request.user.role == 'produtor':
-            fazenda = Fazenda.objects.get(produtor=self.request.user)
-            return Despesa.objects.filter(fazenda=fazenda)
+        if self.request.user.role in ['gestor_financeiro', 'produtor']:
+            fazenda = get_gestor_financeiro_fazenda(self.request.user)
+            return Despesa.objects.filter(fazenda=fazenda) if fazenda else Despesa.objects.none()
         return Despesa.objects.all()
     
     def perform_create(self, serializer):
-        if self.request.user.role == 'gestor_financeiro':
-            gestor = GestorFinanceiro.objects.get(user=self.request.user)
-            despesa = serializer.save(fazenda=gestor.fazenda, gestor=self.request.user)
+        if self.request.user.role in ['gestor_financeiro', 'produtor']:
+            fazenda = get_gestor_financeiro_fazenda(self.request.user)
+            if not fazenda:
+                raise NotFound('Fazenda não encontrada para o gestor financeiro.')
+            despesa = serializer.save(fazenda=fazenda, gestor=self.request.user)
         else:
             fazenda = Fazenda.objects.get(produtor=self.request.user)
             despesa = serializer.save(fazenda=fazenda)
@@ -117,18 +137,17 @@ class MetaFinanceiraViewSet(viewsets.ModelViewSet):
     filterset_fields = ['tipo', 'periodo', 'ano']
     
     def get_queryset(self):
-        if self.request.user.role == 'gestor_financeiro':
-            gestor = GestorFinanceiro.objects.get(user=self.request.user)
-            return MetaFinanceira.objects.filter(fazenda=gestor.fazenda)
-        elif self.request.user.role == 'produtor':
-            fazenda = Fazenda.objects.get(produtor=self.request.user)
-            return MetaFinanceira.objects.filter(fazenda=fazenda)
+        if self.request.user.role in ['gestor_financeiro', 'produtor']:
+            fazenda = get_gestor_financeiro_fazenda(self.request.user)
+            return MetaFinanceira.objects.filter(fazenda=fazenda) if fazenda else MetaFinanceira.objects.none()
         return MetaFinanceira.objects.all()
     
     def perform_create(self, serializer):
-        if self.request.user.role == 'gestor_financeiro':
-            gestor = GestorFinanceiro.objects.get(user=self.request.user)
-            serializer.save(fazenda=gestor.fazenda)
+        if self.request.user.role in ['gestor_financeiro', 'produtor']:
+            fazenda = get_gestor_financeiro_fazenda(self.request.user)
+            if not fazenda:
+                raise NotFound('Fazenda não encontrada para o gestor financeiro.')
+            serializer.save(fazenda=fazenda)
         else:
             fazenda = Fazenda.objects.get(produtor=self.request.user)
             serializer.save(fazenda=fazenda)
@@ -140,8 +159,10 @@ class AtividadeFinanceiraViewSet(viewsets.ReadOnlyModelViewSet):
     
     def get_queryset(self):
         if self.request.user.role == 'gestor_financeiro':
-            gestor = GestorFinanceiro.objects.get(user=self.request.user)
-            return AtividadeFinanceira.objects.filter(fazenda=gestor.fazenda)[:50]
+            gestor = GestorFinanceiro.objects.filter(user=self.request.user).first()
+            if gestor:
+                return AtividadeFinanceira.objects.filter(fazenda=gestor.fazenda)[:50]
+            return AtividadeFinanceira.objects.none()
         elif self.request.user.role == 'produtor':
             fazenda = Fazenda.objects.get(produtor=self.request.user)
             return AtividadeFinanceira.objects.filter(fazenda=fazenda)[:50]
@@ -153,8 +174,10 @@ class RelatorioFinanceiroViewSet(viewsets.ModelViewSet):
     
     def get_queryset(self):
         if self.request.user.role == 'gestor_financeiro':
-            gestor = GestorFinanceiro.objects.get(user=self.request.user)
-            return RelatorioFinanceiro.objects.filter(fazenda=gestor.fazenda)
+            gestor = GestorFinanceiro.objects.filter(user=self.request.user).first()
+            if gestor:
+                return RelatorioFinanceiro.objects.filter(fazenda=gestor.fazenda)
+            return RelatorioFinanceiro.objects.none()
         elif self.request.user.role == 'produtor':
             fazenda = Fazenda.objects.get(produtor=self.request.user)
             return RelatorioFinanceiro.objects.filter(fazenda=fazenda)
@@ -163,8 +186,9 @@ class RelatorioFinanceiroViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['get'])
     def gerar(self, request):
         if self.request.user.role == 'gestor_financeiro':
-            gestor = GestorFinanceiro.objects.get(user=self.request.user)
-            fazenda = gestor.fazenda
+            fazenda = get_gestor_financeiro_fazenda(self.request.user)
+            if not fazenda:
+                raise NotFound('Gestor financeiro não vinculado a uma fazenda.')
         else:
             fazenda = Fazenda.objects.get(produtor=self.request.user)
         
@@ -234,7 +258,7 @@ def get_gestor_financeiro_dashboard(request):
     
     try:
         if user.role == 'gestor_financeiro':
-            gestor = GestorFinanceiro.objects.get(user=user)
+            gestor = get_or_create_gestor_financeiro(user)
             fazenda = gestor.fazenda
         else:
             fazenda = Fazenda.objects.get(produtor=user)
@@ -285,4 +309,197 @@ def get_gestor_financeiro_dashboard(request):
         'ultimas_vendas': ultimas_vendas,
         'ultimas_despesas': ultimas_despesas_count,
         'metas': metas,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsGestorFinanceiroOrAdmin])
+def get_gestor_financeiro_analysis(request):
+    user = request.user
+    try:
+        if user.role == 'gestor_financeiro':
+            gestor = get_or_create_gestor_financeiro(user)
+            fazenda = gestor.fazenda
+        else:
+            fazenda = Fazenda.objects.get(produtor=user)
+    except (GestorFinanceiro.DoesNotExist, Fazenda.DoesNotExist):
+        return Response({
+            'error': 'Gestor não vinculado a uma fazenda'
+        }, status=status.HTTP_404_NOT_FOUND)
+
+    periodo = request.query_params.get('periodo', '6meses')
+    hoje = timezone.now().date()
+    primeiro_dia_mes = date(hoje.year, hoje.month, 1)
+
+    if periodo == '12meses':
+        meses = 12
+        inicio = date(hoje.year, hoje.month, 1)
+        total_months = inicio.year * 12 + inicio.month - 1 - (meses - 1)
+        inicio = date(total_months // 12, total_months % 12 + 1, 1)
+    elif periodo == 'ano':
+        inicio = date(hoje.year, 1, 1)
+    else:
+        meses = 6
+        inicio = date(hoje.year, hoje.month, 1)
+        total_months = inicio.year * 12 + inicio.month - 1 - (meses - 1)
+        inicio = date(total_months // 12, total_months % 12 + 1, 1)
+
+    current = inicio
+    meses_data = []
+    while current <= primeiro_dia_mes:
+        receitas = Receita.objects.filter(
+            fazenda=fazenda,
+            data__year=current.year,
+            data__month=current.month,
+        ).aggregate(total=Sum('valor'))['total'] or 0
+        despesas = Despesa.objects.filter(
+            fazenda=fazenda,
+            data__year=current.year,
+            data__month=current.month,
+        ).aggregate(total=Sum('valor'))['total'] or 0
+        lucro = receitas - despesas
+        meses_data.append({
+            'mes': current.strftime('%b/%Y'),
+            'receita': float(receitas),
+            'despesa': float(despesas),
+            'lucro': float(lucro),
+        })
+
+        next_month = current.month + 1
+        next_year = current.year
+        if next_month > 12:
+            next_month = 1
+            next_year += 1
+        current = date(next_year, next_month, 1)
+
+    def calc_percentual(atual, anterior):
+        if anterior == 0:
+            return '0%'
+        return f"{round(((atual - anterior) / abs(anterior)) * 100, 1)}%"
+
+    tendencia = {
+        'receita': '0%',
+        'despesa': '0%',
+        'lucro': '0%',
+    }
+    if len(meses_data) >= 2:
+        atual = meses_data[-1]
+        anterior = meses_data[-2]
+        tendencia = {
+            'receita': calc_percentual(atual['receita'], anterior['receita']),
+            'despesa': calc_percentual(atual['despesa'], anterior['despesa']),
+            'lucro': calc_percentual(atual['lucro'], anterior['lucro']),
+        }
+
+    total_lucro = sum(item['lucro'] for item in meses_data)
+    meses_count = len(meses_data) if len(meses_data) > 0 else 1
+    media_mensal = total_lucro / meses_count
+
+    projecao = {
+        'proximo_mes': round(media_mensal, 2),
+        'trimestre': round(media_mensal * 3, 2),
+        'ano': round(media_mensal * 12, 2),
+    }
+
+    return Response({
+        'lucro_mensal': meses_data,
+        'tendencia': tendencia,
+        'projecao': projecao,
+    })
+
+
+@api_view(['GET', 'PUT', 'PATCH'])
+@permission_classes([IsGestorFinanceiroOrAdmin])
+def get_gestor_financeiro_profile(request):
+    user = request.user
+
+    try:
+        gestor = get_or_create_gestor_financeiro(user)
+    except GestorFinanceiro.DoesNotExist:
+        return Response({'error': 'Perfil do gestor não encontrado.'}, status=status.HTTP_404_NOT_FOUND)
+
+    perfil = getattr(user, 'perfil', None)
+    if request.method == 'GET':
+        return Response({
+            'nome': perfil.nome_completo if perfil and perfil.nome_completo else user.username,
+            'email': user.email,
+            'telefone': str(perfil.telefone) if perfil and perfil.telefone else '',
+            'cargo': 'Gestor Financeiro',
+            'data_admissao': gestor.created_at.date().isoformat() if gestor.created_at else '',
+            'departamento': gestor.departamento or (perfil.area_atuacao if perfil else 'Financeiro'),
+            'id_gestor': f"G{user.id}",
+            'area_atuacao': perfil.area_atuacao if perfil else '',
+            'fazenda': gestor.fazenda.nome if gestor.fazenda else '',
+        })
+
+    data = request.data
+    if perfil is None:
+        perfil = Perfil.objects.create(
+            user=user,
+            nome_completo=user.username or user.email.split('@')[0],
+        )
+
+    if 'nome' in data:
+        perfil.nome_completo = data.get('nome')
+    if 'telefone' in data:
+        perfil.telefone = data.get('telefone') or None
+    if 'departamento' in data:
+        gestor.departamento = data.get('departamento')
+    if 'area_atuacao' in data:
+        perfil.area_atuacao = data.get('area_atuacao')
+    if 'email' in data:
+        user.email = data.get('email')
+
+    try:
+        perfil.save()
+        gestor.save()
+        user.full_clean()
+        user.save()
+    except ValidationError as e:
+        return Response(
+            {'errors': e.message_dict if hasattr(e, 'message_dict') else e.messages},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except Exception as e:
+        return Response(
+            {'error': str(e)},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    return Response({
+        'nome': perfil.nome_completo if perfil.nome_completo else user.username,
+        'email': user.email,
+        'telefone': str(perfil.telefone) if perfil.telefone else '',
+        'cargo': 'Gestor Financeiro',
+        'data_admissao': gestor.created_at.date().isoformat() if gestor.created_at else '',
+        'departamento': gestor.departamento or (perfil.area_atuacao if perfil else 'Financeiro'),
+        'id_gestor': f"G{user.id}",
+        'area_atuacao': perfil.area_atuacao if perfil else '',
+        'fazenda': gestor.fazenda.nome if gestor.fazenda else '',
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsGestorFinanceiroOrAdmin])
+def get_gestor_financeiro_statistics(request):
+    user = request.user
+    try:
+        if user.role == 'gestor_financeiro':
+            gestor = get_or_create_gestor_financeiro(user)
+            fazenda = gestor.fazenda
+        else:
+            fazenda = Fazenda.objects.get(produtor=user)
+    except (GestorFinanceiro.DoesNotExist, Fazenda.DoesNotExist):
+        return Response({'error': 'Fazenda não encontrada.'}, status=status.HTTP_404_NOT_FOUND)
+
+    total_receitas = Receita.objects.filter(fazenda=fazenda).aggregate(total=Sum('valor'))['total'] or 0
+    total_despesas = Despesa.objects.filter(fazenda=fazenda).aggregate(total=Sum('valor'))['total'] or 0
+    total_gerenciado = float(total_receitas + total_despesas)
+    margem = float((total_receitas - total_despesas) / total_receitas * 100) if total_receitas > 0 else 0
+    projetos_aprovados = RelatorioFinanceiro.objects.filter(fazenda=fazenda).count()
+
+    return Response({
+        'total_gerenciado': total_gerenciado,
+        'economia_gerada': round(margem, 2),
+        'projetos_aprovados': projetos_aprovados,
     })

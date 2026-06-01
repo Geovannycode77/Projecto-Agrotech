@@ -51,7 +51,22 @@ export const funcionarioService = {
   },
 
   registrarAlimentacao: async (data) => {
-    const response = await api.post("funcionario/alimentacao/", data);
+    const horarioMap = {
+      manha: '07:00:00',
+      tarde: '15:00:00',
+      noite: '19:00:00',
+    };
+    const dataHora = data.data_hora || `${new Date().toISOString().split('T')[0]}T${horarioMap[data.horario] || '12:00:00'}`;
+
+    const payload = {
+      animal: data.animal || data.animal_id,
+      tipo_racao: data.tipo_racao || data.tipo_racao_id,
+      quantidade_kg: data.quantidade_kg ?? data.quantidade,
+      data_hora: dataHora,
+      observacoes: data.observacoes,
+    };
+
+    const response = await api.post("funcionario/alimentacao/", payload);
     return response.data;
   },
 
@@ -97,12 +112,17 @@ export const funcionarioService = {
 
   // Perfil
   getPerfil: async () => {
-    const response = await api.get("funcionario/funcionarios/");
+    const response = await api.get("funcionario/perfil/");
     return response.data;
   },
 
   atualizarPerfil: async (data) => {
-    const response = await api.put("funcionario/funcionarios/", data);
+    const response = await api.put("funcionario/perfil/", data);
+    return response.data;
+  },
+
+  getAnimais: async (params = {}) => {
+    const response = await api.get("funcionario/animais/", { params });
     return response.data;
   },
 

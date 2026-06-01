@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PieChart, TrendingUp, TrendingDown, Wallet, Calendar, ArrowUp, ArrowDown, Loader2 } from 'lucide-react';
-import { gestorService } from '@/services/gestorService';
+import { gestorService } from '@/services/GestorService';
 
 export default function AnaliseLucros() {
   const [periodo, setPeriodo] = useState('6meses');

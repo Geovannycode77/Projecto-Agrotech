@@ -4,7 +4,8 @@ from . import views
 from .views import (
     FuncionarioViewSet, TarefaViewSet, RegistroAlimentacaoViewSet,
     OcorrenciaViewSet, AtualizacaoAnimalViewSet, NascimentoViewSet,
-    get_funcionario_dashboard
+    get_funcionario_dashboard, get_funcionario_profile,
+    get_funcionario_animais, get_funcionario_tipos_racao
 )
 
 router = DefaultRouter()
@@ -18,4 +19,7 @@ router.register(r'nascimentos', NascimentoViewSet, basename='nascimento')
 urlpatterns = [
     path('', include(router.urls)),
     path('dashboard/', get_funcionario_dashboard, name='funcionario_dashboard'),
+    path('perfil/', get_funcionario_profile, name='funcionario_profile'),
+    path('animais/', get_funcionario_animais, name='funcionario_animais'),
+    path('alimentacao/tipos/', get_funcionario_tipos_racao, name='funcionario_alimentacao_tipos'),
 ]

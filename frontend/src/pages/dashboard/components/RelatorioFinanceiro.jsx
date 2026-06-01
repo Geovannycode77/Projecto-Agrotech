@@ -10,7 +10,7 @@ import {
   Wallet,
   Loader2,
 } from "lucide-react";
-import { gestorService } from "@/services/gestorService";
+import { gestorService } from "@/services/GestorService";
 import { toast } from "@/hooks/use-toast";
 
 export default function RelatorioFinanceiro() {
@@ -46,10 +46,10 @@ export default function RelatorioFinanceiro() {
         receitas_por_categoria: data.receitas_por_categoria || [],
         despesas_por_categoria: data.despesas_por_categoria || [],
         indicadores: {
-          margem_lucro: data.margem_lucro || 0,
-          roi: data.roi || 0,
-          custo_operacional: data.custo_operacional || 0,
-          ticket_medio: data.ticket_medio || 0,
+          margem_lucro: data.indicadores?.margem_lucro || 0,
+          roi: data.indicadores?.roi || 0,
+          custo_operacional: data.indicadores?.custo_operacional || 0,
+          ticket_medio: data.indicadores?.ticket_medio || 0,
         },
       });
     } catch (error) {
@@ -62,20 +62,12 @@ export default function RelatorioFinanceiro() {
   const handleExportar = async () => {
     setExportando(true);
     try {
-      const blob = await gestorService.exportarRelatorio(periodo);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `relatorio_financeiro_${periodo}_${new Date().toISOString().split("T")[0]}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      await gestorService.exportarRelatorio(periodo);
     } catch (error) {
       console.error("Erro ao exportar relatório:", error);
       toast({
-        title: "Erro",
-        description: "Erro ao exportar relatório. Tente novamente.",
+        title: "Funcionalidade não disponível",
+        description: "A exportação de relatórios ainda não está implementada no backend.",
         variant: "destructive",
       });
     } finally {
@@ -124,15 +116,11 @@ export default function RelatorioFinanceiro() {
           <Button
             variant="outline"
             className="gap-2"
-            onClick={handleExportar}
-            disabled={exportando}
+            disabled
+            title="Exportação disponível em breve"
           >
-            {exportando ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Download className="h-4 w-4" />
-            )}
-            Exportar
+            <Download className="h-4 w-4" />
+            Exportar (em breve)
           </Button>
         </div>
       </CardHeader>

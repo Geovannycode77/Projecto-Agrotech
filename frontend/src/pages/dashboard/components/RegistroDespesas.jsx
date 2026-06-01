@@ -17,8 +17,9 @@ import {
   Search,
   Filter,
   Loader2,
+  Calendar,
 } from "lucide-react";
-import { gestorService } from "@/services/gestorService";
+import { gestorService } from "@/services/GestorService";
 import { toast } from "@/hooks/use-toast";
 
 export default function RegistroDespesas() {
@@ -40,37 +41,37 @@ export default function RegistroDespesas() {
 
   const categorias = [
     {
-      value: "Ração",
+      value: "racao",
       label: "Ração",
       icon: Utensils,
       cor: "bg-emerald-100 text-emerald-800",
     },
     {
-      value: "Veterinário",
+      value: "veterinario",
       label: "Veterinário",
       icon: Syringe,
       cor: "bg-blue-100 text-blue-800",
     },
     {
-      value: "Medicamentos",
+      value: "medicamentos",
       label: "Medicamentos",
       icon: Package,
       cor: "bg-purple-100 text-purple-800",
     },
     {
-      value: "Transporte",
+      value: "transporte",
       label: "Transporte",
       icon: Truck,
       cor: "bg-orange-100 text-orange-800",
     },
     {
-      value: "Manutenção",
+      value: "manutencao",
       label: "Manutenção",
       icon: Wrench,
       cor: "bg-yellow-100 text-yellow-800",
     },
     {
-      value: "Outros",
+      value: "outros",
       label: "Outros",
       icon: DollarSign,
       cor: "bg-gray-100 text-gray-800",
@@ -81,15 +82,15 @@ export default function RegistroDespesas() {
     carregarDespesas();
   }, []);
 
-  const carregarDespesas = async () => {
-    setLoading(true);
+  const carregarDespesas = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const data = await gestorService.getDespesas();
       setDespesas(data.results || data);
     } catch (error) {
       console.error("Erro ao carregar despesas:", error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -103,7 +104,7 @@ export default function RegistroDespesas() {
         valor: parseFloat(formData.valor),
       });
 
-      setDespesas([novaDespesa, ...despesas]);
+      await carregarDespesas(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       setFormData({
@@ -438,8 +439,8 @@ export default function RegistroDespesas() {
                           {new Date(despesa.data).toLocaleDateString("pt-BR")}
                         </td>
                         <td className="px-4 py-3">
-                          <Badge className={categoria?.cor}>
-                            {despesa.categoria}
+                          <Badge className={categoria?.cor || 'bg-gray-100 text-gray-800'}>
+                            {categoria?.label || despesa.categoria_display || despesa.categoria}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">{despesa.descricao}</td>
@@ -461,20 +462,3 @@ export default function RegistroDespesas() {
     </div>
   );
 }
-
-// Componente Calendar para o card de estatísticas
-const Calendar = ({ className }) => (
-  <svg
-    className={className}
-    fill="none"
-    stroke="currentColor"
-    viewBox="0 0 24 24"
-  >
-    <path
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      strokeWidth="2"
-      d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"
-    />
-  </svg>
-);

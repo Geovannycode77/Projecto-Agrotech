@@ -17,7 +17,7 @@ import {
   PiggyBank,
   Loader2,
 } from "lucide-react";
-import { gestorService } from "@/services/gestorService";
+import { gestorService } from "@/services/GestorService";
 import { toast } from "@/hooks/use-toast";
 
 export default function RegistroReceitas() {
@@ -41,26 +41,26 @@ export default function RegistroReceitas() {
 
   const categorias = [
     {
-      value: "Venda de Gado",
+      value: "venda_animal",
       label: "Venda de Gado",
       icon: PawPrint,
       cor: "bg-emerald-100 text-emerald-800",
     },
     {
-      value: "Venda de Leite",
+      value: "venda_leite",
       label: "Venda de Leite",
       icon: Package,
       cor: "bg-blue-100 text-blue-800",
     },
     {
-      value: "Venda de Insumos",
-      label: "Venda de Insumos",
+      value: "venda_produto",
+      label: "Venda de Produto",
       icon: Truck,
       cor: "bg-purple-100 text-purple-800",
     },
     {
-      value: "Outros",
-      label: "Outras Receitas",
+      value: "outros",
+      label: "Outros",
       icon: DollarSign,
       cor: "bg-gray-100 text-gray-800",
     },
@@ -70,15 +70,15 @@ export default function RegistroReceitas() {
     carregarReceitas();
   }, []);
 
-  const carregarReceitas = async () => {
-    setLoading(true);
+  const carregarReceitas = async (showLoading = true) => {
+    if (showLoading) setLoading(true);
     try {
       const data = await gestorService.getReceitas();
       setReceitas(data.results || data);
     } catch (error) {
       console.error("Erro ao carregar receitas:", error);
     } finally {
-      setLoading(false);
+      if (showLoading) setLoading(false);
     }
   };
 
@@ -98,7 +98,7 @@ export default function RegistroReceitas() {
           : null,
       });
 
-      setReceitas([novaReceita, ...receitas]);
+      await carregarReceitas(false);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       setFormData({
@@ -319,7 +319,7 @@ export default function RegistroReceitas() {
                   required
                 />
               </div>
-              <div>
+                      <div>
                 <Label>Comprador</Label>
                 <input
                   type="text"
@@ -333,7 +333,7 @@ export default function RegistroReceitas() {
               </div>
 
               {/* Campos específicos para venda de gado */}
-              {formData.categoria === "Venda de Gado" && (
+              {formData.categoria === "venda_animal" && (
                 <>
                   <div>
                     <Label>Animais Vendidos</Label>
@@ -492,8 +492,8 @@ export default function RegistroReceitas() {
                           {new Date(receita.data).toLocaleDateString("pt-BR")}
                         </td>
                         <td className="px-4 py-3">
-                          <Badge className={categoria?.cor}>
-                            {receita.categoria}
+                          <Badge className={categoria?.cor || 'bg-gray-100 text-gray-800'}>
+                            {categoria?.label || receita.categoria_display || receita.categoria}
                           </Badge>
                         </td>
                         <td className="px-4 py-3">

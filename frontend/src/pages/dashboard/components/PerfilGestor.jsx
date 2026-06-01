@@ -19,11 +19,11 @@ import {
   X,
   Loader2,
 } from "lucide-react";
-import { gestorService } from "@/services/gestorService";
+import { gestorService } from "@/services/GestorService";
 import { toast } from "@/hooks/use-toast";
 
 export default function PerfilGestor() {
-  const { user, updateUser } = useAuth();
+  const { user } = useAuth();
   const [editando, setEditando] = useState(false);
   const [loading, setLoading] = useState(false);
   const [salvando, setSalvando] = useState(false);
@@ -35,6 +35,8 @@ export default function PerfilGestor() {
     data_admissao: "",
     departamento: "",
     id_gestor: "",
+    area_atuacao: "",
+    fazenda: "",
   });
   const [estatisticas, setEstatisticas] = useState({
     total_gerenciado: 0,
@@ -61,6 +63,8 @@ export default function PerfilGestor() {
         data_admissao: data.data_admissao || "",
         departamento: data.departamento || "Financeiro",
         id_gestor: data.id_gestor || "G001",
+        area_atuacao: data.area_atuacao || "",
+        fazenda: data.fazenda || "",
       });
     } catch (error) {
       console.error("Erro ao carregar perfil:", error);
@@ -73,6 +77,8 @@ export default function PerfilGestor() {
         data_admissao: user?.data_admissao || "",
         departamento: "Financeiro",
         id_gestor: user?.id_gestor || "G001",
+        area_atuacao: "",
+        fazenda: "",
       });
     } finally {
       setLoading(false);
@@ -96,9 +102,7 @@ export default function PerfilGestor() {
     setSalvando(true);
     try {
       const updated = await gestorService.atualizarPerfil(dadosPerfil);
-      if (updateUser) {
-        updateUser(updated);
-      }
+      setDadosPerfil(updated);
       setEditando(false);
       toast({
         title: "Sucesso",
@@ -165,8 +169,22 @@ export default function PerfilGestor() {
       label: "Departamento",
       value: dadosPerfil.departamento,
       icon: Building,
-      editable: false,
+      editable: true,
       field: "departamento",
+    },
+    {
+      label: "Área de Atuação",
+      value: dadosPerfil.area_atuacao || "Não informada",
+      icon: Briefcase,
+      editable: true,
+      field: "area_atuacao",
+    },
+    {
+      label: "Fazenda",
+      value: dadosPerfil.fazenda || "Não informada",
+      icon: Building,
+      editable: false,
+      field: "fazenda",
     },
   ];
 
