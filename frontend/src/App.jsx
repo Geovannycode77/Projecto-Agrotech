@@ -73,15 +73,17 @@ const PrivateRoute = ({ children, allowedRoles = [] }) => {
 
 // Componente que redireciona para o dashboard correto baseado no papel
 const DashboardRedirect = () => {
-  const { user, loading } = useAuth();
+  const { user, loading, isAuthenticated } = useAuth();
 
   if (loading) {
     return <LoadingSpinner />;
   }
 
-  const role = user?.role || "produtor";
+  if (!isAuthenticated) {
+    return <Navigate to="/login" />;
+  }
 
-  switch (role) {
+  switch (user?.role) {
     case "produtor":
       return <Navigate to="/produtor" />;
     case "veterinario":
@@ -93,7 +95,7 @@ const DashboardRedirect = () => {
     case "administrador":
       return <Navigate to="/admin/dashboard" />;
     default:
-      return <Navigate to="/produtor" />;
+      return <Navigate to="/login" />;
   }
 };
 

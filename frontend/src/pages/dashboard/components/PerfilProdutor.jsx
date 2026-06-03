@@ -7,91 +7,52 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { 
   User, 
-  Mail, 
-  Phone, 
-  MapPin, 
   Building, 
-  Calendar,
   Save,
   Edit,
   Camera,
   Shield,
-  Clock,
   CheckCircle,
-  XCircle,
   Loader2
 } from 'lucide-react';
-import { produtorService } from '@/services/produtorService';
 
 export default function PerfilProdutor() {
-  const { user, updateProfile } = useAuth();
+  const { user, perfil, updateProfile, refreshProfile } = useAuth();
   const [editando, setEditando] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [loadingStats, setLoadingStats] = useState(true);
   const [mensagem, setMensagem] = useState({ tipo: '', texto: '' });
-  const [estatisticas, setEstatisticas] = useState({
-    total_animais: 0,
-    tempo_plataforma: '',
-    producao_total: 0,
-    taxa_sucesso: 0
-  });
-  const [ultimasAtividades, setUltimasAtividades] = useState([]);
+  const [carregando, setCarregando] = useState(true);
   
   const [formData, setFormData] = useState({
-    nome: '',
+    nome_completo: '',
     email: '',
     telefone: '',
-    fazenda: '',
+    fazenda_nome: '',
     endereco: '',
-    cidade: '',
-    estado: '',
-    cep: ''
+    data_nascimento: ''
   });
 
   useEffect(() => {
-    if (user) {
+    if (user || perfil) {
       carregarPerfil();
-      carregarEstatisticas();
-      carregarAtividades();
     }
-  }, [user]);
+  }, [user, perfil]);
 
   const carregarPerfil = () => {
-    setFormData({
-      nome: user?.nome || '',
-      email: user?.email || '',
-      telefone: user?.telefone || '',
-      fazenda: user?.fazenda || '',
-      endereco: user?.endereco || '',
-      cidade: user?.cidade || '',
-      estado: user?.estado || '',
-      cep: user?.cep || ''
-    });
-  };
-
-  const carregarEstatisticas = async () => {
-    setLoadingStats(true);
+    setCarregando(true);
     try {
-      const data = await produtorService.getEstatisticasPerfil();
-      setEstatisticas({
-        total_animais: data.total_animais || 0,
-        tempo_plataforma: data.tempo_plataforma || '0 anos',
-        producao_total: data.producao_total || 0,
-        taxa_sucesso: data.taxa_sucesso || 0
+      setFormData({
+        nome_completo: perfil?.nome_completo || user?.nome || user?.email?.split('@')[0] || '',
+        email: user?.email || '',
+        telefone: perfil?.telefone || '',
+        fazenda_nome: perfil?.fazenda_nome || '',
+        endereco: perfil?.endereco || '',
+        data_nascimento: perfil?.data_nascimento || ''
       });
     } catch (error) {
-      console.error('Erro ao carregar estatísticas:', error);
+      console.error('Erro ao carregar perfil:', error);
     } finally {
-      setLoadingStats(false);
-    }
-  };
-
-  const carregarAtividades = async () => {
-    try {
-      const data = await produtorService.getAtividadesRecentes();
-      setUltimasAtividades(data.results || data);
-    } catch (error) {
-      console.error('Erro ao carregar atividades:', error);
+      setCarregando(false);
     }
   };
 
@@ -108,47 +69,50 @@ export default function PerfilProdutor() {
     setMensagem({ tipo: '', texto: '' });
     
     try {
-      const result = await updateProfile(formData);
+      const dadosPerfil = {
+        nome_completo: formData.nome_completo,
+        telefone: formData.telefone,
+        endereco: formData.endereco,
+        fazenda_nome: formData.fazenda_nome,
+        data_nascimento: formData.data_nascimento || null
+      };
+      
+      const result = await updateProfile(dadosPerfil);
+      
       if (result.success) {
         setMensagem({ tipo: 'success', texto: 'Perfil atualizado com sucesso!' });
         setEditando(false);
+        
+        if (refreshProfile) {
+          await refreshProfile();
+        }
+        
         carregarPerfil();
+        
+        setTimeout(() => {
+          setMensagem({ tipo: '', texto: '' });
+        }, 3000);
       } else {
         setMensagem({ tipo: 'error', texto: result.error || 'Erro ao atualizar perfil' });
       }
     } catch (error) {
-      setMensagem({ tipo: 'error', texto: 'Erro ao atualizar perfil' });
+      console.error('Erro ao atualizar perfil:', error);
+      setMensagem({ tipo: 'error', texto: 'Erro ao atualizar perfil. Tente novamente.' });
     } finally {
       setLoading(false);
     }
   };
 
-  const formatarMoeda = (valor) => {
-    return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'AOA' }).format(valor);
+  const handleCancelar = () => {
+    setEditando(false);
+    setMensagem({ tipo: '', texto: '' });
+    carregarPerfil();
   };
 
-  const estatisticasCards = [
-    { label: 'Total de Animais', valor: estatisticas.total_animais, icon: User },
-    { label: 'Tempo na Plataforma', valor: estatisticas.tempo_plataforma, icon: Clock },
-    { label: 'Produção Total', valor: formatarMoeda(estatisticas.producao_total), icon: CheckCircle },
-    { label: 'Taxa de Sucesso', valor: `${estatisticas.taxa_sucesso}%`, icon: TrendingUp },
-  ];
-
-  if (loadingStats) {
+  if (carregando) {
     return (
-      <div className="space-y-6">
-        <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-2xl p-6 text-white">
-          <div className="flex items-center gap-6">
-            <div className="w-24 h-24 bg-white/20 rounded-2xl animate-pulse"></div>
-            <div className="flex-1">
-              <div className="h-8 w-48 bg-white/20 rounded animate-pulse"></div>
-              <div className="h-4 w-32 bg-white/20 rounded mt-2 animate-pulse"></div>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-        </div>
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
       </div>
     );
   }
@@ -157,7 +121,7 @@ export default function PerfilProdutor() {
     <div className="space-y-6">
       {/* Cabeçalho do Perfil */}
       <div className="bg-gradient-to-r from-emerald-500 to-green-600 rounded-2xl p-6 text-white">
-        <div className="flex items-center gap-6">
+        <div className="flex flex-col md:flex-row items-center gap-6">
           <div className="relative">
             <div className="w-24 h-24 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-sm">
               <User className="w-12 h-12 text-white" />
@@ -166,10 +130,16 @@ export default function PerfilProdutor() {
               <Camera className="w-4 h-4 text-emerald-600" />
             </button>
           </div>
-          <div className="flex-1">
-            <h2 className="text-2xl font-bold">{formData.nome || user?.nome || 'Produtor'}</h2>
+          <div className="flex-1 text-center md:text-left">
+            <h2 className="text-2xl font-bold">{formData.nome_completo || 'Produtor'}</h2>
             <p className="text-emerald-100 mt-1">Produtor Rural</p>
-            <div className="flex gap-2 mt-2">
+            {formData.fazenda_nome && (
+              <p className="text-emerald-100 text-sm mt-1">
+                <Building className="w-4 h-4 inline mr-1" />
+                {formData.fazenda_nome}
+              </p>
+            )}
+            <div className="flex gap-2 mt-2 justify-center md:justify-start">
               <Badge className="bg-white/20 text-white border-0">
                 <Shield className="w-3 h-3 mr-1" />
                 Verificado
@@ -192,19 +162,6 @@ export default function PerfilProdutor() {
         </div>
       </div>
 
-      {/* Estatísticas Rápidas */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {estatisticasCards.map((stat, index) => (
-          <Card key={index} className="text-center">
-            <CardContent className="pt-6">
-              <stat.icon className="w-8 h-8 text-emerald-600 mx-auto mb-2" />
-              <p className="text-2xl font-bold">{stat.valor}</p>
-              <p className="text-sm text-gray-500">{stat.label}</p>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
-
       {/* Formulário do Perfil */}
       <Card>
         <CardHeader>
@@ -216,7 +173,9 @@ export default function PerfilProdutor() {
         <CardContent>
           {mensagem.texto && (
             <div className={`mb-4 p-3 rounded-lg ${
-              mensagem.tipo === 'success' ? 'bg-green-50 text-green-800' : 'bg-red-50 text-red-800'
+              mensagem.tipo === 'success' 
+                ? 'bg-green-50 text-green-800 border border-green-200' 
+                : 'bg-red-50 text-red-800 border border-red-200'
             }`}>
               {mensagem.texto}
             </div>
@@ -225,10 +184,10 @@ export default function PerfilProdutor() {
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div>
-                <Label htmlFor="nome">Nome Completo</Label>
+                <Label htmlFor="nome_completo">Nome Completo</Label>
                 <Input
-                  id="nome"
-                  value={formData.nome}
+                  id="nome_completo"
+                  value={formData.nome_completo}
                   onChange={handleChange}
                   disabled={!editando}
                   className={!editando ? 'bg-gray-50' : ''}
@@ -240,10 +199,10 @@ export default function PerfilProdutor() {
                   id="email"
                   type="email"
                   value={formData.email}
-                  onChange={handleChange}
-                  disabled={!editando}
-                  className={!editando ? 'bg-gray-50' : ''}
+                  disabled
+                  className="bg-gray-50"
                 />
+                <p className="text-xs text-gray-400 mt-1">O e-mail não pode ser alterado</p>
               </div>
               <div>
                 <Label htmlFor="telefone">Telefone</Label>
@@ -252,18 +211,30 @@ export default function PerfilProdutor() {
                   value={formData.telefone}
                   onChange={handleChange}
                   disabled={!editando}
-                  placeholder="(000) 000-000-000"
+                  placeholder="+244 000 000 000"
                   className={!editando ? 'bg-gray-50' : ''}
                 />
               </div>
               <div>
-                <Label htmlFor="fazenda">Nome da Fazenda</Label>
+                <Label htmlFor="fazenda_nome">Nome da Fazenda</Label>
                 <Input
-                  id="fazenda"
-                  value={formData.fazenda}
+                  id="fazenda_nome"
+                  value={formData.fazenda_nome}
                   onChange={handleChange}
                   disabled={!editando}
                   className={!editando ? 'bg-gray-50' : ''}
+                />
+              </div>
+              <div>
+                <Label htmlFor="data_nascimento">Data de Nascimento</Label>
+                <Input
+                  id="data_nascimento"
+                  type="date"
+                  value={formData.data_nascimento}
+                  onChange={handleChange}
+                  disabled={!editando}
+                  className={!editando ? 'bg-gray-50' : ''}
+                  max={new Date().toISOString().split('T')[0]}
                 />
               </div>
               <div className="md:col-span-2">
@@ -273,36 +244,7 @@ export default function PerfilProdutor() {
                   value={formData.endereco}
                   onChange={handleChange}
                   disabled={!editando}
-                  className={!editando ? 'bg-gray-50' : ''}
-                />
-              </div>
-              <div>
-                <Label htmlFor="cidade">Cidade</Label>
-                <Input
-                  id="cidade"
-                  value={formData.cidade}
-                  onChange={handleChange}
-                  disabled={!editando}
-                  className={!editando ? 'bg-gray-50' : ''}
-                />
-              </div>
-              <div>
-                <Label htmlFor="estado">Estado</Label>
-                <Input
-                  id="estado"
-                  value={formData.estado}
-                  onChange={handleChange}
-                  disabled={!editando}
-                  className={!editando ? 'bg-gray-50' : ''}
-                />
-              </div>
-              <div>
-                <Label htmlFor="cep">NIF</Label>
-                <Input
-                  id="cep"
-                  value={formData.cep}
-                  onChange={handleChange}
-                  disabled={!editando}
+                  placeholder="Cidade, Bairro, Rua"
                   className={!editando ? 'bg-gray-50' : ''}
                 />
               </div>
@@ -313,11 +255,7 @@ export default function PerfilProdutor() {
                 <Button 
                   type="button" 
                   variant="outline" 
-                  onClick={() => {
-                    setEditando(false);
-                    setMensagem({ tipo: '', texto: '' });
-                    carregarPerfil();
-                  }}
+                  onClick={handleCancelar}
                 >
                   Cancelar
                 </Button>
@@ -330,44 +268,6 @@ export default function PerfilProdutor() {
           </form>
         </CardContent>
       </Card>
-
-      {/* Atividade Recente */}
-      {ultimasAtividades.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Clock className="w-5 h-5 text-emerald-600" />
-              Últimas Atividades
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              {ultimasAtividades.slice(0, 5).map((item, index) => (
-                <div key={index} className="flex items-center gap-3 p-3 hover:bg-gray-50 rounded-lg transition-colors">
-                  <div className="p-2 bg-emerald-100 rounded-full">
-                    {item.tipo === 'perfil' && <User className="w-4 h-4 text-emerald-600" />}
-                    {item.tipo === 'animal' && <CheckCircle className="w-4 h-4 text-emerald-600" />}
-                    {item.tipo === 'saude' && <Shield className="w-4 h-4 text-emerald-600" />}
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">{item.descricao}</p>
-                    <p className="text-xs text-gray-500">
-                      {new Date(item.data).toLocaleDateString('pt-BR')}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
-
-// Componente auxiliar para TrendingUp
-const TrendingUp = ({ className }) => (
-  <svg className={className} fill="none" stroke="currentColor" viewBox="0 0 24 24">
-    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-  </svg>
-);

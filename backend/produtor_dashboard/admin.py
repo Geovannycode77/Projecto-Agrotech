@@ -1,13 +1,9 @@
 from django.contrib import admin
-
-
-# Register your models here.
-
-# produtor_dashboard/admin.py
-from django.contrib import admin
 from .models import (
-    Fazenda, Animal, AnimalSaude, AlimentacaoRegistro,
-    EstoqueAlimentacao, TransacaoFinanceira, Alerta,
+    Fazenda, Animal, AnimalSaude, 
+    TipoRacao, EstoqueRacao, 
+    AlimentacaoRegistro, CompraRacao,
+    TransacaoFinanceira, Alerta,
     Atividade, RelatorioProducao
 )
 
@@ -34,18 +30,34 @@ class AnimalSaudeAdmin(admin.ModelAdmin):
     search_fields = ('animal__brinco', 'descricao', 'veterinario')
 
 
+@admin.register(TipoRacao)
+class TipoRacaoAdmin(admin.ModelAdmin):
+    list_display = ('id', 'nome', 'fazenda', 'peso_por_saco', 'preco_por_saco', 'created_at')
+    list_filter = ('fazenda',)
+    search_fields = ('nome',)
+
+
+@admin.register(EstoqueRacao)
+class EstoqueRacaoAdmin(admin.ModelAdmin):
+    list_display = ('id', 'tipo_racao', 'fazenda', 'quantidade_sacos', 'estoque_minimo_sacos', 'updated_at')
+    list_filter = ('fazenda',)
+    search_fields = ('tipo_racao__nome',)
+
+
 @admin.register(AlimentacaoRegistro)
 class AlimentacaoRegistroAdmin(admin.ModelAdmin):
-    list_display = ('id', 'fazenda', 'data', 'tipo_racao', 'quantidade_kg', 'custo_total')
+    list_display = ('id', 'fazenda', 'data', 'tipo_racao', 'quantidade_sacos', 'quantidade_kg', 'custo_total')
     list_filter = ('tipo_racao', 'data')
-    search_fields = ('fazenda__nome', 'tipo_racao', 'observacoes')
+    search_fields = ('fazenda__nome', 'tipo_racao__nome', 'observacoes')
+    readonly_fields = ('quantidade_kg', 'custo_total')
 
 
-@admin.register(EstoqueAlimentacao)
-class EstoqueAlimentacaoAdmin(admin.ModelAdmin):
-    list_display = ('id', 'fazenda', 'tipo_racao', 'quantidade_atual_kg', 'quantidade_minima_kg', 'updated_at')
-    list_filter = ('tipo_racao',)
-    search_fields = ('fazenda__nome', 'tipo_racao')
+@admin.register(CompraRacao)
+class CompraRacaoAdmin(admin.ModelAdmin):
+    list_display = ('id', 'fazenda', 'data', 'tipo_racao', 'quantidade_sacos', 'quantidade_kg', 'valor_total', 'fornecedor')
+    list_filter = ('data', 'tipo_racao', 'fornecedor')
+    search_fields = ('fazenda__nome', 'tipo_racao__nome', 'fornecedor', 'nota_fiscal')
+    readonly_fields = ('quantidade_kg',)
 
 
 @admin.register(TransacaoFinanceira)

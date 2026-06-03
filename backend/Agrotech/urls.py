@@ -21,4 +21,5 @@ urlpatterns = [
     path('api/funcionario/', include('funcionario_dashboard.urls')),
     path('api/gestor-financeiro/', include('Gestor_financeiro_dashboard.urls')),
     path('api/veterinario/', include('veterinario_dashboard.urls')),
+    
 ]

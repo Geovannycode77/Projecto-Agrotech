@@ -1,9 +1,10 @@
+# backend/funcionario_dashboard/models.py
+
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
 from login_cadastro.models import CustomUser
-from produtor_dashboard.models import Fazenda, Animal
 from django.utils import timezone
 import uuid
+
 
 class Funcionario(models.Model):
     """Modelo do funcionário vinculado a uma fazenda"""
@@ -15,8 +16,8 @@ class Funcionario(models.Model):
         ('auxiliar_geral', 'Auxiliar Geral'),
     )
     
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='funcionario')
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='funcionarios')
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='funcionario_perfil')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='funcionarios')
     cargo = models.CharField(max_length=50, choices=CARGO_CHOICES, default='auxiliar_geral')
     data_contratacao = models.DateField(default=timezone.now)
     salario = models.DecimalField(max_digits=10, decimal_places=2, blank=True, null=True)
@@ -31,7 +32,8 @@ class Funcionario(models.Model):
     updated_at = models.DateTimeField(auto_now=True)
     
     def __str__(self):
-        return f"{self.user.username} - {self.fazenda.nome}"
+        return f"{self.user.email} - {self.fazenda.nome if self.fazenda else 'Sem fazenda'}"
+
 
 class Tarefa(models.Model):
     """Tarefas atribuídas aos funcionários"""
@@ -61,13 +63,13 @@ class Tarefa(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     funcionario = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='tarefas')
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='tarefas')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='tarefas')
     titulo = models.CharField(max_length=200)
     descricao = models.TextField()
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     prioridade = models.CharField(max_length=10, choices=PRIORIDADE_CHOICES, default='media')
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pendente')
-    animal = models.ForeignKey(Animal, on_delete=models.SET_NULL, null=True, blank=True, related_name='tarefas')
+    animal = models.ForeignKey('produtor_dashboard.Animal', on_delete=models.SET_NULL, null=True, blank=True, related_name='tarefas')
     data_limite = models.DateTimeField()
     data_conclusao = models.DateTimeField(blank=True, null=True)
     observacoes = models.TextField(blank=True)
@@ -78,13 +80,14 @@ class Tarefa(models.Model):
         ordering = ['data_limite', '-prioridade']
     
     def __str__(self):
-        return f"{self.titulo} - {self.funcionario.username}"
+        return f"{self.titulo} - {self.funcionario.email}"
+
 
 class RegistroAlimentacaoFuncionario(models.Model):
     """Registro de alimentação feito pelo funcionário"""
     funcionario = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='registros_alimentacao')
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='registros_alimentacao_func')
-    animal = models.ForeignKey(Animal, on_delete=models.SET_NULL, null=True, blank=True, related_name='registros_alimentacao')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='registros_alimentacao_func')
+    animal = models.ForeignKey('produtor_dashboard.Animal', on_delete=models.SET_NULL, null=True, blank=True, related_name='registros_alimentacao')
     data_hora = models.DateTimeField(default=timezone.now)
     tipo_racao = models.CharField(max_length=100)
     quantidade_kg = models.DecimalField(max_digits=8, decimal_places=2)
@@ -97,38 +100,49 @@ class RegistroAlimentacaoFuncionario(models.Model):
     def __str__(self):
         return f"{self.data_hora} - {self.tipo_racao} - {self.quantidade_kg}kg"
 
+
 class Ocorrencia(models.Model):
-    """Registro de ocorrências (doenças, acidentes, etc)"""
     TIPO_CHOICES = (
         ('doenca', 'Doença'),
         ('acidente', 'Acidente'),
         ('fuga', 'Fuga'),
+        ('estrutura', 'Estrutura danificada'),  # ← adiciona os que faltam no frontend
+        ('falta_insumos', 'Falta de Insumos'),
         ('nascimento', 'Nascimento'),
         ('morte', 'Morte'),
         ('outro', 'Outro'),
     )
-    
+
+    URGENCIA_CHOICES = (        # ← novo
+        ('baixa', 'Baixa'),
+        ('media', 'Média'),
+        ('alta', 'Alta'),
+        ('urgente', 'Urgente'),
+    )
+
     funcionario = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='ocorrencias')
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='ocorrencias')
-    animal = models.ForeignKey(Animal, on_delete=models.SET_NULL, null=True, blank=True, related_name='ocorrencias')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='ocorrencias')
+    animal = models.ForeignKey('produtor_dashboard.Animal', on_delete=models.SET_NULL, null=True, blank=True, related_name='ocorrencias')
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     titulo = models.CharField(max_length=200)
     descricao = models.TextField()
+    urgencia = models.CharField(max_length=10, choices=URGENCIA_CHOICES, default='baixa')  # ← novo
     data_hora = models.DateTimeField(default=timezone.now)
     resolvido = models.BooleanField(default=False)
     data_resolucao = models.DateTimeField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
-    
+
     class Meta:
         ordering = ['-data_hora']
-    
+
     def __str__(self):
         return f"{self.titulo} - {self.data_hora}"
+
 
 class AtualizacaoAnimal(models.Model):
     """Registro de atualizações de dados dos animais"""
     funcionario = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='atualizacoes_animais')
-    animal = models.ForeignKey(Animal, on_delete=models.CASCADE, related_name='atualizacoes')
+    animal = models.ForeignKey('produtor_dashboard.Animal', on_delete=models.CASCADE, related_name='atualizacoes')
     peso_anterior = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
     peso_novo = models.DecimalField(max_digits=8, decimal_places=2, blank=True, null=True)
     status_anterior = models.CharField(max_length=20, blank=True, null=True)
@@ -141,13 +155,14 @@ class AtualizacaoAnimal(models.Model):
         ordering = ['-data_hora']
     
     def __str__(self):
-        return f"{self.animal.brinco} - {self.data_hora}"
+        return f"{self.animal.brinco if self.animal else 'Animal'} - {self.data_hora}"
+
 
 class Nascimento(models.Model):
     """Registro de nascimentos"""
     funcionario = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='nascimentos')
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='nascimentos')
-    mae = models.ForeignKey(Animal, on_delete=models.CASCADE, related_name='filhos', null=True, blank=True)
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='nascimentos')
+    mae = models.ForeignKey('produtor_dashboard.Animal', on_delete=models.CASCADE, related_name='filhos', null=True, blank=True)
     data_nascimento = models.DateField(default=timezone.now)
     quantidade = models.IntegerField(default=1)
     especie = models.CharField(max_length=50)
@@ -159,4 +174,3 @@ class Nascimento(models.Model):
     
     def __str__(self):
         return f"Nascimento - {self.data_nascimento} - {self.quantidade} animais"
-

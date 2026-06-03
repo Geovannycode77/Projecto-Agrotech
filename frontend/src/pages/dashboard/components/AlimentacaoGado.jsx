@@ -1,26 +1,23 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { 
-  Utensils, 
-  Package, 
-  TrendingDown, 
-  Plus, 
-  Search,
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Utensils,
+  Package,
+  Plus,
   AlertTriangle,
   CheckCircle,
-  TrendingUp,
   Calendar,
   DollarSign,
-  PiggyBank,
-  Settings,
+  X,
+  ShoppingCart,
   Edit,
-  Trash2
-} from 'lucide-react';
-import { produtorService } from '@/services/produtorService';
+  Trash2,
+} from "lucide-react";
+import { produtorService } from "@/services/ProdutorService";
 
 export default function AlimentacaoGado() {
   const [loading, setLoading] = useState(true);
@@ -34,11 +31,29 @@ export default function AlimentacaoGado() {
   });
   const [alimentacoes, setAlimentacoes] = useState([]);
   const [showForm, setShowForm] = useState(false);
+  const [showAddRacao, setShowAddRacao] = useState(false);
+  const [showAddEstoque, setShowAddEstoque] = useState(false);
+  const [selectedRacaoId, setSelectedRacaoId] = useState(null);
+  const [editandoRacao, setEditandoRacao] = useState(null);
+  const [editRacaoData, setEditRacaoData] = useState({
+    id: null,
+    nome: "",
+    peso_por_saco: 0,
+    preco_por_saco: 0,
+  });
   const [formData, setFormData] = useState({
-    tipo: '',
-    quantidade_sacos: '',
-    animais: '',
-    observacoes: ''
+    tipo: "",
+    quantidade_sacos: "",
+    observacoes: "",
+  });
+  const [novaRacao, setNovaRacao] = useState({
+    nome: "",
+    peso_por_saco: 50,
+    preco_por_saco: 5000,
+  });
+  const [addEstoqueData, setAddEstoqueData] = useState({
+    quantidade_sacos: "",
+    preco_pago_saco: "",
   });
   const [totalAnimais, setTotalAnimais] = useState(0);
 
@@ -49,66 +64,285 @@ export default function AlimentacaoGado() {
   const carregarDados = async () => {
     setLoading(true);
     try {
-      // Buscar dados do estoque
       const estoqueData = await produtorService.getEstoqueRacao();
       setEstoque(estoqueData);
-      
-      // Buscar consumo diário
+
       const consumoData = await produtorService.getConsumoDiario();
       setConsumoDiario(consumoData);
-      
-      // Buscar histórico de alimentações
-      const alimentacoesData = await produtorService.getAlimentacoes({ limit: 50 });
+
+      const alimentacoesData = await produtorService.getAlimentacoes({
+        limit: 100,
+      });
       setAlimentacoes(alimentacoesData.results || alimentacoesData);
-      
-      // Buscar total de animais
-      const animaisData = await produtorService.getAnimais({ status: 'ativo' });
+
+      const animaisData = await produtorService.getAnimais({ status: "ativo" });
       setTotalAnimais(animaisData.count || animaisData.results?.length || 0);
-      
     } catch (error) {
-      console.error('Erro ao carregar dados de alimentação:', error);
+      console.error("Erro ao carregar dados:", error);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    
+  const handleAddRacao = async () => {
     try {
-      const racaSelecionada = estoque.racas.find(r => r.nome === formData.tipo);
-      const quantidade_kg = formData.quantidade_sacos * (racaSelecionada?.peso_por_saco || 50);
-      
-      const novaAlimentacao = await produtorService.registrarAlimentacao({
-        tipo: formData.tipo,
-        quantidade_sacos: parseInt(formData.quantidade_sacos),
-        quantidade_kg: quantidade_kg,
-        animais: formData.animais,
-        observacoes: formData.observacoes,
-        data: new Date().toISOString().split('T')[0]
-      });
-      
-      setAlimentacoes([novaAlimentacao, ...alimentacoes]);
-      
-      // Recarregar dados de estoque e consumo
+      await produtorService.criarTipoRacao(novaRacao);
       await carregarDados();
-      
-      setShowForm(false);
-      setFormData({ tipo: '', quantidade_sacos: '', animais: '', observacoes: '' });
-      
+      setShowAddRacao(false);
+      setNovaRacao({ nome: "", peso_por_saco: 50, preco_por_saco: 5000 });
     } catch (error) {
-      console.error('Erro ao registrar alimentação:', error);
+      console.error("Erro ao adicionar ração:", error);
     }
   };
 
-  const calcularAutonomia = (quantidade_sacos, consumo_diario_sacos) => {
-    if (consumo_diario_sacos === 0 || !consumo_diario_sacos) return 0;
-    return Math.floor(quantidade_sacos / consumo_diario_sacos);
+  const handleEditarRacao = (raca) => {
+    setEditandoRacao(raca.id);
+    setEditRacaoData({
+      id: raca.id,
+      nome: raca.nome,
+      peso_por_saco: raca.peso_por_saco,
+      preco_por_saco: raca.preco_por_saco,
+    });
   };
 
-  const calcularCustoMensal = () => {
-    return consumoDiario.custo_diario * 30;
+  const handleSalvarEdicaoRacao = async () => {
+    try {
+      await produtorService.atualizarTipoRacao(editRacaoData.id, {
+        nome: editRacaoData.nome,
+        peso_por_saco: editRacaoData.peso_por_saco,
+        preco_por_saco: editRacaoData.preco_por_saco,
+      });
+      await carregarDados();
+      setEditandoRacao(null);
+    } catch (error) {
+      console.error("Erro ao editar ração:", error);
+      alert("Erro ao salvar alterações");
+    }
   };
+
+  const handleDeletarRacao = async (id, nome) => {
+    if (
+      confirm(
+        `Tem certeza que deseja deletar a ração "${nome}"? Isso também deletará o estoque e histórico.`,
+      )
+    ) {
+      try {
+        await produtorService.deletarTipoRacao(id);
+        await carregarDados();
+      } catch (error) {
+        console.error("Erro ao deletar ração:", error);
+        alert("Erro ao deletar ração");
+      }
+    }
+  };
+
+  const handleAddEstoque = async () => {
+    if (!selectedRacaoId) return;
+
+    try {
+      await produtorService.adicionarEstoque({
+        tipo_racao: selectedRacaoId,
+        quantidade_sacos: parseFloat(addEstoqueData.quantidade_sacos),
+        preco_pago_saco: parseFloat(addEstoqueData.preco_pago_saco) || 0,
+      });
+      await carregarDados();
+      setShowAddEstoque(false);
+      setAddEstoqueData({ quantidade_sacos: "", preco_pago_saco: "" });
+      setSelectedRacaoId(null);
+    } catch (error) {
+      console.error("Erro ao adicionar estoque:", error);
+      alert("Erro ao adicionar estoque");
+    }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    try {
+      const racaSelecionada = estoque.racas.find(
+        (r) => r.nome === formData.tipo,
+      );
+
+      if (!racaSelecionada) {
+        alert("Tipo de ração não encontrado");
+        return;
+      }
+
+      const quantidadeSacos = parseFloat(formData.quantidade_sacos);
+      if (isNaN(quantidadeSacos) || quantidadeSacos <= 0) {
+        alert("Quantidade inválida");
+        return;
+      }
+
+      const dadosEnvio = {
+        tipo_racao: racaSelecionada.id,
+        quantidade_sacos: quantidadeSacos,
+        data: new Date().toISOString().split("T")[0],
+        observacoes: formData.observacoes || "",
+      };
+
+      const novaAlimentacao =
+        await produtorService.registrarAlimentacao(dadosEnvio);
+
+      setAlimentacoes([novaAlimentacao, ...alimentacoes]);
+      await carregarDados();
+      setShowForm(false);
+      setFormData({ tipo: "", quantidade_sacos: "", observacoes: "" });
+    } catch (error) {
+      console.error("Erro ao registrar alimentação:", error);
+      alert("Erro ao registrar consumo");
+    }
+  };
+
+  // Calcular autonomia específica para cada ração
+  const calcularAutonomiaPorRacao = (quantidadeSacos, racaId) => {
+    if (!quantidadeSacos || quantidadeSacos <= 0) return 0;
+
+    const raca = estoque.racas.find((r) => r.id === racaId);
+    if (!raca) return 0;
+
+    const ultimos7Dias = new Date();
+    ultimos7Dias.setDate(ultimos7Dias.getDate() - 7);
+
+    const registrosRacao = alimentacoes.filter((item) => {
+      const itemData = new Date(item.data);
+      const itemNome =
+        item.tipo_racao_nome || item.tipo_racao?.nome || item.tipo;
+      return itemData >= ultimos7Dias && itemNome === raca.nome;
+    });
+
+    if (registrosRacao.length === 0) return 0;
+
+    // Agrupar consumo por dia
+    const consumoPorDia = {};
+    registrosRacao.forEach((item) => {
+      const data = item.data;
+      const quantidade = Number(item.quantidade_sacos) || 0;
+      if (!consumoPorDia[data]) {
+        consumoPorDia[data] = 0;
+      }
+      consumoPorDia[data] += quantidade;
+    });
+
+    const diasComRegistro = Object.keys(consumoPorDia).length;
+    const totalConsumido = Object.values(consumoPorDia).reduce(
+      (sum, val) => sum + val,
+      0,
+    );
+    const consumoMedioDiario =
+      diasComRegistro > 0 ? totalConsumido / diasComRegistro : 0;
+
+    if (consumoMedioDiario <= 0) return 0;
+
+    // Autonomia = Estoque atual / Consumo médio diário
+    return Math.floor(quantidadeSacos / consumoMedioDiario);
+  };
+
+  // Calcular autonomia total do estoque
+  const calcularAutonomiaTotal = () => {
+    const totalSacos =
+      estoque.racas?.reduce(
+        (sum, r) => sum + (Number(r.quantidade_sacos) || 0),
+        0,
+      ) || 0;
+    if (totalSacos === 0) return 0;
+
+    const ultimos7Dias = new Date();
+    ultimos7Dias.setDate(ultimos7Dias.getDate() - 7);
+
+    const registrosRecentes = alimentacoes.filter(
+      (item) => new Date(item.data) >= ultimos7Dias,
+    );
+
+    if (registrosRecentes.length === 0) return 0;
+
+    // Agrupar consumo total por dia
+    const consumoPorDia = {};
+    registrosRecentes.forEach((item) => {
+      const data = item.data;
+      const quantidade = Number(item.quantidade_sacos) || 0;
+      if (!consumoPorDia[data]) {
+        consumoPorDia[data] = 0;
+      }
+      consumoPorDia[data] += quantidade;
+    });
+
+    const diasComRegistro = Object.keys(consumoPorDia).length;
+    const totalConsumido = Object.values(consumoPorDia).reduce(
+      (sum, val) => sum + val,
+      0,
+    );
+    const consumoMedioDiario =
+      diasComRegistro > 0 ? totalConsumido / diasComRegistro : 0;
+
+    if (consumoMedioDiario <= 0) return 0;
+
+    return Math.floor(totalSacos / consumoMedioDiario);
+  };
+
+  // Calcular consumo médio diário em kg
+  const calcularConsumoMedioDiarioKg = () => {
+    const ultimos7Dias = new Date();
+    ultimos7Dias.setDate(ultimos7Dias.getDate() - 7);
+
+    const registrosRecentes = alimentacoes.filter(
+      (item) => new Date(item.data) >= ultimos7Dias,
+    );
+
+    if (registrosRecentes.length === 0) return 0;
+
+    const consumoPorDia = {};
+    registrosRecentes.forEach((item) => {
+      const data = item.data;
+      const kg = Number(item.quantidade_kg) || 0;
+      if (!consumoPorDia[data]) {
+        consumoPorDia[data] = 0;
+      }
+      consumoPorDia[data] += kg;
+    });
+
+    const diasComRegistro = Object.keys(consumoPorDia).length;
+    const totalKg = Object.values(consumoPorDia).reduce(
+      (sum, val) => sum + val,
+      0,
+    );
+
+    return diasComRegistro > 0 ? totalKg / diasComRegistro : 0;
+  };
+
+  // Calcular custo médio diário
+  const calcularCustoMedioDiario = () => {
+    const ultimos7Dias = new Date();
+    ultimos7Dias.setDate(ultimos7Dias.getDate() - 7);
+
+    const registrosRecentes = alimentacoes.filter(
+      (item) => new Date(item.data) >= ultimos7Dias,
+    );
+
+    if (registrosRecentes.length === 0) return 0;
+
+    const custoPorDia = {};
+    registrosRecentes.forEach((item) => {
+      const data = item.data;
+      const custo = Number(item.custo_total) || 0;
+      if (!custoPorDia[data]) {
+        custoPorDia[data] = 0;
+      }
+      custoPorDia[data] += custo;
+    });
+
+    const diasComRegistro = Object.keys(custoPorDia).length;
+    const totalCusto = Object.values(custoPorDia).reduce(
+      (sum, val) => sum + val,
+      0,
+    );
+
+    return diasComRegistro > 0 ? totalCusto / diasComRegistro : 0;
+  };
+
+  const consumoMedioDiarioKg = calcularConsumoMedioDiarioKg();
+  const custoMedioDiario = calcularCustoMedioDiario();
+  const autonomiaTotal = calcularAutonomiaTotal();
 
   if (loading) {
     return (
@@ -126,9 +360,15 @@ export default function AlimentacaoGado() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-emerald-100">Consumo Diário</p>
-                <p className="text-3xl font-bold">{consumoDiario.total || 0} kg</p>
-                <p className="text-sm text-emerald-100">{consumoDiario.sacos_por_dia || 0} sacos/dia</p>
+                <p className="text-emerald-100">Consumo Médio Diário</p>
+                <p className="text-3xl font-bold">
+                  {Math.round(consumoMedioDiarioKg)} kg
+                </p>
+                <p className="text-sm text-emerald-100">
+                  {alimentacoes.length > 0
+                    ? `Baseado em ${alimentacoes.length} registros`
+                    : "Sem registros"}
+                </p>
               </div>
               <Utensils className="h-8 w-8 text-white/80" />
             </div>
@@ -141,10 +381,23 @@ export default function AlimentacaoGado() {
               <div>
                 <p className="text-blue-100">Estoque Total</p>
                 <p className="text-3xl font-bold">
-                  {estoque.racas?.reduce((sum, r) => sum + (r.quantidade_sacos || 0), 0) || 0} sacos
+                  {estoque.racas?.reduce(
+                    (sum, r) => sum + (Number(r.quantidade_sacos) || 0),
+                    0,
+                  ) || 0}{" "}
+                  sacos
                 </p>
                 <p className="text-sm text-blue-100">
-                  {estoque.racas?.reduce((sum, r) => sum + ((r.quantidade_sacos || 0) * (r.peso_por_saco || 0)), 0) || 0} kg
+                  {Math.round(
+                    estoque.racas?.reduce(
+                      (sum, r) =>
+                        sum +
+                        (Number(r.quantidade_sacos) || 0) *
+                          (Number(r.peso_por_saco) || 0),
+                      0,
+                    ) || 0,
+                  )}{" "}
+                  kg
                 </p>
               </div>
               <Package className="h-8 w-8 text-white/80" />
@@ -156,14 +409,18 @@ export default function AlimentacaoGado() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-amber-100">Autonomia Estimada</p>
-                <p className="text-3xl font-bold">
-                  {calcularAutonomia(
-                    estoque.racas?.reduce((sum, r) => sum + (r.quantidade_sacos || 0), 0) || 0,
-                    consumoDiario.sacos_por_dia || 1
-                  )} dias
-                </p>
-                <p className="text-sm text-amber-100">Com estoque atual</p>
+                <p className="text-amber-100">Autonomia Total</p>
+                <p className="text-3xl font-bold">{autonomiaTotal} dias</p>
+                {autonomiaTotal > 0 && (
+                  <p className="text-sm text-amber-100">
+                    Estoque:{" "}
+                    {estoque.racas?.reduce(
+                      (sum, r) => sum + (Number(r.quantidade_sacos) || 0),
+                      0,
+                    ) || 0}{" "}
+                    sacos
+                  </p>
+                )}
               </div>
               <Calendar className="h-8 w-8 text-white/80" />
             </div>
@@ -174,9 +431,14 @@ export default function AlimentacaoGado() {
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-purple-100">Custo Mensal</p>
-                <p className="text-3xl font-bold">AOA {calcularCustoMensal().toLocaleString()}</p>
-                <p className="text-sm text-purple-100">AOA {consumoDiario.custo_diario?.toLocaleString() || 0}/dia</p>
+                <p className="text-purple-100">Custo Médio Diário</p>
+                <p className="text-3xl font-bold">
+                  AOA {Math.round(custoMedioDiario).toLocaleString()}
+                </p>
+                <p className="text-sm text-purple-100">
+                  Mensal: AOA{" "}
+                  {Math.round(custoMedioDiario * 30).toLocaleString()}
+                </p>
               </div>
               <DollarSign className="h-8 w-8 text-white/80" />
             </div>
@@ -186,71 +448,225 @@ export default function AlimentacaoGado() {
 
       {/* Estoque por Tipo de Ração */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
+        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
           <CardTitle className="flex items-center gap-2">
             <Package className="h-5 w-5 text-emerald-600" />
             Estoque de Ração por Tipo
           </CardTitle>
-          <Button onClick={() => setShowForm(!showForm)} className="bg-emerald-600 hover:bg-emerald-700">
-            <Plus className="h-4 w-4 mr-2" />
-            Registrar Consumo
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => setShowAddRacao(!showAddRacao)}
+              variant="outline"
+              className="border-emerald-500 text-emerald-600"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Ração
+            </Button>
+            <Button
+              onClick={() => setShowForm(!showForm)}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Registrar Consumo
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {estoque.racas?.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              Nenhum tipo de ração cadastrado.
+              Nenhum tipo de ração cadastrado. Clique em "Nova Ração" para
+              começar.
             </div>
           ) : (
             <div className="space-y-4">
               {estoque.racas?.map((raca) => {
-                const autonomia = calcularAutonomia(raca.quantidade_sacos || 0, (consumoDiario.sacos_por_dia || 0) / (estoque.racas?.length || 1));
-                const isLowStock = (raca.quantidade_sacos || 0) < 10;
-                
+                const quantidadeSacos = Number(raca.quantidade_sacos) || 0;
+                const autonomiaPorRacao = calcularAutonomiaPorRacao(
+                  quantidadeSacos,
+                  raca.id,
+                );
+                const isLowStock = quantidadeSacos < 10;
+                const pesoTotal =
+                  quantidadeSacos * (Number(raca.peso_por_saco) || 0);
+                const valorTotal =
+                  quantidadeSacos * (Number(raca.preco_por_saco) || 0);
+
                 return (
-                  <div key={raca.id} className="border rounded-lg p-4 hover:shadow-md transition-all">
-                    <div className="flex justify-between items-start mb-3">
-                      <div>
-                        <h3 className="font-semibold text-gray-800">{raca.nome}</h3>
-                        <p className="text-sm text-gray-500">{raca.peso_por_saco}kg/saco • AOA {raca.preco_por_saco}/saco</p>
+                  <div
+                    key={raca.id}
+                    className="border rounded-lg p-4 hover:shadow-md transition-all"
+                  >
+                    {editandoRacao === raca.id ? (
+                      <div className="space-y-3">
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">
+                            Nome da Ração
+                          </label>
+                          <input
+                            type="text"
+                            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            value={editRacaoData.nome}
+                            onChange={(e) =>
+                              setEditRacaoData({
+                                ...editRacaoData,
+                                nome: e.target.value,
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">
+                            Peso por Saco (kg)
+                          </label>
+                          <input
+                            type="number"
+                            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            value={editRacaoData.peso_por_saco}
+                            onChange={(e) =>
+                              setEditRacaoData({
+                                ...editRacaoData,
+                                peso_por_saco: parseFloat(e.target.value),
+                              })
+                            }
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500 block mb-1">
+                            Preço por Saco (AOA)
+                          </label>
+                          <input
+                            type="number"
+                            className="w-full p-2 border rounded focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                            value={editRacaoData.preco_por_saco}
+                            onChange={(e) =>
+                              setEditRacaoData({
+                                ...editRacaoData,
+                                preco_por_saco: parseFloat(e.target.value),
+                              })
+                            }
+                          />
+                        </div>
+                        <div className="flex gap-2 justify-end">
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => setEditandoRacao(null)}
+                          >
+                            Cancelar
+                          </Button>
+                          <Button
+                            size="sm"
+                            onClick={handleSalvarEdicaoRacao}
+                            className="bg-emerald-600"
+                          >
+                            Salvar
+                          </Button>
+                        </div>
                       </div>
-                      {isLowStock && (
-                        <Badge className="bg-red-100 text-red-800">
-                          <AlertTriangle className="h-3 w-3 mr-1" />
-                          Estoque Baixo
-                        </Badge>
-                      )}
-                    </div>
-                    
-                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
-                      <div>
-                        <p className="text-xs text-gray-500">Sacos Disponíveis</p>
-                        <p className="text-xl font-bold text-gray-800">{raca.quantidade_sacos || 0}</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Peso Total</p>
-                        <p className="text-xl font-bold text-gray-800">{(raca.quantidade_sacos || 0) * (raca.peso_por_saco || 0)} kg</p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Autonomia</p>
-                        <p className={`text-xl font-bold ${autonomia < 7 ? 'text-red-600' : 'text-gray-800'}`}>
-                          {autonomia} dias
-                        </p>
-                      </div>
-                      <div>
-                        <p className="text-xs text-gray-500">Valor Total</p>
-                        <p className="text-xl font-bold text-gray-800">AOA {((raca.quantidade_sacos || 0) * (raca.preco_por_saco || 0)).toLocaleString()}</p>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-3">
-                      <div className="w-full bg-gray-200 rounded-full h-2">
-                        <div 
-                          className="bg-emerald-600 h-2 rounded-full transition-all"
-                          style={{ width: `${Math.min(((raca.quantidade_sacos || 0) / 60) * 100, 100)}%` }}
-                        />
-                      </div>
-                    </div>
+                    ) : (
+                      <>
+                        <div className="flex justify-between items-start mb-3">
+                          <div>
+                            <h3 className="font-semibold text-gray-800">
+                              {raca.nome}
+                            </h3>
+                            <p className="text-sm text-gray-500">
+                              {raca.peso_por_saco}kg/saco • AOA{" "}
+                              {raca.preco_por_saco}/saco
+                            </p>
+                          </div>
+                          <div className="flex gap-2">
+                            {isLowStock && (
+                              <Badge className="bg-red-100 text-red-800">
+                                <AlertTriangle className="h-3 w-3 mr-1" />
+                                Estoque Baixo
+                              </Badge>
+                            )}
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleEditarRacao(raca)}
+                              className="text-blue-600"
+                              title="Editar ração"
+                            >
+                              <Edit className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() =>
+                                handleDeletarRacao(raca.id, raca.nome)
+                              }
+                              className="text-red-600"
+                              title="Deletar ração"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => {
+                                setSelectedRacaoId(raca.id);
+                                setShowAddEstoque(true);
+                              }}
+                              className="border-emerald-500 text-emerald-600"
+                              title="Adicionar estoque"
+                            >
+                              <ShoppingCart className="h-3 w-3 mr-1" />+ Estoque
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3">
+                          <div>
+                            <p className="text-xs text-gray-500">
+                              Sacos Disponíveis
+                            </p>
+                            <p className="text-xl font-bold text-gray-800">
+                              {quantidadeSacos}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Peso Total</p>
+                            <p className="text-xl font-bold text-gray-800">
+                              {pesoTotal} kg
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Autonomia</p>
+                            <p
+                              className={`text-xl font-bold ${autonomiaPorRacao < 7 && autonomiaPorRacao > 0 ? "text-red-600" : "text-gray-800"}`}
+                            >
+                              {autonomiaPorRacao > 0
+                                ? `${autonomiaPorRacao} dias`
+                                : "Sem dados"}
+                            </p>
+                            {autonomiaPorRacao > 0 && (
+                              <p className="text-xs text-gray-400">
+                                {quantidadeSacos} sacos ÷ consumo
+                              </p>
+                            )}
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500">Valor Total</p>
+                            <p className="text-xl font-bold text-gray-800">
+                              AOA {valorTotal.toLocaleString()}
+                            </p>
+                          </div>
+                        </div>
+
+                        <div className="mt-3">
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className="bg-emerald-600 h-2 rounded-full transition-all"
+                              style={{
+                                width: `${Math.min((quantidadeSacos / 60) * 100, 100)}%`,
+                              }}
+                            />
+                          </div>
+                        </div>
+                      </>
+                    )}
                   </div>
                 );
               })}
@@ -259,68 +675,141 @@ export default function AlimentacaoGado() {
         </CardContent>
       </Card>
 
-      {/* Consumo por Animal */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <PiggyBank className="h-5 w-5 text-emerald-600" />
-              Consumo por Animal
-            </CardTitle>
+      {/* Modal para Adicionar Nova Ração */}
+      {showAddRacao && (
+        <Card className="border-2 border-emerald-200">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Cadastrar Nova Ração</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAddRacao(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Consumo médio por animal/dia</span>
-                  <span className="text-xl font-bold text-emerald-600">{consumoDiario.por_animal || 0} kg</span>
-                </div>
+              <div>
+                <Label>Nome da Ração</Label>
+                <Input
+                  placeholder="Ex: Ração de Crescimento"
+                  value={novaRacao.nome}
+                  onChange={(e) =>
+                    setNovaRacao({ ...novaRacao, nome: e.target.value })
+                  }
+                />
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Custo por animal/dia</span>
-                  <span className="text-xl font-bold text-emerald-600">AOA {totalAnimais > 0 ? ((consumoDiario.custo_diario || 0) / totalAnimais).toFixed(2) : '0.00'}</span>
-                </div>
+              <div>
+                <Label>Peso por Saco (kg)</Label>
+                <Input
+                  type="number"
+                  placeholder="Ex: 50"
+                  value={novaRacao.peso_por_saco}
+                  onChange={(e) =>
+                    setNovaRacao({
+                      ...novaRacao,
+                      peso_por_saco: parseFloat(e.target.value),
+                    })
+                  }
+                />
               </div>
-              <div className="p-3 bg-gray-50 rounded-lg">
-                <div className="flex justify-between items-center">
-                  <span className="text-gray-600">Custo por animal/mês</span>
-                  <span className="text-xl font-bold text-emerald-600">AOA {totalAnimais > 0 ? (((consumoDiario.custo_diario || 0) / totalAnimais) * 30).toFixed(2) : '0.00'}</span>
-                </div>
+              <div>
+                <Label>Preço por Saco (AOA)</Label>
+                <Input
+                  type="number"
+                  placeholder="Ex: 5000"
+                  value={novaRacao.preco_por_saco}
+                  onChange={(e) =>
+                    setNovaRacao({
+                      ...novaRacao,
+                      preco_por_saco: parseFloat(e.target.value),
+                    })
+                  }
+                />
+              </div>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAddRacao(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleAddRacao}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Cadastrar Ração
+                </Button>
               </div>
             </div>
           </CardContent>
         </Card>
+      )}
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <TrendingUp className="h-5 w-5 text-emerald-600" />
-              Estatísticas de Consumo
-            </CardTitle>
+      {/* Modal para Adicionar Estoque */}
+      {showAddEstoque && selectedRacaoId && (
+        <Card className="border-2 border-emerald-200">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <CardTitle>Adicionar Estoque</CardTitle>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setShowAddEstoque(false)}
+            >
+              <X className="h-4 w-4" />
+            </Button>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              <div className="flex justify-between items-center p-3 border-b">
-                <span className="text-gray-600">Total de animais alimentados</span>
-                <span className="font-bold">{totalAnimais} cabeças</span>
+              <div>
+                <Label>Quantidade de Sacos</Label>
+                <Input
+                  type="number"
+                  placeholder="Ex: 30"
+                  value={addEstoqueData.quantidade_sacos}
+                  onChange={(e) =>
+                    setAddEstoqueData({
+                      ...addEstoqueData,
+                      quantidade_sacos: e.target.value,
+                    })
+                  }
+                />
               </div>
-              <div className="flex justify-between items-center p-3 border-b">
-                <span className="text-gray-600">Consumo total do mês</span>
-                <span className="font-bold">{((consumoDiario.total || 0) * 30).toLocaleString()} kg</span>
+              <div>
+                <Label>Preço Pago por Saco (AOA) - opcional</Label>
+                <Input
+                  type="number"
+                  placeholder="Ex: 5500"
+                  value={addEstoqueData.preco_pago_saco}
+                  onChange={(e) =>
+                    setAddEstoqueData({
+                      ...addEstoqueData,
+                      preco_pago_saco: e.target.value,
+                    })
+                  }
+                />
               </div>
-              <div className="flex justify-between items-center p-3 border-b">
-                <span className="text-gray-600">Custo total do mês</span>
-                <span className="font-bold text-red-600">AOA {calcularCustoMensal().toLocaleString()}</span>
-              </div>
-              <div className="flex justify-between items-center p-3 bg-emerald-50 rounded-lg">
-                <span className="text-gray-600">Custo anual estimado</span>
-                <span className="font-bold text-emerald-600">AOA {(calcularCustoMensal() * 12).toLocaleString()}</span>
+              <div className="flex gap-2 justify-end">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowAddEstoque(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  onClick={handleAddEstoque}
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
+                  <CheckCircle className="h-4 w-4 mr-2" />
+                  Adicionar ao Estoque
+                </Button>
               </div>
             </div>
           </CardContent>
         </Card>
-      </div>
+      )}
 
       {/* Formulário de Registro de Consumo */}
       {showForm && (
@@ -333,51 +822,60 @@ export default function AlimentacaoGado() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label>Tipo de Ração</Label>
-                  <select 
+                  <select
                     className="w-full border rounded-md p-2"
                     value={formData.tipo}
-                    onChange={(e) => setFormData({...formData, tipo: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, tipo: e.target.value })
+                    }
                     required
                   >
                     <option value="">Selecione...</option>
-                    {estoque.racas?.map(raca => (
-                      <option key={raca.id} value={raca.nome}>{raca.nome}</option>
+                    {estoque.racas?.map((raca) => (
+                      <option key={raca.id} value={raca.nome}>
+                        {raca.nome}
+                      </option>
                     ))}
                   </select>
                 </div>
                 <div>
                   <Label>Quantidade (sacos)</Label>
-                  <Input 
-                    type="number" 
+                  <Input
+                    type="number"
                     placeholder="Ex: 3"
                     value={formData.quantidade_sacos}
-                    onChange={(e) => setFormData({...formData, quantidade_sacos: e.target.value})}
-                    required
-                  />
-                </div>
-                <div>
-                  <Label>Animais / Lote</Label>
-                  <input 
-                    type="text"
-                    className="w-full border rounded-md p-2"
-                    placeholder="Ex: Todos os bovinos, Estábulo Norte"
-                    value={formData.animais}
-                    onChange={(e) => setFormData({...formData, animais: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({
+                        ...formData,
+                        quantidade_sacos: e.target.value,
+                      })
+                    }
                     required
                   />
                 </div>
                 <div>
                   <Label>Observações</Label>
-                  <Input 
+                  <Input
                     placeholder="Observações adicionais"
                     value={formData.observacoes}
-                    onChange={(e) => setFormData({...formData, observacoes: e.target.value})}
+                    onChange={(e) =>
+                      setFormData({ ...formData, observacoes: e.target.value })
+                    }
                   />
                 </div>
               </div>
               <div className="flex gap-2 justify-end">
-                <Button type="button" variant="outline" onClick={() => setShowForm(false)}>Cancelar</Button>
-                <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => setShowForm(false)}
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  type="submit"
+                  className="bg-emerald-600 hover:bg-emerald-700"
+                >
                   <CheckCircle className="h-4 w-4 mr-2" />
                   Registrar Consumo
                 </Button>
@@ -405,23 +903,50 @@ export default function AlimentacaoGado() {
               <table className="w-full">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Data</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Tipo</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Quantidade</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Sacos</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Animais</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Observações</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Data
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Tipo
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Sacos
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Peso (kg)
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Custo (AOA)
+                    </th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">
+                      Observações
+                    </th>
                   </tr>
                 </thead>
                 <tbody>
-                  {alimentacoes.map((item) => (
-                    <tr key={item.id} className="border-t hover:bg-emerald-50 transition-colors">
-                      <td className="px-4 py-3">{new Date(item.data).toLocaleDateString('pt-BR')}</td>
-                      <td className="px-4 py-3 font-medium">{item.tipo}</td>
+                  {alimentacoes.slice(0, 20).map((item) => (
+                    <tr
+                      key={item.id}
+                      className="border-t hover:bg-emerald-50 transition-colors"
+                    >
+                      <td className="px-4 py-3">
+                        {new Date(item.data).toLocaleDateString("pt-BR")}
+                      </td>
+                      <td className="px-4 py-3 font-medium">
+                        {item.tipo_racao_nome ||
+                          item.tipo_racao?.nome ||
+                          item.tipo}
+                      </td>
+                      <td className="px-4 py-3">
+                        {item.quantidade_sacos} sacos
+                      </td>
                       <td className="px-4 py-3">{item.quantidade_kg} kg</td>
-                      <td className="px-4 py-3">{item.quantidade_sacos} sacos</td>
-                      <td className="px-4 py-3">{item.animais}</td>
-                      <td className="px-4 py-3 text-gray-500">{item.observacoes || '-'}</td>
+                      <td className="px-4 py-3">
+                        AOA {Number(item.custo_total).toLocaleString()}
+                      </td>
+                      <td className="px-4 py-3 text-gray-500">
+                        {item.observacoes || "-"}
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -430,24 +955,6 @@ export default function AlimentacaoGado() {
           )}
         </CardContent>
       </Card>
-
-      {/* Alertas de Estoque Baixo */}
-      {estoque.racas?.some(r => (r.quantidade_sacos || 0) < 10) && (
-        <Card className="border-l-4 border-red-500 bg-red-50">
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="h-6 w-6 text-red-600" />
-              <div>
-                <p className="font-semibold text-red-800">Atenção: Estoque Baixo!</p>
-                <p className="text-sm text-red-600">
-                  {estoque.racas.filter(r => (r.quantidade_sacos || 0) < 10).map(r => r.nome).join(', ')} está com estoque baixo.
-                  Recomendamos fazer o pedido de reposição em breve.
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
