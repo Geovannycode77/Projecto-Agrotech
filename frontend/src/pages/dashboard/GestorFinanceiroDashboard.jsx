@@ -24,6 +24,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { gestorService } from '@/services/GestorService';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import RegistroReceitas from './components/RegistroReceitas';
 import RegistroDespesas from './components/RegistroDespesas';
 import RelatorioFinanceiro from './components/RelatorioFinanceiro';
@@ -36,6 +37,7 @@ function GestorFinanceiroDashboard() {
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState('dashboard');
+  const [error, setError] = useState(null);
   const [dashboardData, setDashboardData] = useState({
     receitas_mes: 0,
     despesas_mes: 0,
@@ -61,6 +63,7 @@ function GestorFinanceiroDashboard() {
   // GestorFinanceiroDashboard.jsx - função carregarDadosDashboard
 const carregarDadosDashboard = async () => {
   setLoading(true);
+  setError(null);
   try {
     const data = await gestorService.getDashboard();
     setDashboardData({
@@ -82,10 +85,17 @@ const carregarDadosDashboard = async () => {
     
     // Atividades recentes
     const atividades = await gestorService.getUltimasAtividades();
-    setUltimasAtividades(atividades.results || atividades);
+    setUltimasAtividades(
+      Array.isArray(atividades.results)
+        ? atividades.results
+        : Array.isArray(atividades)
+        ? atividades
+        : []
+    );
     
   } catch (error) {
     console.error('Erro ao carregar dashboard:', error);
+    setError(error?.response?.data?.detail || error?.message || 'Erro ao carregar o painel.');
   } finally {
     setLoading(false);
   }
@@ -144,6 +154,21 @@ const carregarDadosDashboard = async () => {
     return (
       <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-amber-50 to-yellow-50">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-amber-50 to-yellow-50 px-4">
+        <div className="max-w-xl w-full bg-white rounded-3xl shadow-xl p-8 text-center">
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Falha ao carregar o painel</h2>
+          <p className="text-sm text-gray-600 mb-6">{error}</p>
+          <div className="flex justify-center gap-3">
+            <Button onClick={carregarDadosDashboard} className="bg-amber-500 text-white hover:bg-amber-600">Tentar novamente</Button>
+            <Button onClick={() => navigate('/')} className="bg-gray-100 text-gray-700 hover:bg-gray-200">Voltar</Button>
+          </div>
+        </div>
       </div>
     );
   }
@@ -266,14 +291,29 @@ const carregarDadosDashboard = async () => {
 
       {/* Main Content */}
       <main className="lg:ml-72 min-h-screen">
-        <div className="p-4 md:p-6 lg:p-8">
-          {/* Header da Página */}
-          <div className="mb-6">
-            <h1 className="text-2xl font-bold text-gray-800">Painel do Gestor Financeiro</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Olá {user?.nome || user?.email?.split('@')[0] || 'Gestor'} - Gerencie as finanças da fazenda
-            </p>
-          </div>
+        <ErrorBoundary
+          fallback={({ error }) => (
+            <div className="min-h-screen flex items-center justify-center p-6">
+              <div className="max-w-xl w-full rounded-3xl bg-white p-8 shadow-lg text-center">
+                <h2 className="text-2xl font-semibold text-gray-900 mb-4">Erro ao carregar o painel</h2>
+                <p className="text-sm text-gray-600 mb-4">
+                  {error?.message || 'Ocorreu um erro inesperado. Verifique o console para mais detalhes.'}
+                </p>
+                <Button onClick={carregarDadosDashboard} className="bg-amber-600 text-white hover:bg-amber-700">
+                  Tentar novamente
+                </Button>
+              </div>
+            </div>
+          )}
+        >
+          <div className="p-4 md:p-6 lg:p-8">
+            {/* Header da Página */}
+            <div className="mb-6">
+              <h1 className="text-2xl font-bold text-gray-800">Painel do Gestor Financeiro</h1>
+              <p className="text-gray-500 text-sm mt-1">
+                Olá {user?.nome || user?.email?.split('@')[0] || 'Gestor'} - Gerencie as finanças da fazenda
+              </p>
+            </div>
 
           {/* Conteúdo da Aba Dashboard */}
           {abaAtiva === 'dashboard' && (
@@ -386,22 +426,29 @@ const carregarDadosDashboard = async () => {
                       <div className="text-center py-4 text-gray-500">Nenhuma atividade recente</div>
                     ) : (
                       <div className="space-y-3">
-                        {ultimasAtividades.map((atividade, index) => (
-                          <div key={index} className="flex items-center gap-3 p-2 hover:bg-amber-50 rounded-lg transition-colors">
-                            <div className={`p-2 rounded-full ${atividade.tipo === 'receita' ? 'bg-green-100' : 'bg-red-100'}`}>
-                              {atividade.tipo === 'receita' ? 
-                                <TrendingUp className="h-4 w-4 text-green-600" /> : 
-                                <TrendingDown className="h-4 w-4 text-red-600" />
-                              }
+                        {ultimasAtividades.map((atividade, index) => {
+                          const valorAtividade = Number(atividade?.valor ?? 0).toLocaleString();
+                          const dataAtividade = atividade?.data
+                            ? new Date(atividade.data).toLocaleDateString('pt-BR')
+                            : '-';
+
+                          return (
+                            <div key={index} className="flex items-center gap-3 p-2 hover:bg-amber-50 rounded-lg transition-colors">
+                              <div className={`p-2 rounded-full ${atividade?.tipo === 'receita' ? 'bg-green-100' : 'bg-red-100'}`}>
+                                {atividade?.tipo === 'receita' ? 
+                                  <TrendingUp className="h-4 w-4 text-green-600" /> : 
+                                  <TrendingDown className="h-4 w-4 text-red-600" />
+                                }
+                              </div>
+                              <div className="flex-1">
+                                <p className="text-sm font-medium">{atividade?.descricao || '-'}</p>
+                                <p className="text-xs text-gray-500">
+                                  {atividade?.tipo === 'receita' ? '+' : '-'} AOA {valorAtividade} • {dataAtividade}
+                                </p>
+                              </div>
                             </div>
-                            <div className="flex-1">
-                              <p className="text-sm font-medium">{atividade.descricao}</p>
-                              <p className="text-xs text-gray-500">
-                                {atividade.tipo === 'receita' ? '+' : '-'} AOA {atividade.valor.toLocaleString()} • {new Date(atividade.data).toLocaleDateString('pt-BR')}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
                   </CardContent>
@@ -417,6 +464,7 @@ const carregarDadosDashboard = async () => {
           {abaAtiva === 'analise' && <AnaliseLucros />}
           {abaAtiva === 'perfil' && <PerfilGestor />}
         </div>
+      </ErrorBoundary>
       </main>
     </div>
   );

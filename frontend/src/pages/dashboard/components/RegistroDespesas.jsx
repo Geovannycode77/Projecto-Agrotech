@@ -26,6 +26,7 @@ export default function RegistroDespesas() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [despesas, setDespesas] = useState([]);
+  const [apiError, setApiError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("todas");
   const [formData, setFormData] = useState({
@@ -84,25 +85,57 @@ export default function RegistroDespesas() {
 
   const carregarDespesas = async (showLoading = true) => {
     if (showLoading) setLoading(true);
+    setApiError(null);
     try {
       const data = await gestorService.getDespesas();
-      setDespesas(data.results || data);
+      const despesasData = Array.isArray(data.results)
+        ? data.results
+        : Array.isArray(data)
+        ? data
+        : [];
+      setDespesas(despesasData);
     } catch (error) {
       console.error("Erro ao carregar despesas:", error);
+      setApiError(error?.response?.data?.detail || error?.message || "Falha ao carregar despesas.");
     } finally {
       if (showLoading) setLoading(false);
     }
+  };
+
+  const formatErrorMessage = (error) => {
+    const data = error?.response?.data;
+    if (!data) return error?.message || "Erro ao registrar despesa. Tente novamente.";
+    if (typeof data === "string") return data;
+    if (Array.isArray(data)) return data.join(" ");
+    return Object.values(data)
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .join(" ");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
 
-    try {
-      const novaDespesa = await gestorService.registrarDespesa({
-        ...formData,
-        valor: parseFloat(formData.valor),
+    const valor = parseFloat(formData.valor);
+    if (Number.isNaN(valor)) {
+      toast({
+        title: "Erro",
+        description: "Informe um valor válido para a despesa.",
+        variant: "destructive",
       });
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        categoria: formData.categoria,
+        descricao: formData.descricao,
+        valor,
+        data: formData.data,
+      };
+
+      await gestorService.registrarDespesa(payload);
 
       await carregarDespesas(false);
       setSuccess(true);
@@ -120,7 +153,7 @@ export default function RegistroDespesas() {
       console.error("Erro ao registrar despesa:", error);
       toast({
         title: "Erro",
-        description: "Erro ao registrar despesa. Tente novamente.",
+        description: formatErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -128,22 +161,28 @@ export default function RegistroDespesas() {
     }
   };
 
-  const despesasFiltradas = despesas.filter((d) => {
-    const matchSearch =
-      d.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (d.fornecedor &&
-        d.fornecedor.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchCategoria =
-      filtroCategoria === "todas" || d.categoria === filtroCategoria;
-    return matchSearch && matchCategoria;
-  });
+  const despesasFiltradas = Array.isArray(despesas)
+    ? despesas.filter((d) => {
+        const matchSearch =
+          d.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (d.fornecedor &&
+            d.fornecedor.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchCategoria =
+          filtroCategoria === "todas" || d.categoria === filtroCategoria;
+        return matchSearch && matchCategoria;
+      })
+    : [];
 
-  const totalDespesas = despesas.reduce((sum, d) => sum + (d.valor || 0), 0);
+  const totalDespesas = Array.isArray(despesas)
+    ? despesas.reduce((sum, d) => sum + Number(d.valor || 0), 0)
+    : 0;
   const despesasPorCategoria = categorias.map((cat) => ({
     ...cat,
-    total: despesas
-      .filter((d) => d.categoria === cat.value)
-      .reduce((sum, d) => sum + (d.valor || 0), 0),
+    total: Array.isArray(despesas)
+      ? despesas
+          .filter((d) => d.categoria === cat.value)
+          .reduce((sum, d) => sum + Number(d.valor || 0), 0)
+      : 0,
   }));
 
   const mediaPorDespesa =
@@ -165,6 +204,22 @@ export default function RegistroDespesas() {
         </div>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-red-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (apiError) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
+        <div className="max-w-xl w-full rounded-3xl bg-white p-8 shadow-lg text-center">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">Não foi possível carregar as despesas</h2>
+          <p className="text-sm text-gray-600 mb-6">{apiError}</p>
+          <div className="flex justify-center gap-3">
+            <Button onClick={() => carregarDespesas()} className="bg-red-600 text-white hover:bg-red-700">
+              Tentar novamente
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -436,19 +491,19 @@ export default function RegistroDespesas() {
                         className="border-t hover:bg-red-50 transition-colors"
                       >
                         <td className="px-4 py-3">
-                          {new Date(despesa.data).toLocaleDateString("pt-BR")}
+                          {despesa.data ? new Date(despesa.data).toLocaleDateString("pt-BR") : "-"}
                         </td>
                         <td className="px-4 py-3">
                           <Badge className={categoria?.cor || 'bg-gray-100 text-gray-800'}>
                             {categoria?.label || despesa.categoria_display || despesa.categoria}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3">{despesa.descricao}</td>
+                        <td className="px-4 py-3">{despesa.descricao || "-"}</td>
                         <td className="px-4 py-3">
                           {despesa.fornecedor || "-"}
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-red-600">
-                          - AOA {despesa.valor.toLocaleString()}
+                          - AOA {(despesa.valor != null ? Number(despesa.valor).toLocaleString() : 0)}
                         </td>
                       </tr>
                     );

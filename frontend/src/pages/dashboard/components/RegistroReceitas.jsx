@@ -24,6 +24,7 @@ export default function RegistroReceitas() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [receitas, setReceitas] = useState([]);
+  const [apiError, setApiError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("todas");
   const [formData, setFormData] = useState({
@@ -72,31 +73,57 @@ export default function RegistroReceitas() {
 
   const carregarReceitas = async (showLoading = true) => {
     if (showLoading) setLoading(true);
+    setApiError(null);
     try {
       const data = await gestorService.getReceitas();
-      setReceitas(data.results || data);
+      const receitasData = Array.isArray(data)
+        ? data
+        : Array.isArray(data?.results)
+        ? data.results
+        : [];
+      setReceitas(receitasData);
     } catch (error) {
       console.error("Erro ao carregar receitas:", error);
+      setApiError(error?.response?.data?.detail || error?.message || "Falha ao carregar receitas.");
     } finally {
       if (showLoading) setLoading(false);
     }
+  };
+
+  const formatErrorMessage = (error) => {
+    const data = error?.response?.data;
+    if (!data) return error?.message || "Erro ao registrar receita. Tente novamente.";
+    if (typeof data === "string") return data;
+    if (Array.isArray(data)) return data.join(" ");
+    return Object.values(data)
+      .flatMap((value) => (Array.isArray(value) ? value : [value]))
+      .join(" ");
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
 
-    try {
-      const novaReceita = await gestorService.registrarReceita({
-        ...formData,
-        valor: parseFloat(formData.valor),
-        quantidade_animais: formData.quantidade_animais
-          ? parseInt(formData.quantidade_animais)
-          : null,
-        peso_total: formData.peso_total
-          ? parseFloat(formData.peso_total)
-          : null,
+    const valor = parseFloat(formData.valor);
+    if (Number.isNaN(valor)) {
+      toast({
+        title: "Erro",
+        description: "Informe um valor válido para a receita.",
+        variant: "destructive",
       });
+      setSubmitting(false);
+      return;
+    }
+
+    try {
+      const payload = {
+        categoria: formData.categoria,
+        descricao: formData.descricao,
+        valor,
+        data: formData.data,
+      };
+
+      await gestorService.registrarReceita(payload);
 
       await carregarReceitas(false);
       setSuccess(true);
@@ -116,7 +143,7 @@ export default function RegistroReceitas() {
       console.error("Erro ao registrar receita:", error);
       toast({
         title: "Erro",
-        description: "Erro ao registrar receita. Tente novamente.",
+        description: formatErrorMessage(error),
         variant: "destructive",
       });
     } finally {
@@ -124,33 +151,41 @@ export default function RegistroReceitas() {
     }
   };
 
-  const receitasFiltradas = receitas.filter((r) => {
-    const matchSearch =
-      r.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (r.comprador &&
-        r.comprador.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchCategoria =
-      filtroCategoria === "todas" || r.categoria === filtroCategoria;
-    return matchSearch && matchCategoria;
-  });
+  const receitasFiltradas = Array.isArray(receitas)
+    ? receitas.filter((r) => {
+        const matchSearch =
+          r.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          (r.comprador &&
+            r.comprador.toLowerCase().includes(searchTerm.toLowerCase()));
+        const matchCategoria =
+          filtroCategoria === "todas" || r.categoria === filtroCategoria;
+        return matchSearch && matchCategoria;
+      })
+    : [];
 
-  const totalReceitas = receitas.reduce((sum, r) => sum + (r.valor || 0), 0);
-  const vendasGado = receitas.filter((r) => r.categoria === "Venda de Gado");
+  const totalReceitas = Array.isArray(receitas)
+    ? receitas.reduce((sum, r) => sum + Number(r.valor || 0), 0)
+    : 0;
+  const vendasGado = Array.isArray(receitas)
+    ? receitas.filter((r) => r.categoria === "venda_animal")
+    : [];
   const totalVendasGado = vendasGado.reduce(
-    (sum, r) => sum + (r.valor || 0),
+    (sum, r) => sum + Number(r.valor || 0),
     0,
   );
   const totalAnimaisVendidos = vendasGado.reduce(
-    (sum, r) => sum + (r.quantidade_animais || 0),
+    (sum, r) => sum + Number(r.quantidade_animais || 0),
     0,
   );
   const precoMedioAnimal =
     totalAnimaisVendidos > 0 ? totalVendasGado / totalAnimaisVendidos : 0;
   const receitasPorCategoria = categorias.map((cat) => ({
     ...cat,
-    total: receitas
-      .filter((r) => r.categoria === cat.value)
-      .reduce((sum, r) => sum + (r.valor || 0), 0),
+    total: Array.isArray(receitas)
+      ? receitas
+          .filter((r) => r.categoria === cat.value)
+          .reduce((sum, r) => sum + Number(r.valor || 0), 0)
+      : 0,
   }));
 
   if (loading) {
@@ -167,6 +202,22 @@ export default function RegistroReceitas() {
         </div>
         <div className="flex items-center justify-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
+        </div>
+      </div>
+    );
+  }
+
+  if (apiError) {
+    return (
+      <div className="min-h-[60vh] flex items-center justify-center px-4">
+        <div className="max-w-xl w-full rounded-3xl bg-white p-8 shadow-lg text-center">
+          <h2 className="text-2xl font-semibold text-gray-900 mb-4">Não foi possível carregar as receitas</h2>
+          <p className="text-sm text-gray-600 mb-6">{apiError}</p>
+          <div className="flex justify-center gap-3">
+            <Button onClick={() => carregarReceitas()} className="bg-emerald-600 text-white hover:bg-emerald-700">
+              Tentar novamente
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -489,7 +540,9 @@ export default function RegistroReceitas() {
                         className="border-t hover:bg-emerald-50 transition-colors"
                       >
                         <td className="px-4 py-3">
-                          {new Date(receita.data).toLocaleDateString("pt-BR")}
+                          {receita.data
+                            ? new Date(receita.data).toLocaleDateString("pt-BR")
+                            : "-"}
                         </td>
                         <td className="px-4 py-3">
                           <Badge className={categoria?.cor || 'bg-gray-100 text-gray-800'}>
@@ -508,7 +561,7 @@ export default function RegistroReceitas() {
                           {receita.comprador || "-"}
                         </td>
                         <td className="px-4 py-3 text-right font-bold text-emerald-600">
-                          + AOA {receita.valor.toLocaleString()}
+                          + AOA {receita.valor != null ? Number(receita.valor).toLocaleString() : '0'}
                         </td>
                       </tr>
                     );

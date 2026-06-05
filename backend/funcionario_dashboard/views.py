@@ -327,3 +327,96 @@ def get_funcionario_dashboard(request):
         'ocorrencias': ocorrencias,
     })
 
+
+@api_view(['GET', 'PUT', 'PATCH'])
+@permission_classes([IsFuncionarioOrAdmin])
+def get_funcionario_profile(request):
+    user = request.user
+    perfil = getattr(user, 'perfil', None)
+    funcionario = Funcionario.objects.filter(user=user).first()
+
+    if request.method == 'GET':
+        return Response({
+            'nome': perfil.nome_completo if perfil and perfil.nome_completo else user.email.split('@')[0],
+            'email': user.email,
+            'telefone': str(perfil.telefone) if perfil and perfil.telefone else '',
+            'cargo': funcionario.cargo if funcionario else 'Funcionário Operacional',
+            'data_admissao': funcionario.data_contratacao.isoformat() if funcionario and funcionario.data_contratacao else '',
+            'setor': perfil.setor if perfil and perfil.setor else 'Operações de Campo',
+            'id_funcionario': f"F{user.id}",
+        })
+
+    data = request.data
+    if perfil is None:
+        perfil = Perfil.objects.create(
+            user=user,
+            nome_completo=user.email.split('@')[0],
+        )
+
+    if 'nome' in data:
+        perfil.nome_completo = data.get('nome')
+    if 'telefone' in data:
+        perfil.telefone = data.get('telefone') or None
+    if 'setor' in data:
+        perfil.setor = data.get('setor')
+    if 'email' in data:
+        user.email = data.get('email')
+    if funcionario and 'cargo' in data:
+        funcionario.cargo = data.get('cargo')
+
+    try:
+        perfil.save()
+        if funcionario:
+            funcionario.save()
+        user.full_clean()
+        user.save()
+    except ValidationError as e:
+        return Response(
+            {'errors': e.message_dict if hasattr(e, 'message_dict') else e.messages},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+    except Exception as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+    return Response({
+        'nome': perfil.nome_completo if perfil.nome_completo else user.email.split('@')[0],
+        'email': user.email,
+        'telefone': str(perfil.telefone) if perfil.telefone else '',
+        'cargo': funcionario.cargo if funcionario else 'Funcionário Operacional',
+        'data_admissao': funcionario.data_contratacao.isoformat() if funcionario and funcionario.data_contratacao else '',
+        'setor': perfil.setor if perfil and perfil.setor else 'Operações de Campo',
+        'id_funcionario': f"F{user.id}",
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsFuncionarioOrAdmin])
+def get_funcionario_animais(request):
+    user = request.user
+    if user.role == 'funcionario':
+        funcionario = Funcionario.objects.filter(user=user).first()
+        if not funcionario:
+            return Response({'error': 'Funcionário não vinculado a uma fazenda.'}, status=status.HTTP_404_NOT_FOUND)
+        animais = Animal.objects.filter(fazenda=funcionario.fazenda)
+    elif user.role == 'produtor':
+        fazenda = Fazenda.objects.filter(produtor=user).first()
+        animais = Animal.objects.filter(fazenda=fazenda) if fazenda else Animal.objects.none()
+    else:
+        animais = Animal.objects.none()
+
+    serializer = AnimalSerializer(animais, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsFuncionarioOrAdmin])
+def get_funcionario_tipos_racao(request):
+    tipos = [
+        {'id': 'ração_comum', 'nome': 'Ração Comum'},
+        {'id': 'ração_premium', 'nome': 'Ração Premium'},
+        {'id': 'ração_energética', 'nome': 'Ração Energética'},
+        {'id': 'suplemento', 'nome': 'Suplemento Nutricional'},
+        {'id': 'mistura', 'nome': 'Mistura Concentrada'},
+    ]
+    return Response(tipos)
+

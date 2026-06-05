@@ -280,7 +280,7 @@ def get_gestor_financeiro_dashboard(request):
     despesas_ano = Despesa.objects.filter(fazenda=fazenda, data__gte=inicio_ano).aggregate(total=Sum('valor'))['total'] or 0
     lucro_ano = receitas_ano - despesas_ano
     
-    ultimas_atividades = AtividadeFinanceira.objects.filter(fazenda=fazenda)[:10]
+    ultimas_atividades = AtividadeFinanceira.objects.filter(fazenda=fazenda)
     ultimas_vendas = ultimas_atividades.filter(tipo='receita').count()
     ultimas_despesas_count = ultimas_atividades.filter(tipo='despesa').count()
     
@@ -449,6 +449,37 @@ def get_gestor_financeiro_profile(request):
         perfil.area_atuacao = data.get('area_atuacao')
     if 'email' in data:
         user.email = data.get('email')
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
     try:
         perfil.save()

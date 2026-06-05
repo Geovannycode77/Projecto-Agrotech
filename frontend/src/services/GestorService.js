@@ -28,7 +28,7 @@ export const gestorService = {
   // Receitas
   getReceitas: async (params = {}) => {
     const response = await api.get("gestor-financeiro/receitas/", { params });
-    return response.data;
+    return response.data?.results ?? response.data;
   },
 
   registrarReceita: async (data) => {
@@ -39,7 +39,7 @@ export const gestorService = {
   // Despesas
   getDespesas: async (params = {}) => {
     const response = await api.get("gestor-financeiro/despesas/", { params });
-    return response.data;
+    return response.data?.results ?? response.data;
   },
 
   registrarDespesa: async (data) => {
