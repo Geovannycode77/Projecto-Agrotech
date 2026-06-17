@@ -90,13 +90,19 @@ class OcorrenciaSerializer(serializers.ModelSerializer):
                             'resolvido', 'data_resolucao', 'titulo', 'data_hora']
 
 class AtualizacaoAnimalSerializer(serializers.ModelSerializer):
-    funcionario = serializers.StringRelatedField()
-    animal = serializers.StringRelatedField()
-    
+    funcionario = serializers.StringRelatedField(read_only=True)
+    animal = serializers.StringRelatedField(read_only=True)
+
     class Meta:
         model = AtualizacaoAnimal
-        fields = '__all__'
-        read_only_fields = ['created_at']
+        fields = [
+            'id', 'animal', 'funcionario',
+            'peso_anterior', 'peso_novo',
+            'status_anterior', 'status_novo',
+            'observacoes', 'data_hora', 'created_at'
+        ]
+        read_only_fields = ['created_at', 'funcionario', 'animal',
+                            'peso_anterior', 'status_anterior']
 
 class NascimentoSerializer(serializers.ModelSerializer):
     funcionario = serializers.StringRelatedField()

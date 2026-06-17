@@ -2,201 +2,152 @@ import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import {
-  Bell,
-  Syringe,
-  AlertTriangle,
-  Calendar,
-  CheckCircle,
-  Clock,
-  Heart,
-  Stethoscope,
-  X,
-  Eye,
-} from "lucide-react";
+import { Bell, Syringe, AlertTriangle, Calendar, CheckCircle, Heart, Loader2 } from "lucide-react";
 import { veterinarioService } from "@/services/veterinarioService";
 import { produtorService } from "@/services/ProdutorService";
 
-export default function AlertasLembretesSaude({ userRole = "produtor" }) {
+export default function AlertasLembretesSaude({ userRole = "veterinario" }) {
   const [alertas, setAlertas] = useState([]);
-  const [loading, setLoading] = useState(true);
   const [proximasVacinas, setProximasVacinas] = useState([]);
-  const [estatisticas, setEstatisticas] = useState({
-    urgentes: 0,
-    pendentes: 0,
-    vacinasMes: 0,
-  });
+  const [loading, setLoading] = useState(true);
+  const [estatisticas, setEstatisticas] = useState({ urgentes: 0, pendentes: 0, vacinasMes: 0 });
+
+  const isVet = userRole === "veterinario";
 
   useEffect(() => {
-    carregarAlertas();
-    carregarProximasVacinas();
-    // Verificar alertas a cada 5 minutos
-    const interval = setInterval(() => {
-      carregarAlertas();
-      carregarProximasVacinas();
-    }, 300000);
+    carregarTudo();
+    const interval = setInterval(carregarTudo, 300000);
     return () => clearInterval(interval);
-  }, []);
+  }, [userRole]);
+
+  const carregarTudo = async () => {
+    setLoading(true);
+    await Promise.allSettled([carregarAlertas(), carregarProximasVacinas()]);
+    setLoading(false);
+  };
 
   const carregarAlertas = async () => {
-    setLoading(true);
     try {
-      let dadosAlertas;
-      if (userRole === "veterinario") {
-        dadosAlertas = await veterinarioService.getAlertas();
-      } else {
-        dadosAlertas = await produtorService.getAlertas();
-      }
+      // ✅ Veterinário usa endpoint próprio — nunca chama produtor/alertas/
+      const data = isVet
+        ? await veterinarioService.getAlertas()       // veterinario/alertas/
+        : await produtorService.getAlertas();          // produtor/alertas/
 
-      setAlertas(dadosAlertas.results || dadosAlertas);
+      const lista = Array.isArray(data) ? data : data.results || [];
+      setAlertas(lista);
 
-      // Calcular estatísticas
-      const naoLidos = (dadosAlertas.results || dadosAlertas).filter(
-        (a) => a.status !== "lido",
-      );
-      const urgentes = naoLidos.filter(
-        (a) => a.prioridade === "urgente" || a.status === "atrasado",
-      );
-
-      setEstatisticas((prev) => ({
+      const naoLidos = lista.filter(a => !a.lido && a.status !== "lido");
+      setEstatisticas(prev => ({
         ...prev,
-        urgentes: urgentes.length,
+        urgentes: naoLidos.filter(a => a.prioridade === "alta" || a.prioridade === "urgente").length,
         pendentes: naoLidos.length,
       }));
     } catch (error) {
       console.error("Erro ao carregar alertas:", error);
-    } finally {
-      setLoading(false);
+      setAlertas([]);
     }
   };
 
   const carregarProximasVacinas = async () => {
     try {
-      let vacinasData;
-      if (userRole === "veterinario") {
-        vacinasData = await veterinarioService.getVacinas({
-          proximos_30_dias: true,
-        });
-      } else {
-        vacinasData = await produtorService.getProximasVacinas();
-      }
+      // ✅ Ambos usam veterinario/vacinas/proximas/ — produtor não tem esse endpoint separado
+      const data = await veterinarioService.getProximasVacinas();
+      const lista = Array.isArray(data) ? data : data.results || [];
 
-      setProximasVacinas(vacinasData.results || vacinasData);
+      const hoje = new Date();
+      const limite = new Date(hoje.getTime() + 30 * 24 * 60 * 60 * 1000);
 
-      setEstatisticas((prev) => ({
-        ...prev,
-        vacinasMes: (vacinasData.results || vacinasData).length,
-      }));
+      const proximas = lista
+        .filter(v => {
+          const dt = new Date(v.data_proxima_dose || v.proxima_dose || v.data_programada);
+          return dt >= hoje && dt <= limite;
+        })
+        .map(v => ({
+          ...v,
+          _data: new Date(v.data_proxima_dose || v.proxima_dose),
+          dias_restantes: Math.ceil(
+            (new Date(v.data_proxima_dose || v.proxima_dose) - hoje) / (1000 * 60 * 60 * 24)
+          ),
+        }))
+        .sort((a, b) => a._data - b._data); // ordena por data
+
+      setProximasVacinas(proximas);
+      setEstatisticas(prev => ({ ...prev, vacinasMes: proximas.length }));
     } catch (error) {
       console.error("Erro ao carregar próximas vacinas:", error);
+      setProximasVacinas([]);
     }
-  };
-
-  const calcularDiasRestantes = (data) => {
-    const hoje = new Date();
-    const dataEvento = new Date(data);
-    const diffTime = dataEvento - hoje;
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-    return diffDays;
-  };
-
-  const getPrioridadeColor = (prioridade) => {
-    const colors = {
-      urgente: "bg-red-600 text-white",
-      alta: "bg-red-100 border-red-300 text-red-800",
-      media: "bg-yellow-100 border-yellow-300 text-yellow-800",
-      baixa: "bg-blue-100 border-blue-300 text-blue-800",
-    };
-    return colors[prioridade] || "bg-gray-100";
-  };
-
-  const getTipoIcon = (tipo) => {
-    const icons = {
-      vacina: <Syringe className="h-5 w-5" />,
-      tratamento: <Stethoscope className="h-5 w-5" />,
-      consulta: <Calendar className="h-5 w-5" />,
-      doenca: <AlertTriangle className="h-5 w-5" />,
-    };
-    return icons[tipo] || <Bell className="h-5 w-5" />;
-  };
-
-  const getStatusLabel = (status, dias) => {
-    if (status === "emergencia") return "EMERGÊNCIA";
-    if (status === "atrasado") return "ATRASADO";
-    if (dias <= 7) return "PRÓXIMO";
-    if (dias <= 15) return "EM BREVE";
-    return "AGENDADO";
-  };
-
-  const getStatusColor = (status, dias) => {
-    if (status === "emergencia") return "bg-red-600 text-white";
-    if (status === "atrasado") return "bg-red-500 text-white";
-    if (dias <= 7) return "bg-orange-500 text-white";
-    if (dias <= 15) return "bg-yellow-500 text-white";
-    return "bg-green-500 text-white";
   };
 
   const marcarComoLido = async (id) => {
     try {
-      if (userRole === "veterinario") {
+      if (isVet) {
         await veterinarioService.marcarAlertaLido(id);
       } else {
         await produtorService.marcarAlertaLido(id);
       }
-      setAlertas(
-        alertas.map((alerta) =>
-          alerta.id === id ? { ...alerta, status: "lido" } : alerta,
-        ),
-      );
+      setAlertas(prev => prev.map(a => a.id === id ? { ...a, lido: true } : a));
+      // Atualiza contadores
+      setEstatisticas(prev => ({
+        ...prev,
+        pendentes: Math.max(0, prev.pendentes - 1),
+      }));
     } catch (error) {
       console.error("Erro ao marcar alerta como lido:", error);
     }
   };
 
-  const alertasNaoLidos = alertas.filter((a) => a.status !== "lido");
-  const alertasUrgentes = alertasNaoLidos.filter(
-    (a) => a.prioridade === "urgente" || a.status === "atrasado",
-  );
+  const getPrioridadeColor = (prioridade) => ({
+    urgente: "border-red-600 bg-red-50",
+    alta:    "border-red-400 bg-red-50",
+    media:   "border-yellow-400 bg-yellow-50",
+    baixa:   "border-blue-400 bg-blue-50",
+  }[prioridade] || "border-gray-300 bg-gray-50");
+
+  const alertasVisiveis = alertas.filter(a => !a.lido && a.status !== "lido");
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-amber-600"></div>
+      <div className="flex justify-center items-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-amber-600" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Cabeçalho com contadores */}
+
+      {/* Contadores */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="bg-gradient-to-r from-red-500 to-red-600 text-white">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-red-100">Alertas Urgentes</p>
+                <p className="text-red-100 text-sm">Alertas Urgentes</p>
                 <p className="text-3xl font-bold">{estatisticas.urgentes}</p>
               </div>
               <AlertTriangle className="h-8 w-8 text-white/80" />
             </div>
           </CardContent>
         </Card>
+
         <Card className="bg-gradient-to-r from-yellow-500 to-orange-500 text-white">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-yellow-100">Alertas Pendentes</p>
+                <p className="text-yellow-100 text-sm">Alertas Pendentes</p>
                 <p className="text-3xl font-bold">{estatisticas.pendentes}</p>
               </div>
               <Bell className="h-8 w-8 text-white/80" />
             </div>
           </CardContent>
         </Card>
+
         <Card className="bg-gradient-to-r from-emerald-500 to-green-600 text-white">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-emerald-100">Vacinas este Mês</p>
+                <p className="text-emerald-100 text-sm">Vacinas este Mês</p>
                 <p className="text-3xl font-bold">{estatisticas.vacinasMes}</p>
               </div>
               <Syringe className="h-8 w-8 text-white/80" />
@@ -205,138 +156,71 @@ export default function AlertasLembretesSaude({ userRole = "produtor" }) {
         </Card>
       </div>
 
-      {/* Lista de Alertas */}
+      {/* Alertas */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-red-500" />
-            Alertas e Lembretes de Saúde
-            {alertasNaoLidos.length > 0 && (
-              <Badge className="ml-2 bg-red-500 text-white">
-                {alertasNaoLidos.length} não lidos
+            Alertas e Lembretes
+            {alertasVisiveis.length > 0 && (
+              <Badge className="bg-red-500 text-white ml-1">
+                {alertasVisiveis.length} não lido{alertasVisiveis.length > 1 ? "s" : ""}
               </Badge>
             )}
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {alertas.length === 0 ? (
+          {alertasVisiveis.length === 0 ? (
             <div className="text-center py-8">
               <CheckCircle className="h-12 w-12 text-green-500 mx-auto mb-3" />
-              <p className="text-gray-600">Nenhum alerta pendente!</p>
-              <p className="text-sm text-gray-500">
-                Todas as vacinas e tratamentos estão em dia.
-              </p>
+              <p className="text-gray-600 font-medium">Nenhum alerta pendente!</p>
+              <p className="text-gray-400 text-sm mt-1">Tudo em dia por enquanto.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-              {alertas.map((alerta) => (
+            <div className="space-y-3">
+              {alertasVisiveis.map(alerta => (
                 <div
                   key={alerta.id}
-                  className={`border-l-4 p-4 rounded-r-lg transition-all ${
-                    alerta.status === "lido"
-                      ? "opacity-60 bg-gray-50"
-                      : getPrioridadeColor(alerta.prioridade)
-                  }`}
-                  style={{
-                    borderLeftColor:
-                      alerta.prioridade === "urgente"
-                        ? "#dc2626"
-                        : alerta.prioridade === "alta"
-                          ? "#ef4444"
-                          : alerta.prioridade === "media"
-                            ? "#eab308"
-                            : "#3b82f6",
-                  }}
+                  className={`border-l-4 p-4 rounded-r-lg ${getPrioridadeColor(alerta.prioridade)}`}
                 >
-                  <div className="flex items-start justify-between">
-                    <div className="flex gap-3">
-                      <div
-                        className={`p-2 rounded-full ${
-                          alerta.prioridade === "urgente"
-                            ? "bg-red-100"
-                            : alerta.prioridade === "alta"
-                              ? "bg-red-100"
-                              : alerta.prioridade === "media"
-                                ? "bg-yellow-100"
-                                : "bg-blue-100"
-                        }`}
-                      >
-                        {getTipoIcon(alerta.tipo)}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="font-semibold text-gray-800">
-                            {alerta.titulo}
-                          </p>
-                          {alerta.dias_restantes !== undefined &&
-                            alerta.dias_restantes !== null && (
-                              <Badge
-                                className={getStatusColor(
-                                  alerta.status,
-                                  alerta.dias_restantes,
-                                )}
-                              >
-                                {getStatusLabel(
-                                  alerta.status,
-                                  alerta.dias_restantes,
-                                )}
-                              </Badge>
-                            )}
-                          {alerta.status === "emergencia" && (
-                            <Badge className="bg-red-600 text-white animate-pulse">
-                              URGENTE
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600 mt-1">
-                          {alerta.mensagem}
-                        </p>
-                        <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                          <span className="flex items-center gap-1">
-                            <Heart className="h-3 w-3" />
-                            {alerta.animal_nome || alerta.animal}
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1">
+                      <p className="font-semibold text-gray-800">
+                        {alerta.titulo || alerta.mensagem}
+                      </p>
+                      {alerta.titulo && alerta.mensagem && (
+                        <p className="text-sm text-gray-600 mt-1">{alerta.mensagem}</p>
+                      )}
+                      <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
+                        {/* Suporta tanto animal_info (vet) quanto animal_nome (produtor) */}
+                        {(alerta.animal_info?.nome || alerta.animal_info?.brinco || alerta.animal_nome || alerta.animal) && (
+                          <span>
+                            <Heart className="inline h-3 w-3 mr-0.5" />
+                            {alerta.animal_info?.nome || alerta.animal_info?.brinco || alerta.animal_nome || alerta.animal}
                           </span>
-                          {alerta.data_vencimento && (
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              Data:{" "}
-                              {new Date(
-                                alerta.data_vencimento,
-                              ).toLocaleDateString("pt-BR")}
-                            </span>
-                          )}
-                          {alerta.dias_restantes !== undefined &&
-                            alerta.dias_restantes > 0 && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {alerta.dias_restantes} dias restantes
-                              </span>
-                            )}
-                          {alerta.dias_restantes !== undefined &&
-                            alerta.dias_restantes < 0 && (
-                              <span className="flex items-center gap-1 text-red-600">
-                                <AlertTriangle className="h-3 w-3" />
-                                Atrasado há {Math.abs(
-                                  alerta.dias_restantes,
-                                )}{" "}
-                                dias
-                              </span>
-                            )}
-                        </div>
+                        )}
+                        {(alerta.created_at || alerta.data_criacao) && (
+                          <span>
+                            <Calendar className="inline h-3 w-3 mr-0.5" />
+                            {new Date(alerta.created_at || alerta.data_criacao).toLocaleDateString("pt-BR")}
+                          </span>
+                        )}
+                        {alerta.data_limite && (
+                          <span className="text-orange-600 font-medium">
+                            Prazo: {new Date(alerta.data_limite).toLocaleDateString("pt-BR")}
+                          </span>
+                        )}
                       </div>
                     </div>
-                    {alerta.status !== "lido" && (
-                      <div className="flex gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-emerald-600"
-                          onClick={() => marcarComoLido(alerta.id)}
-                        >
-                          <CheckCircle className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    )}
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-green-600 hover:text-green-700 shrink-0"
+                      onClick={() => marcarComoLido(alerta.id)}
+                      title="Marcar como lido"
+                    >
+                      <CheckCircle className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               ))}
@@ -350,37 +234,40 @@ export default function AlertasLembretesSaude({ userRole = "produtor" }) {
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-emerald-600" />
-            Calendário de Vacinas - Próximos 30 Dias
+            Calendário de Vacinas — Próximos 30 Dias
           </CardTitle>
         </CardHeader>
         <CardContent>
           {proximasVacinas.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              Nenhuma vacina programada para os próximos 30 dias.
+              <Syringe className="h-10 w-10 mx-auto mb-2 text-gray-300" />
+              <p>Nenhuma vacina programada para os próximos 30 dias.</p>
             </div>
           ) : (
             <div className="space-y-3">
-              {proximasVacinas.map((vacina, index) => (
+              {proximasVacinas.map((vacina, i) => (
                 <div
-                  key={index}
+                  key={vacina.id || i}
                   className="flex items-center justify-between p-3 border rounded-lg hover:bg-emerald-50 transition-colors"
                 >
                   <div>
-                    <p className="font-medium">
-                      {vacina.nome || vacina.vacina}
-                    </p>
+                    <p className="font-medium">{vacina.nome_vacina || vacina.vacina || "—"}</p>
                     <p className="text-sm text-gray-500">
-                      {vacina.animal_nome || vacina.animal}
+                      {vacina.animal_info?.brinco || vacina.animal_info?.nome || vacina.animal_nome || vacina.animal_brinco || "—"}
                     </p>
                   </div>
                   <div className="text-right">
                     <p className="text-sm text-gray-500">
-                      {new Date(vacina.data_programada).toLocaleDateString(
-                        "pt-BR",
-                      )}
+                      {vacina._data?.toLocaleDateString("pt-BR") || "—"}
                     </p>
-                    <Badge className="bg-yellow-100 text-yellow-800">
-                      Em {vacina.dias_restantes} dias
+                    <Badge className={
+                      vacina.dias_restantes <= 3
+                        ? "bg-red-100 text-red-800"
+                        : vacina.dias_restantes <= 7
+                          ? "bg-orange-100 text-orange-800"
+                          : "bg-yellow-100 text-yellow-800"
+                    }>
+                      Em {vacina.dias_restantes} dia{vacina.dias_restantes !== 1 ? "s" : ""}
                     </Badge>
                   </div>
                 </div>

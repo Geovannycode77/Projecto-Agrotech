@@ -621,7 +621,7 @@ function ProdutorDashboard() {
               onAtualizar={carregarDadosDashboard}
             />
           )}
-          {abaAtiva === "lembretes" && <AlertasLembretesSaude />}
+          {abaAtiva === "lembretes" && <AlertasLembretesSaude userRole="produtor" />}
           {abaAtiva === "perfil" && <PerfilProdutor />}
         </div>
       </main>

@@ -39,42 +39,17 @@ export default function RegistroDespesas() {
   const [success, setSuccess] = useState(false);
 
   const categorias = [
-    {
-      value: "Ração",
-      label: "Ração",
-      icon: Utensils,
-      cor: "bg-emerald-100 text-emerald-800",
-    },
-    {
-      value: "Veterinário",
-      label: "Veterinário",
-      icon: Syringe,
-      cor: "bg-blue-100 text-blue-800",
-    },
-    {
-      value: "Medicamentos",
-      label: "Medicamentos",
-      icon: Package,
-      cor: "bg-purple-100 text-purple-800",
-    },
-    {
-      value: "Transporte",
-      label: "Transporte",
-      icon: Truck,
-      cor: "bg-orange-100 text-orange-800",
-    },
-    {
-      value: "Manutenção",
-      label: "Manutenção",
-      icon: Wrench,
-      cor: "bg-yellow-100 text-yellow-800",
-    },
-    {
-      value: "Outros",
-      label: "Outros",
-      icon: DollarSign,
-      cor: "bg-gray-100 text-gray-800",
-    },
+    { value: "racao",         label: "Ração",          icon: Utensils,  cor: "bg-emerald-100 text-emerald-800" },
+    { value: "veterinario",   label: "Veterinário",    icon: Syringe,   cor: "bg-blue-100 text-blue-800" },
+    { value: "medicamentos",  label: "Medicamentos",   icon: Package,   cor: "bg-purple-100 text-purple-800" },
+    { value: "equipamentos",  label: "Equipamentos",   icon: Wrench,    cor: "bg-yellow-100 text-yellow-800" },
+    { value: "manutencao",    label: "Manutenção",     icon: Wrench,    cor: "bg-orange-100 text-orange-800" },
+    { value: "funcionarios",  label: "Funcionários",   icon: DollarSign,cor: "bg-pink-100 text-pink-800" },
+    { value: "energia",       label: "Energia",        icon: DollarSign,cor: "bg-amber-100 text-amber-800" },
+    { value: "agua",          label: "Água",           icon: DollarSign,cor: "bg-cyan-100 text-cyan-800" },
+    { value: "transporte",    label: "Transporte",     icon: Truck,     cor: "bg-indigo-100 text-indigo-800" },
+    { value: "impostos",      label: "Impostos",       icon: DollarSign,cor: "bg-red-100 text-red-800" },
+    { value: "outros",        label: "Outros",         icon: DollarSign,cor: "bg-gray-100 text-gray-800" },
   ];
 
   useEffect(() => {
@@ -328,21 +303,17 @@ export default function RegistroDespesas() {
               </div>
               <div>
                 <Label>Forma de Pagamento</Label>
-                <select
-                  className="w-full border rounded-lg p-2"
+               <select className="w-full border rounded-lg p-2"
                   value={formData.forma_pagamento}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      forma_pagamento: e.target.value,
-                    })
-                  }
-                >
+                  onChange={e => setFormData({ ...formData, forma_pagamento: e.target.value })}>
                   <option value="">Selecione...</option>
-                  <option>À vista</option>
-                  <option>Parcelado</option>
-                  <option>Boleto</option>
-                  <option>Pix</option>
+                  <option>À vista (dinheiro)</option>
+                  <option>Transferência bancária</option>
+                  <option>Multicaixa Express</option>
+                  <option>Referência Multicaixa</option>
+                  <option>Cheque</option>
+                  <option>Crédito documentário</option>
+                  <option>Outro</option>
                 </select>
               </div>
               <div className="md:col-span-2">
@@ -382,30 +353,19 @@ export default function RegistroDespesas() {
             <TrendingDown className="h-5 w-5 text-red-600" />
             Histórico de Despesas
           </CardTitle>
-          <div className="flex gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar..."
-                className="pl-10 pr-4 py-2 border rounded-lg text-sm"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <select
-              className="border rounded-lg px-3 py-2 text-sm"
-              value={filtroCategoria}
-              onChange={(e) => setFiltroCategoria(e.target.value)}
-            >
-              <option value="todas">Todas Categorias</option>
-              {categorias.map((cat) => (
-                <option key={cat.value} value={cat.value}>
-                  {cat.label}
-                </option>
-              ))}
-            </select>
+         <div className="flex flex-col sm:flex-row gap-2 mt-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <input type="text" placeholder="Buscar..."
+              className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm"
+              value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
           </div>
+          <select className="border rounded-lg px-3 py-2 text-sm w-full sm:w-auto"
+            value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}>
+            <option value="todas">Todas Categorias</option>
+            {categorias.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
+          </select>
+        </div>
         </CardHeader>
         <CardContent>
           {despesasFiltradas.length === 0 ? (

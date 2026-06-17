@@ -1,196 +1,186 @@
 import React, { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
-  TrendingUp,
-  Plus,
-  CheckCircle,
-  PawPrint,
-  Package,
-  DollarSign,
-  Search,
-  Filter,
-  Truck,
-  PiggyBank,
-  Loader2,
+  TrendingUp, Plus, CheckCircle, PawPrint,
+  Package, DollarSign, Search, Truck, Loader2, PiggyBank,
 } from "lucide-react";
-import { gestorService } from "@/services/gestorService";
+import { gestorService } from "@/services/GestorService";
 import { toast } from "@/hooks/use-toast";
 
+// Formata valores em AOA correctamente
+const formatAOA = (valor) => {
+  const num = parseFloat(valor) || 0;
+  return num.toLocaleString('pt-AO', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 export default function RegistroReceitas() {
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading]       = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [receitas, setReceitas] = useState([]);
+  const [receitas, setReceitas]     = useState([]);
+  const [animais, setAnimais]       = useState([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [filtroCategoria, setFiltroCategoria] = useState("todas");
+  const [success, setSuccess] = useState(false);
   const [formData, setFormData] = useState({
-    categoria: "",
-    descricao: "",
-    valor: "",
+    categoria: "", descricao: "", valor: "",
     data: new Date().toISOString().split("T")[0],
-    comprador: "",
-    animais_vendidos: "",
-    quantidade_animais: "",
-    peso_total: "",
+    comprador: "", animal_id: "", peso_total: "",
     forma_pagamento: "",
   });
-  const [success, setSuccess] = useState(false);
 
   const categorias = [
-    {
-      value: "Venda de Gado",
-      label: "Venda de Gado",
-      icon: PawPrint,
-      cor: "bg-emerald-100 text-emerald-800",
-    },
-    {
-      value: "Venda de Leite",
-      label: "Venda de Leite",
-      icon: Package,
-      cor: "bg-blue-100 text-blue-800",
-    },
-    {
-      value: "Venda de Insumos",
-      label: "Venda de Insumos",
-      icon: Truck,
-      cor: "bg-purple-100 text-purple-800",
-    },
-    {
-      value: "Outros",
-      label: "Outras Receitas",
-      icon: DollarSign,
-      cor: "bg-gray-100 text-gray-800",
-    },
+    { value: "venda_animal",  label: "Venda de Animal",  icon: PawPrint,   cor: "bg-emerald-100 text-emerald-800" },
+    { value: "venda_produto", label: "Venda de Produto", icon: Package,    cor: "bg-blue-100 text-blue-800" },
+    { value: "venda_leite",   label: "Venda de Leite",   icon: Truck,      cor: "bg-purple-100 text-purple-800" },
+    { value: "subsidio",      label: "Subsídio/Governo", icon: DollarSign, cor: "bg-yellow-100 text-yellow-800" },
+    { value: "emprestimo",    label: "Empréstimo",       icon: PiggyBank,  cor: "bg-orange-100 text-orange-800" },
+    { value: "outros",        label: "Outros",           icon: DollarSign, cor: "bg-gray-100 text-gray-800" },
   ];
 
-  useEffect(() => {
-    carregarReceitas();
-  }, []);
+  const formasPagamento = [
+    "À vista (dinheiro)", "Transferência bancária",
+    "Multicaixa Express", "Referência Multicaixa",
+    "Crédito documentário", "Cheque", "Outro",
+  ];
 
-  const carregarReceitas = async () => {
+  useEffect(() => { carregarDados(); }, []);
+
+  const carregarDados = async () => {
     setLoading(true);
     try {
-      const data = await gestorService.getReceitas();
-      setReceitas(data.results || data);
-    } catch (error) {
-      console.error("Erro ao carregar receitas:", error);
+      const [receitasRes, animaisRes] = await Promise.allSettled([
+        gestorService.getReceitas(),
+        gestorService.getAnimaisFazenda(),
+      ]);
+      if (receitasRes.status === 'fulfilled') {
+        const lista = receitasRes.value.results || receitasRes.value;
+        setReceitas(Array.isArray(lista) ? lista : []);
+      }
+      if (animaisRes.status === 'fulfilled') {
+        const lista = animaisRes.value.results || animaisRes.value;
+        setAnimais(Array.isArray(lista) ? lista : []);
+      }
+    } catch (err) {
+      console.error("Erro ao carregar dados:", err);
     } finally {
       setLoading(false);
     }
   };
 
+  const handleAnimalChange = (animalId) => {
+    const animal = animais.find(a => String(a.id) === String(animalId));
+    setFormData(prev => ({
+      ...prev,
+      animal_id: animalId,
+      peso_total: animal?.peso_atual ? String(animal.peso_atual) : prev.peso_total,
+    }));
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
-
     try {
-      const novaReceita = await gestorService.registrarReceita({
-        ...formData,
-        valor: parseFloat(formData.valor),
-        quantidade_animais: formData.quantidade_animais
-          ? parseInt(formData.quantidade_animais)
-          : null,
-        peso_total: formData.peso_total
-          ? parseFloat(formData.peso_total)
-          : null,
-      });
+      // Monta descrição com extras (comprador, pagamento, peso)
+      // pois o model não tem esses campos separados
+      let descricaoFinal = formData.descricao;
+      const extras = [];
+      if (formData.comprador)       extras.push(`Comprador: ${formData.comprador}`);
+      if (formData.forma_pagamento) extras.push(`Pagamento: ${formData.forma_pagamento}`);
+      if (formData.peso_total)      extras.push(`Peso: ${formData.peso_total}kg`);
+      if (extras.length > 0)        descricaoFinal += ` | ${extras.join(' | ')}`;
 
-      setReceitas([novaReceita, ...receitas]);
+      const payload = {
+        categoria: formData.categoria,
+        descricao: descricaoFinal,
+        valor:     parseFloat(formData.valor),
+        data:      formData.data,
+      };
+      if (formData.categoria === "venda_animal" && formData.animal_id) {
+        payload.animal = formData.animal_id;
+      }
+
+      const novaReceita = await gestorService.registrarReceita(payload);
+      setReceitas(prev => [novaReceita, ...prev]);
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
       setFormData({
-        categoria: "",
-        descricao: "",
-        valor: "",
+        categoria: "", descricao: "", valor: "",
         data: new Date().toISOString().split("T")[0],
-        comprador: "",
-        animais_vendidos: "",
-        quantidade_animais: "",
-        peso_total: "",
-        forma_pagamento: "",
+        comprador: "", animal_id: "", peso_total: "", forma_pagamento: "",
       });
-    } catch (error) {
-      console.error("Erro ao registrar receita:", error);
-      toast({
-        title: "Erro",
-        description: "Erro ao registrar receita. Tente novamente.",
-        variant: "destructive",
-      });
+    } catch (err) {
+      console.error("Erro:", err.response?.data);
+      toast({ title: "Erro", description: "Erro ao registrar receita.", variant: "destructive" });
     } finally {
       setSubmitting(false);
     }
   };
 
-  const receitasFiltradas = receitas.filter((r) => {
-    const matchSearch =
-      r.descricao?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      (r.comprador &&
-        r.comprador.toLowerCase().includes(searchTerm.toLowerCase()));
-    const matchCategoria =
-      filtroCategoria === "todas" || r.categoria === filtroCategoria;
-    return matchSearch && matchCategoria;
-  });
+  // ── Cálculos corrigidos ──────────────────────────────────────────
+  const totalReceitas = receitas.reduce((s, r) => s + parseFloat(r.valor || 0), 0);
 
-  const totalReceitas = receitas.reduce((sum, r) => sum + (r.valor || 0), 0);
-  const vendasGado = receitas.filter((r) => r.categoria === "Venda de Gado");
-  const totalVendasGado = vendasGado.reduce(
-    (sum, r) => sum + (r.valor || 0),
-    0,
-  );
-  const totalAnimaisVendidos = vendasGado.reduce(
-    (sum, r) => sum + (r.quantidade_animais || 0),
-    0,
-  );
-  const precoMedioAnimal =
-    totalAnimaisVendidos > 0 ? totalVendasGado / totalAnimaisVendidos : 0;
-  const receitasPorCategoria = categorias.map((cat) => ({
+  // Receitas por categoria para os 4 cards do topo
+  const receitasPorCategoria = categorias.map(cat => ({
     ...cat,
     total: receitas
-      .filter((r) => r.categoria === cat.value)
-      .reduce((sum, r) => sum + (r.valor || 0), 0),
+      .filter(r => r.categoria === cat.value)
+      .reduce((s, r) => s + parseFloat(r.valor || 0), 0),
   }));
+
+  // Estatísticas de vendas de animal
+  const vendasAnimal       = receitas.filter(r => r.categoria === "venda_animal");
+  const qtdAnimaisVendidos = vendasAnimal.length; // cada registo = 1 venda de animal
+  
+
+  // Filtro do histórico
+  const receitasFiltradas = receitas.filter(r => {
+    const matchSearch = r.descricao?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchCat    = filtroCategoria === "todas" || r.categoria === filtroCategoria;
+    return matchSearch && matchCat;
+  });
+
+  // Extrai comprador da descrição (formato: "desc | Comprador: X | ...")
+  const extrairComprador = (descricao) => {
+    if (!descricao) return "-";
+    const match = descricao.match(/Comprador: ([^|]+)/);
+    return match ? match[1].trim() : "-";
+  };
+
+  // Descrição limpa (sem os extras)
+  const limparDescricao = (descricao) => {
+    if (!descricao) return "-";
+    return descricao.split(" | Comprador:")[0].split(" | Pagamento:")[0].split(" | Peso:")[0];
+  };
 
   if (loading) {
     return (
-      <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[1, 2, 3, 4].map((i) => (
-            <Card key={i} className="animate-pulse">
-              <CardContent className="pt-6">
-                <div className="h-16 bg-gray-200 rounded"></div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-        <div className="flex items-center justify-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      {/* Cards de Resumo */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+
+      {/* ── 4 Cards de topo: Total + 3 categorias principais ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card className="bg-gradient-to-r from-emerald-500 to-green-600 text-white">
           <CardContent className="pt-6">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-emerald-100">Total de Receitas</p>
-                <p className="text-2xl font-bold">
-                  AOA {totalReceitas.toLocaleString()}
-                </p>
+                <p className="text-emerald-100 text-sm">Total de Receitas</p>
+                <p className="text-2xl font-bold">AOA {formatAOA(totalReceitas)}</p>
               </div>
               <TrendingUp className="h-8 w-8 text-white/80" />
             </div>
           </CardContent>
         </Card>
-        {receitasPorCategoria.slice(0, 3).map((cat, index) => (
-          <Card key={index}>
+        {receitasPorCategoria.slice(0, 3).map((cat, i) => (
+          <Card key={i}>
             <CardContent className="pt-6">
               <div className="flex items-center gap-3">
                 <div className={`p-2 rounded-full ${cat.cor.split(" ")[0]}`}>
@@ -198,8 +188,8 @@ export default function RegistroReceitas() {
                 </div>
                 <div>
                   <p className="text-sm text-gray-500">{cat.label}</p>
-                  <p className="text-xl font-bold">
-                    AOA {cat.total.toLocaleString()}
+                  <p className="text-lg font-bold">
+                    {cat.total > 0 ? `AOA ${formatAOA(cat.total)}` : '—'}
                   </p>
                 </div>
               </div>
@@ -208,23 +198,9 @@ export default function RegistroReceitas() {
         ))}
       </div>
 
-      {/* Cards de Vendas de Gado */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-emerald-100 rounded-full">
-                <PawPrint className="h-5 w-5 text-emerald-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Vendas de Gado</p>
-                <p className="text-xl font-bold">
-                  AOA {totalVendasGado.toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      {/* ── 3 Cards de estatísticas de venda de animal ── */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+       
         <Card>
           <CardContent className="pt-6">
             <div className="flex items-center gap-3">
@@ -233,31 +209,15 @@ export default function RegistroReceitas() {
               </div>
               <div>
                 <p className="text-sm text-gray-500">Animais Vendidos</p>
-                <p className="text-xl font-bold">
-                  {totalAnimaisVendidos} cabeças
-                </p>
+                <p className="text-xl font-bold">{qtdAnimaisVendidos} cabeça{qtdAnimaisVendidos !== 1 ? 's' : ''}</p>
               </div>
             </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-6">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-full">
-                <TrendingUp className="h-5 w-5 text-purple-600" />
-              </div>
-              <div>
-                <p className="text-sm text-gray-500">Preço Médio</p>
-                <p className="text-xl font-bold">
-                  AOA {precoMedioAnimal.toLocaleString()}
-                </p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+       
       </div>
 
-      {/* Formulário */}
+      {/* ── Formulário ── */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
@@ -268,247 +228,159 @@ export default function RegistroReceitas() {
         <CardContent>
           {success && (
             <div className="mb-4 p-3 bg-green-50 text-green-800 rounded-lg flex items-center gap-2">
-              <CheckCircle className="h-5 w-5" />
-              Receita registrada com sucesso!
+              <CheckCircle className="h-5 w-5" /> Receita registrada com sucesso!
             </div>
           )}
-
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label>Categoria *</Label>
-                <select
-                  className="w-full border rounded-lg p-2"
+                <select className="w-full border rounded-lg p-2 mt-1"
                   value={formData.categoria}
-                  onChange={(e) =>
-                    setFormData({ ...formData, categoria: e.target.value })
-                  }
-                  required
-                >
+                  onChange={e => setFormData({ ...formData, categoria: e.target.value, animal_id: '', peso_total: '' })}
+                  required>
                   <option value="">Selecione...</option>
-                  {categorias.map((cat) => (
-                    <option key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </option>
-                  ))}
+                  {categorias.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
                 </select>
               </div>
+
               <div>
                 <Label>Valor (AOA) *</Label>
-                <input
-                  type="number"
-                  step="0.01"
-                  className="w-full border rounded-lg p-2"
-                  placeholder="0,00"
+                <input type="number" step="0.01" min="0.01"
+                  className="w-full border rounded-lg p-2 mt-1"
+                  placeholder="Ex: 1000000"
                   value={formData.valor}
-                  onChange={(e) =>
-                    setFormData({ ...formData, valor: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <Label>Data *</Label>
-                <input
-                  type="date"
-                  className="w-full border rounded-lg p-2"
-                  value={formData.data}
-                  onChange={(e) =>
-                    setFormData({ ...formData, data: e.target.value })
-                  }
-                  required
-                />
-              </div>
-              <div>
-                <Label>Comprador</Label>
-                <input
-                  type="text"
-                  className="w-full border rounded-lg p-2"
-                  placeholder="Nome do comprador"
-                  value={formData.comprador}
-                  onChange={(e) =>
-                    setFormData({ ...formData, comprador: e.target.value })
-                  }
-                />
+                  onChange={e => setFormData({ ...formData, valor: e.target.value })} required />
               </div>
 
-              {/* Campos específicos para venda de gado */}
-              {formData.categoria === "Venda de Gado" && (
+              <div>
+                <Label>Data *</Label>
+                <input type="date" className="w-full border rounded-lg p-2 mt-1"
+                  value={formData.data}
+                  onChange={e => setFormData({ ...formData, data: e.target.value })} required />
+              </div>
+
+              <div>
+                <Label>Comprador</Label>
+                <input type="text" className="w-full border rounded-lg p-2 mt-1"
+                  placeholder="Nome do comprador"
+                  value={formData.comprador}
+                  onChange={e => setFormData({ ...formData, comprador: e.target.value })} />
+              </div>
+
+              {/* Campos de venda de animal */}
+              {formData.categoria === "venda_animal" && (
                 <>
                   <div>
-                    <Label>Animais Vendidos</Label>
-                    <input
-                      type="text"
-                      className="w-full border rounded-lg p-2"
-                      placeholder="Ex: Boi 123, Boi 124"
-                      value={formData.animais_vendidos}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          animais_vendidos: e.target.value,
-                        })
-                      }
-                    />
+                    <Label>Animal vendido <span className="text-xs text-gray-400">(opcional)</span></Label>
+                    <select className="w-full border rounded-lg p-2 mt-1"
+                      value={formData.animal_id}
+                      onChange={e => handleAnimalChange(e.target.value)}>
+                      <option value="">Selecione o animal...</option>
+                      {animais.filter(a => a.status !== 'morto').map(a => (
+                        <option key={a.id} value={a.id}>
+                          {a.brinco}{a.nome ? ` — ${a.nome}` : ''} | {a.peso_atual ? `${a.peso_atual}kg` : 'sem peso'}
+                        </option>
+                      ))}
+                    </select>
+                    {animais.length === 0 && (
+                      <p className="text-xs text-gray-400 mt-1">Nenhum animal na fazenda.</p>
+                    )}
                   </div>
                   <div>
-                    <Label>Quantidade de Animais</Label>
-                    <input
-                      type="number"
-                      className="w-full border rounded-lg p-2"
-                      placeholder="Número de cabeças"
-                      value={formData.quantidade_animais}
-                      onChange={(e) =>
-                        setFormData({
-                          ...formData,
-                          quantidade_animais: e.target.value,
-                        })
-                      }
-                    />
-                  </div>
-                  <div>
-                    <Label>Peso Total (kg)</Label>
-                    <input
-                      type="number"
-                      className="w-full border rounded-lg p-2"
-                      placeholder="Peso total dos animais"
+                    <Label>Peso (kg) <span className="text-xs text-gray-400">(auto preenchido)</span></Label>
+                    <input type="number" step="0.1" className="w-full border rounded-lg p-2 mt-1"
+                      placeholder="Peso do animal"
                       value={formData.peso_total}
-                      onChange={(e) =>
-                        setFormData({ ...formData, peso_total: e.target.value })
-                      }
-                    />
+                      onChange={e => setFormData({ ...formData, peso_total: e.target.value })} />
                   </div>
                 </>
               )}
 
               <div>
                 <Label>Forma de Pagamento</Label>
-                <select
-                  className="w-full border rounded-lg p-2"
+                <select className="w-full border rounded-lg p-2 mt-1"
                   value={formData.forma_pagamento}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      forma_pagamento: e.target.value,
-                    })
-                  }
-                >
+                  onChange={e => setFormData({ ...formData, forma_pagamento: e.target.value })}>
                   <option value="">Selecione...</option>
-                  <option>À vista</option>
-                  <option>Parcelado</option>
-                  <option>Boleto</option>
-                  <option>Pix</option>
+                  {formasPagamento.map(f => <option key={f} value={f}>{f}</option>)}
                 </select>
               </div>
+
               <div className="md:col-span-2">
                 <Label>Descrição *</Label>
-                <textarea
-                  className="w-full border rounded-lg p-2"
-                  rows="2"
+                <textarea className="w-full border rounded-lg p-2 mt-1" rows="2"
                   placeholder="Descreva a receita/venda..."
                   value={formData.descricao}
-                  onChange={(e) =>
-                    setFormData({ ...formData, descricao: e.target.value })
-                  }
-                  required
-                />
+                  onChange={e => setFormData({ ...formData, descricao: e.target.value })} required />
               </div>
             </div>
-            <Button
-              type="submit"
-              className="bg-emerald-600 hover:bg-emerald-700"
-              disabled={submitting}
-            >
-              {submitting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Plus className="h-4 w-4 mr-2" />
-              )}
+
+            <Button type="submit" className="bg-emerald-600 hover:bg-emerald-700" disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Plus className="h-4 w-4 mr-2" />}
               Registrar Receita
             </Button>
           </form>
         </CardContent>
       </Card>
 
-      {/* Lista de Receitas */}
+      {/* ── Histórico ── */}
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4">
+        <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-emerald-600" />
             Histórico de Receitas e Vendas
           </CardTitle>
-          <div className="flex gap-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Buscar..."
-                className="pl-10 pr-4 py-2 border rounded-lg text-sm"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
+          <div className="flex flex-col sm:flex-row gap-2 mt-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+              <input type="text" placeholder="Buscar..."
+                className="w-full pl-10 pr-4 py-2 border rounded-lg text-sm"
+                value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
-            <select
-              className="border rounded-lg px-3 py-2 text-sm"
-              value={filtroCategoria}
-              onChange={(e) => setFiltroCategoria(e.target.value)}
-            >
-              <option value="todas">Todas Categorias</option>
-              {categorias.map((cat) => (
-                <option key={cat.value} value={cat.value}>
-                  {cat.label}
-                </option>
-              ))}
+            <select className="border rounded-lg px-3 py-2 text-sm w-full sm:w-auto"
+              value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)}>
+              <option value="todas">Todas as Categorias</option>
+              {categorias.map(c => <option key={c.value} value={c.value}>{c.label}</option>)}
             </select>
           </div>
         </CardHeader>
         <CardContent>
           {receitasFiltradas.length === 0 ? (
-            <div className="text-center py-8 text-gray-500">
-              Nenhuma receita encontrada.
-            </div>
+            <div className="text-center py-8 text-gray-500">Nenhuma receita encontrada.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full">
+              <table className="w-full min-w-[550px]">
                 <thead className="bg-gray-50">
                   <tr>
-                    <th className="px-4 py-3 text-left">Data</th>
-                    <th className="px-4 py-3 text-left">Categoria</th>
-                    <th className="px-4 py-3 text-left">Descrição</th>
-                    <th className="px-4 py-3 text-left">Comprador</th>
-                    <th className="px-4 py-3 text-right">Valor</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Data</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Categoria</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Descrição</th>
+                    <th className="px-4 py-3 text-left text-sm font-semibold">Comprador</th>
+                    <th className="px-4 py-3 text-right text-sm font-semibold">Valor</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {receitasFiltradas.map((receita) => {
-                    const categoria = categorias.find(
-                      (c) => c.value === receita.categoria,
-                    );
+                  {receitasFiltradas.map(receita => {
+                    const cat = categorias.find(c => c.value === receita.categoria);
                     return (
-                      <tr
-                        key={receita.id}
-                        className="border-t hover:bg-emerald-50 transition-colors"
-                      >
-                        <td className="px-4 py-3">
+                      <tr key={receita.id} className="border-t hover:bg-emerald-50 transition-colors">
+                        <td className="px-4 py-3 text-sm whitespace-nowrap">
                           {new Date(receita.data).toLocaleDateString("pt-BR")}
                         </td>
                         <td className="px-4 py-3">
-                          <Badge className={categoria?.cor}>
-                            {receita.categoria}
+                          <Badge className={cat?.cor || 'bg-gray-100 text-gray-800'}>
+                            {cat?.label || receita.categoria_display || receita.categoria}
                           </Badge>
                         </td>
-                        <td className="px-4 py-3">
-                          {receita.descricao}
-                          {receita.animais_vendidos && (
-                            <p className="text-xs text-gray-500 mt-1">
-                              Animais: {receita.animais_vendidos}
-                            </p>
-                          )}
+                        <td className="px-4 py-3 text-sm max-w-[200px]">
+                          {limparDescricao(receita.descricao)}
                         </td>
-                        <td className="px-4 py-3">
-                          {receita.comprador || "-"}
+                        <td className="px-4 py-3 text-sm">
+                          {extrairComprador(receita.descricao)}
                         </td>
-                        <td className="px-4 py-3 text-right font-bold text-emerald-600">
-                          + AOA {receita.valor.toLocaleString()}
+                        <td className="px-4 py-3 text-right font-bold text-emerald-600 whitespace-nowrap">
+                          + AOA {formatAOA(receita.valor)}
                         </td>
                       </tr>
                     );

@@ -35,7 +35,7 @@ import PerfilVeterinario from './components/PerfilVeterinario';
 import AlertasLembretesSaude from './components/AlertasLembretesSaude';
 
 function VeterinarioDashboard() {
-  const { user, logout } = useAuth();
+  const { user, perfil, logout } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -60,38 +60,49 @@ function VeterinarioDashboard() {
     carregarDadosDashboard();
   }, []);
 
-  const carregarDadosDashboard = async () => {
-    setLoading(true);
-    try {
-      const dashboard = await veterinarioService.getDashboard();
-      setDashboardData({
-        consultas_hoje: dashboard.consultas_hoje || 0,
-        vacinacoes_hoje: dashboard.vacinacoes_hoje || 0,
-        pendentes: dashboard.pendentes || 0,
-        alertas: dashboard.alertas || 0,
-        animais_tratamento: dashboard.animais_tratamento || 0,
-        recuperados_mes: dashboard.recuperados_mes || 0,
-        estatisticas: {
-          taxa_sucesso: dashboard.estatisticas?.taxa_sucesso || 0,
-          total_atendimentos: dashboard.estatisticas?.total_atendimentos || 0
-        }
-      });
-      
-      const alertasData = await veterinarioService.getAlertas();
-      setAlertas(alertasData.results || alertasData);
-      
-      const consultasData = await veterinarioService.getConsultas({ status: 'agendado', limit: 3 });
-      setProximasConsultas(consultasData.results || consultasData);
-      
-      const observacaoData = await veterinarioService.getAnimais({ status_saude: 'atencao', limit: 3 });
-      setAnimaisObservacao(observacaoData.results || observacaoData);
-      
-    } catch (error) {
-      console.error('Erro ao carregar dashboard:', error);
-    } finally {
-      setLoading(false);
+const carregarDadosDashboard = async () => {
+  setLoading(true);
+  try {
+    const dashboard = await veterinarioService.getDashboard();
+    setDashboardData({
+      consultas_hoje:    dashboard.consultas_hoje    || 0,
+      vacinacoes_hoje:   dashboard.vacinacoes_hoje   || 0,
+      pendentes:         dashboard.pendentes         || 0,
+      alertas:           dashboard.alertas           || 0,
+      animais_tratamento:dashboard.animais_tratamento|| 0,
+      recuperados_mes:   dashboard.recuperados_mes   || 0,
+      estatisticas: {
+        taxa_sucesso:       dashboard.estatisticas?.taxa_sucesso       || 0,
+        total_atendimentos: dashboard.estatisticas?.total_atendimentos || 0,
+      }
+    });
+
+    // Carrega o resto em paralelo — falhas individuais não crasham o dashboard
+    const [alertasRes, consultasRes, observacaoRes] = await Promise.allSettled([
+      veterinarioService.getAlertas(),
+      veterinarioService.getConsultas({ status: 'agendado', limit: 3 }),
+      veterinarioService.getAnimais({ status: 'doente', limit: 3 }),
+    ]);
+
+    if (alertasRes.status === 'fulfilled') {
+      const d = alertasRes.value;
+      setAlertas(Array.isArray(d) ? d : d.results || []);
     }
-  };
+    if (consultasRes.status === 'fulfilled') {
+      const d = consultasRes.value;
+      setProximasConsultas(Array.isArray(d) ? d : d.results || []);
+    }
+    if (observacaoRes.status === 'fulfilled') {
+      const d = observacaoRes.value;
+      setAnimaisObservacao(Array.isArray(d) ? d : d.results || []);
+    }
+
+  } catch (error) {
+    console.error('Erro ao carregar dashboard:', error);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleLogout = async () => {
     await logout();
@@ -161,6 +172,14 @@ function VeterinarioDashboard() {
     };
     return colors[prioridade] || 'bg-gray-100 text-gray-800';
   };
+
+  // Adiciona esta função no início do componente
+const getNomeExibicao = () => {
+    if (perfil?.nome_completo?.trim()) return perfil.nome_completo;   // ← prioridade ao Perfil
+    if (user?.nome_completo?.trim()) return user.nome_completo;
+    if (user?.email) return user.email.split('@')[0];
+    return 'Veterinário';
+};
 
   if (loading) {
     return (
@@ -234,7 +253,7 @@ function VeterinarioDashboard() {
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-800 truncate">
-                Dr(a). {user?.nome || user?.email?.split('@')[0]}
+                Dr(a). {getNomeExibicao()}
               </p>
               <p className="text-xs text-gray-500">Médico Veterinário</p>
             </div>
@@ -309,9 +328,9 @@ function VeterinarioDashboard() {
           {/* Header da Página */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-800">Painel Veterinário</h1>
-            <p className="text-gray-500 text-sm mt-1">
-              Olá Dr(a). {user?.nome || user?.email?.split('@')[0]} - Gerencie a saúde do rebanho
-            </p>
+           <p className="text-gray-500 text-sm mt-1">
+              Olá Dr(a). {getNomeExibicao()} - Gerencie a saúde do rebanho
+          </p>
           </div>
 
           {/* Stats Cards - Visíveis apenas no Dashboard */}
@@ -453,7 +472,7 @@ function VeterinarioDashboard() {
           {abaAtiva === 'vacinas' && <RegistroVacinas />}
           {abaAtiva === 'tratamentos' && <RegistroTratamento />}
           {abaAtiva === 'alertas' && <AlertasSaude alertas={alertas} onAtualizar={carregarDadosDashboard} />}
-          {abaAtiva === 'lembretes' && <AlertasLembretesSaude />}
+          {abaAtiva === 'lembretes' && <AlertasLembretesSaude userRole="veterinario" />}
           {abaAtiva === 'perfil' && <PerfilVeterinario />}
         </div>
       </main>

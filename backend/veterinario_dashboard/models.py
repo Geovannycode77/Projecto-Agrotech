@@ -10,10 +10,6 @@ class Veterinario(models.Model):
     """Modelo do veterinário vinculado a uma fazenda"""
     ESPECIALIDADE_CHOICES = (
         ('bovinos', 'Bovinos'),
-        ('suinos', 'Suínos'),
-        ('caprinos', 'Caprinos'),
-        ('ovinos', 'Ovinos'),
-        ('equinos', 'Equinos'),
         ('geral', 'Clínica Geral'),
     )
     

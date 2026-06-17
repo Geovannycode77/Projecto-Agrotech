@@ -5,7 +5,6 @@ from django.conf import settings
 from django.core.validators import RegexValidator, MinLengthValidator
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from phonenumber_field.modelfields import PhoneNumberField
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -123,10 +122,10 @@ class Perfil(models.Model):
     )
     
     # Telefone usando biblioteca especializada
-    telefone = PhoneNumberField(
-        null=True, 
-        blank=True, 
-        region='AO',
+    telefone = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
         help_text="Telefone no formato internacional (ex: +244912345678)"
     )
     
@@ -194,11 +193,6 @@ class Perfil(models.Model):
                 'nome_completo': 'O nome completo deve ter pelo menos 3 caracteres.'
             })
         
-        # Validação do telefone
-        if self.telefone and len(str(self.telefone)) < 9:
-            raise ValidationError({
-                'telefone': 'O telefone deve ter pelo menos 9 dígitos.'
-            })
     
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -304,8 +298,8 @@ def criar_perfil_usuario(sender, instance, created, **kwargs):
                     user=instance,
                     defaults={
                         'fazenda': fazenda,
-                        'especialidade': 'Clínica Geral',
-                        'registro_profissional': ''
+                        'especialidade': 'geral',
+                        'registro_crmv': None
                     }
                 )
                 if created:

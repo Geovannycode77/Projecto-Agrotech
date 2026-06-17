@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { CalendarIcon, Phone, MapPin, Building2, Syringe, Home, AlertCircle, CheckCircle2, Loader2 } from 'lucide-react';
+import { CalendarIcon, Phone, MapPin, Building2, Syringe, Home, AlertCircle, CheckCircle2, Loader2, FileText } from 'lucide-react';
 
 export default function CompleteProfile() {
   const { role } = useParams();
@@ -28,6 +28,7 @@ export default function CompleteProfile() {
     endereco: '',
     fazenda_nome: '',
     especialidade: '',
+    crmv: '',
     setor: '',
     area_atuacao: ''
   });
@@ -38,7 +39,6 @@ export default function CompleteProfile() {
     }
   }, [userData.role, role, navigate]);
 
-  // Validação de telefone (apenas números, formato angolano)
   const validatePhone = (phone) => {
     const phoneRegex = /^[0-9]{9}$/;
     if (!phone) return 'Telefone é obrigatório';
@@ -46,7 +46,6 @@ export default function CompleteProfile() {
     return '';
   };
 
-  // Validação de data de nascimento
   const validateDate = (date) => {
     if (!date) return 'Data de nascimento é obrigatória';
     const selectedDate = new Date(date);
@@ -54,82 +53,66 @@ export default function CompleteProfile() {
     today.setHours(0, 0, 0, 0);
     const minDate = new Date();
     minDate.setFullYear(minDate.getFullYear() - 120);
-    
     if (selectedDate > today) return 'A data de nascimento não pode ser futura';
     if (selectedDate < minDate) return 'Data de nascimento inválida';
     return '';
   };
 
-  // Validação de nome completo
   const validateName = (name) => {
     if (!name) return 'Nome completo é obrigatório';
     if (name.trim().length < 3) return 'Nome deve ter pelo menos 3 caracteres';
     return '';
   };
 
-  // Validação de endereço
   const validateAddress = (address) => {
     if (!address) return 'Endereço é obrigatório';
     if (address.trim().length < 5) return 'Endereço deve ter pelo menos 5 caracteres';
     return '';
   };
 
-  // Validação de campo específico por role
   const validateRoleField = () => {
     switch (role) {
       case 'produtor':
-        if (!profileData.fazenda_nome) return 'Nome da fazenda é obrigatório';
-        if (profileData.fazenda_nome.trim().length < 3) return 'Nome da fazenda deve ter pelo menos 3 caracteres';
+        if (!profileData.fazenda_nome) return { field: 'fazenda_nome', msg: 'Nome da fazenda é obrigatório' };
+        if (profileData.fazenda_nome.trim().length < 3) return { field: 'fazenda_nome', msg: 'Nome da fazenda deve ter pelo menos 3 caracteres' };
         break;
       case 'veterinario':
-        if (!profileData.especialidade) return 'Especialidade é obrigatória';
-        if (profileData.especialidade.trim().length < 3) return 'Especialidade deve ter pelo menos 3 caracteres';
+        if (!profileData.especialidade) return { field: 'especialidade', msg: 'Especialidade é obrigatória' };
+        if (profileData.especialidade.trim().length < 3) return { field: 'especialidade', msg: 'Especialidade deve ter pelo menos 3 caracteres' };
+        if (!profileData.crmv) return { field: 'crmv', msg: 'CRMV é obrigatório' };
         break;
       case 'funcionario':
-        if (!profileData.setor) return 'Setor de trabalho é obrigatório';
+        if (!profileData.setor) return { field: 'setor', msg: 'Setor de trabalho é obrigatório' };
         break;
       case 'gestor_financeiro':
-        if (!profileData.area_atuacao) return 'Área de atuação é obrigatória';
+        if (!profileData.area_atuacao) return { field: 'area_atuacao', msg: 'Área de atuação é obrigatória' };
         break;
       default:
-        return '';
+        return null;
     }
-    return '';
+    return null;
   };
 
-  // Formatação do telefone enquanto digita
   const handlePhoneChange = (e) => {
     let value = e.target.value.replace(/\D/g, '');
     if (value.length > 9) value = value.slice(0, 9);
     setProfileData({ ...profileData, telefone: value });
-    
     if (touched.telefone) {
-      const error = validatePhone(value);
-      setErrors({ ...errors, telefone: error });
+      setErrors({ ...errors, telefone: validatePhone(value) });
     }
   };
 
   const handleChange = (e) => {
     const { id, value } = e.target;
     setProfileData({ ...profileData, [id]: value });
-    
     if (touched[id]) {
       let error = '';
       switch (id) {
-        case 'nome_completo':
-          error = validateName(value);
-          break;
-        case 'telefone':
-          error = validatePhone(value);
-          break;
-        case 'data_nascimento':
-          error = validateDate(value);
-          break;
-        case 'endereco':
-          error = validateAddress(value);
-          break;
-        default:
-          break;
+        case 'nome_completo': error = validateName(value); break;
+        case 'telefone': error = validatePhone(value); break;
+        case 'data_nascimento': error = validateDate(value); break;
+        case 'endereco': error = validateAddress(value); break;
+        default: break;
       }
       setErrors({ ...errors, [id]: error });
     }
@@ -137,54 +120,37 @@ export default function CompleteProfile() {
 
   const handleBlur = (field) => {
     setTouched({ ...touched, [field]: true });
-    
     let error = '';
     switch (field) {
-      case 'nome_completo':
-        error = validateName(profileData.nome_completo);
-        break;
-      case 'telefone':
-        error = validatePhone(profileData.telefone);
-        break;
-      case 'data_nascimento':
-        error = validateDate(profileData.data_nascimento);
-        break;
-      case 'endereco':
-        error = validateAddress(profileData.endereco);
-        break;
-      default:
-        break;
+      case 'nome_completo': error = validateName(profileData.nome_completo); break;
+      case 'telefone': error = validatePhone(profileData.telefone); break;
+      case 'data_nascimento': error = validateDate(profileData.data_nascimento); break;
+      case 'endereco': error = validateAddress(profileData.endereco); break;
+      default: break;
     }
     setErrors({ ...errors, [field]: error });
   };
 
   const validateForm = () => {
     const newErrors = {};
-    
     newErrors.nome_completo = validateName(profileData.nome_completo);
     newErrors.telefone = validatePhone(profileData.telefone);
     newErrors.data_nascimento = validateDate(profileData.data_nascimento);
     newErrors.endereco = validateAddress(profileData.endereco);
-    
-    const roleFieldError = validateRoleField();
-    if (roleFieldError) {
-      if (role === 'produtor') newErrors.fazenda_nome = roleFieldError;
-      if (role === 'veterinario') newErrors.especialidade = roleFieldError;
-      if (role === 'funcionario') newErrors.setor = roleFieldError;
-      if (role === 'gestor_financeiro') newErrors.area_atuacao = roleFieldError;
+
+    const roleError = validateRoleField();
+    if (roleError) {
+      newErrors[roleError.field] = roleError.msg;
     }
-    
+
     setErrors(newErrors);
-    return Object.values(newErrors).every(error => !error);
+    return Object.values(newErrors).every(e => !e);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
-    if (!validateForm()) {
-      return;
-    }
-    
+    if (!validateForm()) return;
+
     setErrors('');
     setSuccessMessage('');
     setLoading(true);
@@ -205,6 +171,7 @@ export default function CompleteProfile() {
         endereco: profileData.endereco,
         fazenda_nome: profileData.fazenda_nome,
         especialidade: profileData.especialidade,
+        crmv: profileData.crmv,
         setor: profileData.setor,
         area_atuacao: profileData.area_atuacao
       }
@@ -216,9 +183,7 @@ export default function CompleteProfile() {
       setSuccessMessage(result.message);
       setTimeout(() => {
         navigate('/login', { 
-          state: { 
-            message: 'Perfil criado com sucesso! Verifique seu email para confirmar a conta.' 
-          } 
+          state: { message: 'Perfil criado com sucesso! Verifique seu email para confirmar a conta.' } 
         });
       }, 3000);
     } else {
@@ -238,9 +203,7 @@ export default function CompleteProfile() {
     return titles[role] || 'Usuário';
   };
 
-  const getFieldError = (field) => {
-    return touched[field] && errors[field] ? errors[field] : '';
-  };
+  const getFieldError = (field) => touched[field] && errors[field] ? errors[field] : '';
 
   const renderRoleSpecificFields = () => {
     switch (role) {
@@ -257,47 +220,60 @@ export default function CompleteProfile() {
               value={profileData.fazenda_nome}
               onChange={handleChange}
               onBlur={() => {
-                setTouched({ ...touched, fazenda_nome: true });
-                if (!profileData.fazenda_nome) {
-                  setErrors({ ...errors, fazenda_nome: 'Nome da fazenda é obrigatório' });
-                }
+                setTouched(t => ({ ...t, fazenda_nome: true }));
+                if (!profileData.fazenda_nome) setErrors(err => ({ ...err, fazenda_nome: 'Nome da fazenda é obrigatório' }));
               }}
               className={errors.fazenda_nome ? 'border-red-500' : ''}
               required
             />
-            {getFieldError('fazenda_nome') && (
-              <p className="text-xs text-red-500">{getFieldError('fazenda_nome')}</p>
-            )}
+            {getFieldError('fazenda_nome') && <p className="text-xs text-red-500">{getFieldError('fazenda_nome')}</p>}
           </div>
         );
-      
+
       case 'veterinario':
         return (
-          <div className="space-y-2">
-            <Label htmlFor="especialidade">
-              <Syringe className="h-4 w-4 inline mr-2" />
-              Especialidade *
-            </Label>
-            <Input
-              id="especialidade"
-              placeholder="Ex: Bovinos, Equinos, Pequenos Animais"
-              value={profileData.especialidade}
-              onChange={handleChange}
-              onBlur={() => {
-                setTouched({ ...touched, especialidade: true });
-                if (!profileData.especialidade) {
-                  setErrors({ ...errors, especialidade: 'Especialidade é obrigatória' });
-                }
-              }}
-              className={errors.especialidade ? 'border-red-500' : ''}
-              required
-            />
-            {getFieldError('especialidade') && (
-              <p className="text-xs text-red-500">{getFieldError('especialidade')}</p>
-            )}
-          </div>
+          <>
+            <div className="space-y-2">
+              <Label htmlFor="especialidade">
+                <Syringe className="h-4 w-4 inline mr-2" />
+                Especialidade *
+              </Label>
+              <Input
+                id="especialidade"
+                placeholder="Ex: Bovinos, Equinos, Pequenos Animais"
+                value={profileData.especialidade}
+                onChange={handleChange}
+                onBlur={() => {
+                  setTouched(t => ({ ...t, especialidade: true }));
+                  if (!profileData.especialidade) setErrors(err => ({ ...err, especialidade: 'Especialidade é obrigatória' }));
+                }}
+                className={errors.especialidade ? 'border-red-500' : ''}
+                required
+              />
+              {getFieldError('especialidade') && <p className="text-xs text-red-500">{getFieldError('especialidade')}</p>}
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="crmv">
+                <FileText className="h-4 w-4 inline mr-2" />
+                CRMV (Registro Profissional) *
+              </Label>
+              <Input
+                id="crmv"
+                placeholder="Ex: CRMV-AO 12345"
+                value={profileData.crmv}
+                onChange={handleChange}
+                onBlur={() => {
+                  setTouched(t => ({ ...t, crmv: true }));
+                  if (!profileData.crmv) setErrors(err => ({ ...err, crmv: 'CRMV é obrigatório' }));
+                }}
+                className={errors.crmv ? 'border-red-500' : ''}
+                required
+              />
+              {getFieldError('crmv') && <p className="text-xs text-red-500">{getFieldError('crmv')}</p>}
+            </div>
+          </>
         );
-      
+
       case 'funcionario':
         return (
           <div className="space-y-2">
@@ -311,20 +287,16 @@ export default function CompleteProfile() {
               value={profileData.setor}
               onChange={handleChange}
               onBlur={() => {
-                setTouched({ ...touched, setor: true });
-                if (!profileData.setor) {
-                  setErrors({ ...errors, setor: 'Setor de trabalho é obrigatório' });
-                }
+                setTouched(t => ({ ...t, setor: true }));
+                if (!profileData.setor) setErrors(err => ({ ...err, setor: 'Setor de trabalho é obrigatório' }));
               }}
               className={errors.setor ? 'border-red-500' : ''}
               required
             />
-            {getFieldError('setor') && (
-              <p className="text-xs text-red-500">{getFieldError('setor')}</p>
-            )}
+            {getFieldError('setor') && <p className="text-xs text-red-500">{getFieldError('setor')}</p>}
           </div>
         );
-      
+
       case 'gestor_financeiro':
         return (
           <div className="space-y-2">
@@ -338,20 +310,16 @@ export default function CompleteProfile() {
               value={profileData.area_atuacao}
               onChange={handleChange}
               onBlur={() => {
-                setTouched({ ...touched, area_atuacao: true });
-                if (!profileData.area_atuacao) {
-                  setErrors({ ...errors, area_atuacao: 'Área de atuação é obrigatória' });
-                }
+                setTouched(t => ({ ...t, area_atuacao: true }));
+                if (!profileData.area_atuacao) setErrors(err => ({ ...err, area_atuacao: 'Área de atuação é obrigatória' }));
               }}
               className={errors.area_atuacao ? 'border-red-500' : ''}
               required
             />
-            {getFieldError('area_atuacao') && (
-              <p className="text-xs text-red-500">{getFieldError('area_atuacao')}</p>
-            )}
+            {getFieldError('area_atuacao') && <p className="text-xs text-red-500">{getFieldError('area_atuacao')}</p>}
           </div>
         );
-      
+
       default:
         return null;
     }
@@ -361,14 +329,12 @@ export default function CompleteProfile() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-green-100 py-8">
       <Card className="w-full max-w-lg">
         <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-bold text-center">
-            Complete seu Perfil
-          </CardTitle>
+          <CardTitle className="text-2xl font-bold text-center">Complete seu Perfil</CardTitle>
           <CardDescription className="text-center">
             Preencha seus dados para concluir o cadastro como {getRoleTitle()}
           </CardDescription>
         </CardHeader>
-        
+
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             {errors.general && (
@@ -376,46 +342,34 @@ export default function CompleteProfile() {
                 <AlertCircle className="h-4 w-4" />
                 <AlertDescription>{errors.general}</AlertDescription>
                 <div className="mt-2">
-                  <Link to="/login" className="text-sm text-green-600 hover:underline">
-                    Ir para página de login
-                  </Link>
+                  <Link to="/login" className="text-sm text-green-600 hover:underline">Ir para página de login</Link>
                 </div>
               </Alert>
             )}
-            
+
             {successMessage && (
               <Alert className="bg-green-50 border-green-200">
                 <CheckCircle2 className="h-4 w-4 text-green-600" />
                 <AlertDescription className="text-green-800">
                   {successMessage}
                   <div className="mt-2">
-                    <Link to="/login" className="text-sm text-green-600 hover:underline font-medium">
-                      Clique aqui para fazer login
-                    </Link>
+                    <Link to="/login" className="text-sm text-green-600 hover:underline font-medium">Clique aqui para fazer login</Link>
                   </div>
                 </AlertDescription>
               </Alert>
             )}
-            
+
             {isGoogle && (
               <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
-                <p className="text-sm text-blue-600 text-center">
-                  📧 Registrando com Google: {userData.email}
-                </p>
+                <p className="text-sm text-blue-600 text-center">📧 Registrando com Google: {userData.email}</p>
               </div>
             )}
-            
+
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
-              <Input
-                id="email"
-                type="email"
-                value={userData.email || ''}
-                disabled
-                className="bg-gray-50"
-              />
+              <Input id="email" type="email" value={userData.email || ''} disabled className="bg-gray-50" />
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="nome_completo">Nome Completo *</Label>
               <Input
@@ -427,11 +381,9 @@ export default function CompleteProfile() {
                 className={errors.nome_completo ? 'border-red-500' : ''}
                 required
               />
-              {getFieldError('nome_completo') && (
-                <p className="text-xs text-red-500">{getFieldError('nome_completo')}</p>
-              )}
+              {getFieldError('nome_completo') && <p className="text-xs text-red-500">{getFieldError('nome_completo')}</p>}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="telefone">
                 <Phone className="h-4 w-4 inline mr-2" />
@@ -452,11 +404,9 @@ export default function CompleteProfile() {
                 />
               </div>
               <p className="text-xs text-gray-400">Digite apenas os 9 dígitos (ex: 912345678)</p>
-              {getFieldError('telefone') && (
-                <p className="text-xs text-red-500">{getFieldError('telefone')}</p>
-              )}
+              {getFieldError('telefone') && <p className="text-xs text-red-500">{getFieldError('telefone')}</p>}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="data_nascimento">
                 <CalendarIcon className="h-4 w-4 inline mr-2" />
@@ -472,11 +422,9 @@ export default function CompleteProfile() {
                 max={new Date().toISOString().split('T')[0]}
                 required
               />
-              {getFieldError('data_nascimento') && (
-                <p className="text-xs text-red-500">{getFieldError('data_nascimento')}</p>
-              )}
+              {getFieldError('data_nascimento') && <p className="text-xs text-red-500">{getFieldError('data_nascimento')}</p>}
             </div>
-            
+
             <div className="space-y-2">
               <Label htmlFor="endereco">
                 <MapPin className="h-4 w-4 inline mr-2" />
@@ -491,32 +439,24 @@ export default function CompleteProfile() {
                 className={errors.endereco ? 'border-red-500' : ''}
                 required
               />
-              {getFieldError('endereco') && (
-                <p className="text-xs text-red-500">{getFieldError('endereco')}</p>
-              )}
+              {getFieldError('endereco') && <p className="text-xs text-red-500">{getFieldError('endereco')}</p>}
             </div>
-            
+
             {renderRoleSpecificFields()}
           </CardContent>
-          
+
           <CardFooter className="flex flex-col space-y-4">
-            <Button 
-              type="submit" 
+            <Button
+              type="submit"
               className="w-full bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700"
               disabled={loading}
             >
-              {loading ? (
-                <Loader2 className="h-4 w-4 animate-spin mr-2" />
-              ) : null}
+              {loading && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {loading ? 'Finalizando...' : 'Finalizar Cadastro'}
             </Button>
-            
             <div className="text-sm text-center">
-              <p>
-                Já tem uma conta?{' '}
-                <Link to="/login" className="text-green-600 hover:underline">
-                  Faça login aqui
-                </Link>
+              <p>Já tem uma conta?{' '}
+                <Link to="/login" className="text-green-600 hover:underline">Faça login aqui</Link>
               </p>
             </div>
           </CardFooter>

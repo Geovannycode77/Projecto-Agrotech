@@ -5,6 +5,8 @@ from rest_framework.permissions import IsAuthenticated
 from django.db.models import Sum, Count, Q
 from django.utils import timezone
 from datetime import timedelta, date
+from produtor_dashboard.models import Animal, Fazenda
+from produtor_dashboard.serializers import AnimalSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from login_cadastro.models import CustomUser
 from produtor_dashboard.models import Fazenda, Animal
@@ -206,65 +208,80 @@ def get_veterinario_dashboard(request):
     
     try:
         if user.role == 'veterinario':
-            veterinario = Veterinario.objects.get(user=user)
-            fazenda = veterinario.fazenda
+            try:
+                veterinario = Veterinario.objects.get(user=user)
+                fazenda = veterinario.fazenda
+            except Veterinario.DoesNotExist:
+                # Veterinário sem perfil criado ainda — retorna dados zerados
+                # em vez de 404, para não crashar o dashboard
+                return Response({
+                    'consultas_hoje': 0,
+                    'vacinacoes_hoje': 0,
+                    'pendentes': 0,
+                    'alertas': 0,
+                    'animais_tratamento': 0,
+                    'recuperados_mes': 0,
+                    'estatisticas': {
+                        'taxa_sucesso': 0,
+                        'total_atendimentos': 0,
+                    },
+                    'aviso': 'Veterinário não vinculado a uma fazenda ainda.'
+                })
         else:
-            fazenda = Fazenda.objects.get(produtor=user)
-    except (Veterinario.DoesNotExist, Fazenda.DoesNotExist):
+            try:
+                fazenda = Fazenda.objects.get(produtor=user)
+            except Fazenda.DoesNotExist:
+                return Response({
+                    'consultas_hoje': 0, 'vacinacoes_hoje': 0,
+                    'pendentes': 0, 'alertas': 0,
+                    'animais_tratamento': 0, 'recuperados_mes': 0,
+                    'estatisticas': {'taxa_sucesso': 0, 'total_atendimentos': 0},
+                })
+    except Exception as e:
         return Response({
-            'error': 'Veterinário não vinculado a uma fazenda'
-        }, status=status.HTTP_404_NOT_FOUND)
-    
+            'consultas_hoje': 0, 'vacinacoes_hoje': 0,
+            'pendentes': 0, 'alertas': 0,
+            'animais_tratamento': 0, 'recuperados_mes': 0,
+            'estatisticas': {'taxa_sucesso': 0, 'total_atendimentos': 0},
+            'error': str(e)
+        })
+
     hoje = timezone.now().date()
     inicio_mes = date(hoje.year, hoje.month, 1)
-    
-    # Consultas de hoje
+
     consultas_hoje = Consulta.objects.filter(
-        fazenda=fazenda, 
-        data_consulta=hoje,
+        fazenda=fazenda, data_consulta=hoje,
         status__in=['agendado', 'em_andamento']
     ).count()
-    
-    # Vacinações hoje
+
     vacinacoes_hoje = Vacina.objects.filter(
-        fazenda=fazenda,
-        data_aplicacao=hoje
+        fazenda=fazenda, data_aplicacao=hoje
     ).count()
-    
-    # Pendentes (consultas agendadas não concluídas)
+
     pendentes = Consulta.objects.filter(
-        fazenda=fazenda,
-        data_consulta__lt=hoje,
-        status='agendado'
+        fazenda=fazenda, data_consulta__lt=hoje, status='agendado'
     ).count()
-    
-    # Alertas não lidos
+
     alertas_nao_lidos = AlertaSaude.objects.filter(
-        fazenda=fazenda,
-        lido=False
+        fazenda=fazenda, lido=False
     ).count()
-    
-    # Animais em tratamento
+
     animais_tratamento = Tratamento.objects.filter(
-        fazenda=fazenda,
-        status='em_andamento'
+        fazenda=fazenda, status='em_andamento'
     ).values('animal').distinct().count()
-    
-    # Recuperados no mês
+
     recuperados_mes = Tratamento.objects.filter(
-        fazenda=fazenda,
-        status='concluido',
-        data_fim__gte=inicio_mes
+        fazenda=fazenda, status='concluido', data_fim__gte=inicio_mes
     ).count()
-    
-    # Estatísticas
+
     total_atendimentos = Consulta.objects.filter(fazenda=fazenda).count()
     tratamentos_concluidos = Tratamento.objects.filter(
-        fazenda=fazenda,
-        status='concluido'
+        fazenda=fazenda, status='concluido'
     ).count()
-    taxa_sucesso = (tratamentos_concluidos / total_atendimentos * 100) if total_atendimentos > 0 else 0
-    
+    taxa_sucesso = (
+        tratamentos_concluidos / total_atendimentos * 100
+    ) if total_atendimentos > 0 else 0
+
     return Response({
         'consultas_hoje': consultas_hoje,
         'vacinacoes_hoje': vacinacoes_hoje,
@@ -277,3 +294,130 @@ def get_veterinario_dashboard(request):
             'total_atendimentos': total_atendimentos,
         }
     })
+
+@api_view(['GET'])
+@permission_classes([IsVeterinarioOrAdmin])
+def get_animais_veterinario(request):
+    try:
+        vet = Veterinario.objects.get(user=request.user)
+        animais = Animal.objects.filter(fazenda=vet.fazenda)
+    except Veterinario.DoesNotExist:
+        # ← retorna vazio em vez de 404
+        if request.user.role in ('administrador',) or request.user.is_superuser:
+            animais = Animal.objects.all()
+        else:
+            return Response([])
+
+    status_saude = request.query_params.get('status_saude')
+    status_param = request.query_params.get('status')
+    especie      = request.query_params.get('especie')
+    limit        = request.query_params.get('limit')
+
+    if status_saude:
+        animais = animais.filter(status=status_saude)
+    if status_param:
+        animais = animais.filter(status=status_param)
+    if especie:
+        animais = animais.filter(especie=especie)
+    if limit:
+        try:
+            animais = animais[:int(limit)]
+        except ValueError:
+            pass
+
+    serializer = AnimalSerializer(animais, many=True)
+    return Response(serializer.data)
+
+
+@api_view(['GET'])
+@permission_classes([IsVeterinarioOrAdmin])
+def get_resumo_saude(request):
+    try:
+        vet = Veterinario.objects.get(user=request.user)
+        fazenda = vet.fazenda
+    except Veterinario.DoesNotExist:
+        try:
+            fazenda = Fazenda.objects.get(produtor=request.user)
+        except Fazenda.DoesNotExist:
+            # ← retorna zeros em vez de 404
+            return Response({
+                'total_animais': 0, 'animais_saudaveis': 0,
+                'animais_doentes': 0, 'animais_mortos': 0,
+                'tratamentos_ativos': 0,
+            })
+
+    animais = Animal.objects.filter(fazenda=fazenda)
+    return Response({
+        'total_animais':      animais.count(),
+        'animais_saudaveis':  animais.filter(status='ativo').count(),
+        'animais_doentes':    animais.filter(status='doente').count(),
+        'animais_mortos':     animais.filter(status='morto').count(),
+        'tratamentos_ativos': Tratamento.objects.filter(
+            fazenda=fazenda, status='em_andamento'
+        ).count(),
+    })
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsVeterinarioOrAdmin])
+def get_perfil_veterinario(request):
+    from login_cadastro.models import Perfil
+
+    # Carrega o Veterinario com segurança
+    try:
+        vet = Veterinario.objects.get(user=request.user)
+    except Veterinario.DoesNotExist:
+        vet = None
+
+    # Carrega o Perfil com segurança
+    perfil, _ = Perfil.objects.get_or_create(
+        user=request.user,
+        defaults={'nome_completo': ''}
+    )
+
+    if request.method == 'GET':
+        # especialidade: devolve o valor raw, não o display
+        # (evita crash se o valor não estiver nas choices)
+        especialidade_raw = ''
+        if vet:
+            especialidade_raw = vet.especialidade or ''
+
+        return Response({
+            'nome_completo':   perfil.nome_completo   or '',
+            'email':           request.user.email     or '',
+            'telefone':        str(perfil.telefone) if perfil.telefone else '',
+            'endereco':        perfil.endereco         or '',
+            'data_nascimento': str(perfil.data_nascimento) if perfil.data_nascimento else '',
+            'registro_crmv':   vet.registro_crmv       if vet else '',
+            'especialidade':   especialidade_raw,
+            'fazenda_nome':    vet.fazenda.nome         if vet and vet.fazenda else '',
+        })
+
+    # PUT — atualiza Perfil e Veterinario
+    if request.method == 'PUT':
+        data = request.data
+
+        # Atualiza Perfil
+        campos_perfil = ['nome_completo', 'telefone', 'endereco', 'data_nascimento']
+        for campo in campos_perfil:
+            if campo in data:
+                valor = data[campo] or None if campo == 'data_nascimento' else data[campo]
+                setattr(perfil, campo, valor)
+        perfil.save()
+
+        # Atualiza Veterinario
+        if vet:
+            if 'registro_crmv' in data:
+                vet.registro_crmv = data['registro_crmv'] or ''
+            if 'especialidade' in data:
+                vet.especialidade = data['especialidade'] or 'geral'
+            vet.save()
+
+        return Response({
+            'message': 'Perfil atualizado com sucesso',
+            'nome_completo':   perfil.nome_completo,
+            'telefone':        perfil.telefone or '',
+            'endereco':        perfil.endereco or '',
+            'data_nascimento': str(perfil.data_nascimento) if perfil.data_nascimento else '',
+            'registro_crmv':   vet.registro_crmv if vet else '',
+            'especialidade':   vet.especialidade  if vet else '',
+        })

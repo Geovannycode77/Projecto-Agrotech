@@ -1,9 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { 
+import {
   LayoutDashboard,
   DollarSign,
   TrendingUp,
@@ -14,14 +14,10 @@ import {
   ArrowUpRight,
   ArrowDownRight,
   Calendar,
-  Download,
-  Plus,
   LogOut,
   Menu,
   X,
   User,
-  Settings,
-  Loader2
 } from 'lucide-react';
 import { gestorService } from '@/services/GestorService';
 import RegistroReceitas from './components/RegistroReceitas';
@@ -31,7 +27,7 @@ import AnaliseLucros from './components/AnaliseLucros';
 import PerfilGestor from './components/PerfilGestor';
 
 function GestorFinanceiroDashboard() {
-  const { user, logout } = useAuth();
+  const { user, perfil, logout } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -46,63 +42,64 @@ function GestorFinanceiroDashboard() {
     margem_lucro: 0,
     ultimas_vendas: 0,
     ultimas_despesas: 0,
-    metas: {
-      receita_meta: 0,
-      despesa_meta: 0,
-      lucro_meta: 0
-    }
+    metas: { receita_meta: 0, despesa_meta: 0, lucro_meta: 0 },
   });
   const [ultimasAtividades, setUltimasAtividades] = useState([]);
 
-  useEffect(() => {
-    carregarDadosDashboard();
+  // ── igual ao ProdutorDashboard: prioriza perfil, depois user, depois email ──
+  const getNomeExibicao = () => {
+    if (perfil?.nome_completo && perfil.nome_completo.trim() !== '')
+      return perfil.nome_completo;
+    if (user?.nome_completo) return user.nome_completo;
+    if (user?.nome) return user.nome;
+    if (user?.email) return user.email.split('@')[0];
+    return 'Gestor';
+  };
+
+  const carregarDadosDashboard = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await gestorService.getDashboard();
+      setDashboardData({
+        receitas_mes:     data.receitas_mes     || 0,
+        despesas_mes:     data.despesas_mes     || 0,
+        lucro_mes:        data.lucro_mes        || 0,
+        receitas_ano:     data.receitas_ano     || 0,
+        despesas_ano:     data.despesas_ano     || 0,
+        lucro_ano:        data.lucro_ano        || 0,
+        margem_lucro:     data.margem_lucro     || 0,
+        ultimas_vendas:   data.ultimas_vendas   || 0,
+        ultimas_despesas: data.ultimas_despesas || 0,
+        metas: {
+          receita_meta: data.metas?.receita_meta || 0,
+          despesa_meta: data.metas?.despesa_meta || 0,
+          lucro_meta:   data.metas?.lucro_meta   || 0,
+        },
+      });
+
+      const atividades = await gestorService.getUltimasAtividades();
+      setUltimasAtividades(atividades.results || atividades);
+    } catch (error) {
+      console.error('Erro ao carregar dashboard:', error);
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  // GestorFinanceiroDashboard.jsx - função carregarDadosDashboard
-const carregarDadosDashboard = async () => {
-  setLoading(true);
-  try {
-    const data = await gestorService.getDashboard();
-    setDashboardData({
-      receitas_mes: data.receitas_mes || 0,
-      despesas_mes: data.despesas_mes || 0,
-      lucro_mes: data.lucro_mes || 0,
-      receitas_ano: data.receitas_ano || 0,
-      despesas_ano: data.despesas_ano || 0,
-      lucro_ano: data.lucro_ano || 0,
-      margem_lucro: data.margem_lucro || 0,
-      ultimas_vendas: data.ultimas_vendas || 0,
-      ultimas_despesas: data.ultimas_despesas || 0,
-      metas: {
-        receita_meta: data.metas?.receita_meta || 0,
-        despesa_meta: data.metas?.despesa_meta || 0,
-        lucro_meta: data.metas?.lucro_meta || 0
-      }
-    });
-    
-    // Atividades recentes
-    const atividades = await gestorService.getUltimasAtividades();
-    setUltimasAtividades(atividades.results || atividades);
-    
-  } catch (error) {
-    console.error('Erro ao carregar dashboard:', error);
-  } finally {
-    setLoading(false);
-  }
-};
+  useEffect(() => { carregarDadosDashboard(); }, [carregarDadosDashboard]);
 
   const handleLogout = async () => {
     await logout();
-    navigate("/login");
+    navigate('/login');
   };
 
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'receitas', label: 'Registro de Receitas', icon: TrendingUp },
-    { id: 'despesas', label: 'Registro de Despesas', icon: TrendingDown },
-    { id: 'relatorios', label: 'Relatório Financeiro', icon: FileText },
-    { id: 'analise', label: 'Análise de Lucros', icon: PieChart },
-    { id: 'perfil', label: 'Perfil', icon: User },
+    { id: 'dashboard', label: 'Dashboard',              icon: LayoutDashboard },
+    { id: 'receitas',  label: 'Registro de Receitas',   icon: TrendingUp },
+    { id: 'despesas',  label: 'Registro de Despesas',   icon: TrendingDown },
+    { id: 'relatorios',label: 'Relatório Financeiro',   icon: FileText },
+    { id: 'analise',   label: 'Análise de Lucros',      icon: PieChart },
+    { id: 'perfil',    label: 'Perfil',                 icon: User },
   ];
 
   const statsCards = [
@@ -112,7 +109,7 @@ const carregarDadosDashboard = async () => {
       icon: TrendingUp,
       change: '0% em relação ao mês anterior',
       color: 'text-emerald-600',
-      bgColor: 'bg-emerald-100'
+      bgColor: 'bg-emerald-100',
     },
     {
       title: 'Despesas do Mês',
@@ -120,7 +117,7 @@ const carregarDadosDashboard = async () => {
       icon: TrendingDown,
       change: '0% em relação ao mês anterior',
       color: 'text-red-600',
-      bgColor: 'bg-red-100'
+      bgColor: 'bg-red-100',
     },
     {
       title: 'Lucro do Mês',
@@ -128,7 +125,7 @@ const carregarDadosDashboard = async () => {
       icon: Wallet,
       change: `Margem: ${dashboardData.margem_lucro}%`,
       color: 'text-amber-600',
-      bgColor: 'bg-amber-100'
+      bgColor: 'bg-amber-100',
     },
     {
       title: 'Margem de Lucro',
@@ -136,8 +133,8 @@ const carregarDadosDashboard = async () => {
       icon: PieChart,
       change: '0% em relação ao mês anterior',
       color: 'text-amber-600',
-      bgColor: 'bg-amber-100'
-    }
+      bgColor: 'bg-amber-100',
+    },
   ];
 
   if (loading) {
@@ -148,8 +145,22 @@ const carregarDadosDashboard = async () => {
     );
   }
 
+  // ── bloco reutilizável: info do utilizador na sidebar ──
+  const SidebarUserInfo = () => (
+    <div className="flex items-center gap-3 mb-3 p-3 rounded-xl bg-gray-50">
+      <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-full flex items-center justify-center">
+        <User className="w-5 h-5 text-white" />
+      </div>
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-gray-800 truncate">{getNomeExibicao()}</p>
+        <p className="text-xs text-gray-500">Gestor Financeiro</p>
+      </div>
+    </div>
+  );
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-amber-50 to-yellow-50">
+
       {/* Mobile Header */}
       <header className="lg:hidden bg-white/80 backdrop-blur-md shadow-sm sticky top-0 z-30">
         <div className="px-4 py-3 flex items-center justify-between">
@@ -162,7 +173,7 @@ const carregarDadosDashboard = async () => {
             </div>
             <span className="font-semibold text-gray-800">AgroTech</span>
           </div>
-          <div className="w-8"></div>
+          <div className="w-8" />
         </div>
       </header>
 
@@ -187,29 +198,22 @@ const carregarDadosDashboard = async () => {
               onClick={() => setAbaAtiva(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                 abaAtiva === item.id
-                  ? "bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 shadow-sm"
-                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                  ? 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 shadow-sm'
+                  : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
               }`}
             >
-              <item.icon className={`h-5 w-5 ${abaAtiva === item.id ? "text-amber-600" : "text-gray-500"}`} />
+              <item.icon className={`h-5 w-5 ${abaAtiva === item.id ? 'text-amber-600' : 'text-gray-500'}`} />
               <span className="font-medium">{item.label}</span>
             </button>
           ))}
         </nav>
 
         <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
-          <div className="flex items-center gap-3 mb-3 p-3 rounded-xl bg-gray-50">
-            <div className="w-10 h-10 bg-gradient-to-br from-amber-500 to-yellow-600 rounded-full flex items-center justify-center">
-              <User className="w-5 h-5 text-white" />
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-gray-800 truncate">
-                {user?.nome || user?.email?.split('@')[0] || 'Gestor'}
-              </p>
-              <p className="text-xs text-gray-500">Gestor Financeiro</p>
-            </div>
-          </div>
-          <Button onClick={handleLogout} className="w-full justify-start gap-2 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700">
+          <SidebarUserInfo />
+          <Button
+            onClick={handleLogout}
+            className="w-full justify-start gap-2 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700"
+          >
             <LogOut className="h-4 w-4" />
             <span>Sair</span>
           </Button>
@@ -219,7 +223,7 @@ const carregarDadosDashboard = async () => {
       {/* Mobile Sidebar */}
       {sidebarOpen && (
         <div className="fixed inset-0 z-50 lg:hidden">
-          <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)}></div>
+          <div className="fixed inset-0 bg-black/50" onClick={() => setSidebarOpen(false)} />
           <div className="fixed left-0 top-0 h-full w-72 bg-white shadow-xl z-50">
             <div className="p-4 border-b border-gray-100 flex justify-between items-center">
               <div className="flex items-center gap-3">
@@ -239,14 +243,11 @@ const carregarDadosDashboard = async () => {
               {menuItems.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    setAbaAtiva(item.id);
-                    setSidebarOpen(false);
-                  }}
+                  onClick={() => { setAbaAtiva(item.id); setSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                     abaAtiva === item.id
-                      ? "bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 shadow-sm"
-                      : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                      ? 'bg-gradient-to-r from-amber-50 to-yellow-50 text-amber-700 shadow-sm'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
                   <item.icon className="h-5 w-5" />
@@ -255,7 +256,11 @@ const carregarDadosDashboard = async () => {
               ))}
             </nav>
             <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-100">
-              <Button onClick={handleLogout} className="w-full justify-start gap-2 bg-red-50 text-red-600 hover:bg-red-100">
+              <SidebarUserInfo />
+              <Button
+                onClick={handleLogout}
+                className="w-full justify-start gap-2 bg-red-50 text-red-600 hover:bg-red-100"
+              >
                 <LogOut className="h-4 w-4" />
                 <span>Sair</span>
               </Button>
@@ -267,17 +272,19 @@ const carregarDadosDashboard = async () => {
       {/* Main Content */}
       <main className="lg:ml-72 min-h-screen">
         <div className="p-4 md:p-6 lg:p-8">
+
           {/* Header da Página */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-800">Painel do Gestor Financeiro</h1>
+            {/* ── usa getNomeExibicao() tal como o ProdutorDashboard ── */}
             <p className="text-gray-500 text-sm mt-1">
-              Olá {user?.nome || user?.email?.split('@')[0] || 'Gestor'} - Gerencie as finanças da fazenda
+              Olá, {getNomeExibicao()} — gerencie as finanças da fazenda
             </p>
           </div>
 
-          {/* Conteúdo da Aba Dashboard */}
           {abaAtiva === 'dashboard' && (
             <>
+              {/* Stats */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                 {statsCards.map((stat, index) => (
                   <Card key={index} className="hover:shadow-xl transition-all">
@@ -332,7 +339,7 @@ const carregarDadosDashboard = async () => {
                 </Card>
               </div>
 
-              {/* Metas e Progresso */}
+              {/* Metas e Atividades */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <Card>
                   <CardHeader>
@@ -343,33 +350,24 @@ const carregarDadosDashboard = async () => {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>Meta de Receita</span>
-                          <span>AOA {dashboardData.receitas_mes.toLocaleString()} / AOA {dashboardData.metas.receita_meta.toLocaleString()}</span>
+                      {[
+                        { label: 'Meta de Receita',  atual: dashboardData.receitas_mes,  meta: dashboardData.metas.receita_meta,  cor: 'bg-emerald-600' },
+                        { label: 'Meta de Despesa',  atual: dashboardData.despesas_mes,  meta: dashboardData.metas.despesa_meta,  cor: 'bg-red-600' },
+                        { label: 'Meta de Lucro',    atual: dashboardData.lucro_mes,     meta: dashboardData.metas.lucro_meta,    cor: 'bg-amber-600' },
+                      ].map(({ label, atual, meta, cor }) => (
+                        <div key={label}>
+                          <div className="flex justify-between text-sm mb-1">
+                            <span>{label}</span>
+                            <span>AOA {atual.toLocaleString()} / AOA {meta.toLocaleString()}</span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div
+                              className={`${cor} h-2 rounded-full`}
+                              style={{ width: `${meta > 0 ? Math.min((atual / meta) * 100, 100) : 0}%` }}
+                            />
+                          </div>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div className="bg-emerald-600 h-2 rounded-full" style={{ width: `${Math.min((dashboardData.receitas_mes / dashboardData.metas.receita_meta) * 100, 100)}%` }}></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>Meta de Despesa</span>
-                          <span>AOA {dashboardData.despesas_mes.toLocaleString()} / AOA {dashboardData.metas.despesa_meta.toLocaleString()}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div className="bg-red-600 h-2 rounded-full" style={{ width: `${Math.min((dashboardData.despesas_mes / dashboardData.metas.despesa_meta) * 100, 100)}%` }}></div>
-                        </div>
-                      </div>
-                      <div>
-                        <div className="flex justify-between text-sm mb-1">
-                          <span>Meta de Lucro</span>
-                          <span>AOA {dashboardData.lucro_mes.toLocaleString()} / AOA {dashboardData.metas.lucro_meta.toLocaleString()}</span>
-                        </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
-                          <div className="bg-amber-600 h-2 rounded-full" style={{ width: `${Math.min((dashboardData.lucro_mes / dashboardData.metas.lucro_meta) * 100, 100)}%` }}></div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
@@ -389,10 +387,9 @@ const carregarDadosDashboard = async () => {
                         {ultimasAtividades.map((atividade, index) => (
                           <div key={index} className="flex items-center gap-3 p-2 hover:bg-amber-50 rounded-lg transition-colors">
                             <div className={`p-2 rounded-full ${atividade.tipo === 'receita' ? 'bg-green-100' : 'bg-red-100'}`}>
-                              {atividade.tipo === 'receita' ? 
-                                <TrendingUp className="h-4 w-4 text-green-600" /> : 
-                                <TrendingDown className="h-4 w-4 text-red-600" />
-                              }
+                              {atividade.tipo === 'receita'
+                                ? <TrendingUp className="h-4 w-4 text-green-600" />
+                                : <TrendingDown className="h-4 w-4 text-red-600" />}
                             </div>
                             <div className="flex-1">
                               <p className="text-sm font-medium">{atividade.descricao}</p>
@@ -410,12 +407,11 @@ const carregarDadosDashboard = async () => {
             </>
           )}
 
-          {/* Outras Abas */}
-          {abaAtiva === 'receitas' && <RegistroReceitas />}
-          {abaAtiva === 'despesas' && <RegistroDespesas />}
+          {abaAtiva === 'receitas'   && <RegistroReceitas />}
+          {abaAtiva === 'despesas'   && <RegistroDespesas />}
           {abaAtiva === 'relatorios' && <RelatorioFinanceiro />}
-          {abaAtiva === 'analise' && <AnaliseLucros />}
-          {abaAtiva === 'perfil' && <PerfilGestor />}
+          {abaAtiva === 'analise'    && <AnaliseLucros />}
+          {abaAtiva === 'perfil'     && <PerfilGestor />}
         </div>
       </main>
     </div>

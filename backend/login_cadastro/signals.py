@@ -6,11 +6,11 @@ from .models import CustomUser, Perfil
 
 @receiver(post_save, sender=CustomUser)
 def criar_perfil_padrao(sender, instance, created, **kwargs):
-    """Criar perfil automaticamente para todo novo usuário"""
     if created:
+        # ← nome_completo vazio; o complete_profile vai preencher via update_or_create
         Perfil.objects.get_or_create(
             user=instance,
-            defaults={'nome_completo': instance.email.split('@')[0]}
+            defaults={'nome_completo': ''}   # era: instance.email.split('@')[0]
         )
         print(f"✅ Perfil criado para {instance.email}")
 
@@ -60,20 +60,25 @@ def criar_perfis_especificos(sender, instance, created, **kwargs):
         try:
             from veterinario_dashboard.models import Veterinario
             from produtor_dashboard.models import Fazenda
-            
+
             fazenda = Fazenda.objects.first()
             if fazenda:
-                Veterinario.objects.get_or_create(
+                # ← get_or_create: só cria se não existir, nunca sobrescreve
+                vet, criado = Veterinario.objects.get_or_create(
                     user=instance,
                     defaults={
-                        'fazenda': fazenda,
-                        'especialidade': 'geral',
-                        'ativo': True
+                        'fazenda':        fazenda,
+                        'especialidade':  'geral',
+                        'registro_crmv':  '',     # ← string vazia, não None
+                        'ativo':          True
                     }
                 )
-                print(f"✅ Veterinário {instance.email} vinculado à fazenda {fazenda.nome}")
+                if criado:
+                    print(f"✅ Veterinário {instance.email} criado")
+                else:
+                    print(f"ℹ️ Veterinário {instance.email} já existia, não sobrescrito")
         except ImportError as e:
-            print(f"⚠️ Erro ao criar veterinário: {e}")
+            print(f"⚠️ Erro: {e}")
     
     # Para gestores financeiros
     elif instance.role == 'gestor_financeiro':
@@ -95,3 +100,5 @@ def criar_perfis_especificos(sender, instance, created, **kwargs):
                 print(f"✅ Gestor Financeiro {instance.email} vinculado à fazenda {fazenda.nome}")
         except ImportError as e:
             print(f"⚠️ Erro ao criar gestor financeiro: {e}")
+
+          

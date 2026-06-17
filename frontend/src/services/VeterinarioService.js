@@ -40,10 +40,10 @@ export const veterinarioService = {
     return response.data;
   },
 
-  getProximasVacinas: async () => {
-    const response = await api.get("veterinario/vacinas/proximas/");
-    return response.data;
-  },
+getProximasVacinas: async () => {
+  const response = await api.get("veterinario/vacinas/proximas/");
+  return response.data;
+},
 
   registrarVacina: async (data) => {
     try {
@@ -87,10 +87,14 @@ export const veterinarioService = {
     }
   },
 
-  getAlertasNaoLidos: async () => {
+getAlertasNaoLidos: async () => {
+  try {
     const response = await api.get("veterinario/alertas/nao_lidos/");
     return response.data;
-  },
+  } catch {
+    return [];
+  }
+},
 
   marcarAlertaLido: async (id) => {
     try {
@@ -114,54 +118,74 @@ export const veterinarioService = {
   },
 
   // Animais
-  getAnimais: async (params = {}) => {
-    try {
-      const response = await api.get("veterinario/animais/", { params });
-      return response.data;
-    } catch (error) {
-      console.error("Erro ao buscar animais:", error);
-      throw error;
-    }
-  },
+getAnimais: async (params = {}) => {
+  try {
+    const response = await api.get("veterinario/animais/", { params });
+    const data = response.data;
+    return Array.isArray(data) ? data : data.results || [];
+  } catch (error) {
+    console.error("Erro ao buscar animais:", error);
+    return []; // ← retorna array vazio em vez de explodir
+  }
+},
 
-  getAnimal: async (id) => {
+getAnimal: async (id) => {
+  try {
     const response = await api.get(`veterinario/animais/${id}/`);
     return response.data;
-  },
+  } catch (error) {
+    console.error("Erro ao buscar animal:", error);
+    throw error;
+  }
+},
 
-  // Histórico Médico
-  getHistoricoMedico: async (animalId) => {
-    try {
-      const response = await api.get(`veterinario/historico/${animalId}/`);
-      return response.data;
-    } catch (error) {
-      console.error("Erro ao buscar histórico:", error);
-      throw error;
-    }
-  },
+
 
   // Resumo de Saúde do Rebanho
-  getResumoSaudeRebanho: async () => {
-    try {
-      const response = await api.get("veterinario/saude/resumo/");
-      return response.data;
-    } catch (error) {
-      console.error("Erro ao buscar resumo de saúde:", error);
-      throw error;
-    }
-  },
+getResumoSaudeRebanho: async () => {
+  try {
+    const response = await api.get("veterinario/saude/resumo/");
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao buscar resumo:", error);
+    // Retorna estrutura vazia compatível com o dashboard
+    return {
+      total_animais: 0,
+      animais_saudaveis: 0,
+      animais_doentes: 0,
+      animais_atencao: 0,
+      vacinas_em_dia: 0,
+    };
+  }
+},
+
+  // Histórico Médico
+getHistoricoMedico: async (animalId) => {
+  try {
+    const response = await api.get(`veterinario/historico/${animalId}/`);
+    return response.data;
+  } catch (error) {
+    console.error("Erro ao buscar histórico:", error);
+    return [];
+  }
+},
 
   // Perfil
+   async getPerfilCompleto() {
+  // deve chamar o endpoint que criámos: GET /api/veterinario/perfil/
+  const response = await api.get('/veterinario/perfil/');
+  return response.data;
+  },
+
   getPerfil: async () => {
     const response = await api.get("veterinario/veterinarios/");
     return response.data;
   },
 
-  atualizarPerfil: async (data) => {
-    const response = await api.put("veterinario/veterinarios/", data);
+async atualizarPerfilCompleto(dados) {
+    const response = await api.put('/veterinario/perfil/', dados);
     return response.data;
-  },
-
+},
   getEstatisticasPerfil: async () => {
     const response = await api.get("veterinario/perfil/estatisticas/");
     return response.data;
