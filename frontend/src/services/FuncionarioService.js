@@ -131,4 +131,17 @@ export const funcionarioService = {
     const response = await api.get("funcionario/alimentacao/tipos/");
     return response.data;
   },
+
+  // (Compat) alias, caso algum componente esteja chamando outro nome
+  getTiposRacaoFuncionario: async () => {
+    // Endpoint correto no backend: /api/funcionario/alimentacao/tipos/
+    const response = await api.get("funcionario/alimentacao/tipos/");
+    return response.data;
+  },
+
+  // Animais
+  getAnimais: async () => {
+    const response = await api.get("funcionario/animais/");
+    return response.data;
+  },
 };

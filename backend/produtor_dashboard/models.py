@@ -1,9 +1,11 @@
+# backend/produtor_dashboard/models.py
+
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
-from login_cadastro.models import CustomUser, Perfil
+from login_cadastro.models import CustomUser
 from django.utils import timezone
 import uuid
 from decimal import Decimal
+
 
 class Fazenda(models.Model):
     """Modelo da fazenda do produtor"""
@@ -29,15 +31,53 @@ class Fazenda(models.Model):
     def __str__(self):
         return self.nome
 
+
+class TipoRacao(models.Model):
+    """Tipos de ração cadastrados pelo usuário"""
+    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='tipos_racao')
+    nome = models.CharField(max_length=100)
+    peso_por_saco = models.DecimalField(max_digits=10, decimal_places=2, default=50, verbose_name="Peso por saco (kg)")
+    preco_por_saco = models.DecimalField(max_digits=12, decimal_places=2, default=0, verbose_name="Preço por saco (AOA)")
+    created_at = models.DateTimeField(auto_now_add=True)
+    
+    class Meta:
+        unique_together = ['fazenda', 'nome']
+        verbose_name = 'Tipo de Ração'
+        verbose_name_plural = 'Tipos de Ração'
+    
+    def __str__(self):
+        return self.nome
+
+
+class EstoqueRacao(models.Model):
+    """Estoque atual de ração"""
+    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='estoque_racao')
+    tipo_racao = models.ForeignKey(TipoRacao, on_delete=models.CASCADE, related_name='estoque')
+    quantidade_sacos = models.DecimalField(max_digits=10, decimal_places=2, default=0, verbose_name="Quantidade de sacos")
+    estoque_minimo_sacos = models.DecimalField(max_digits=10, decimal_places=2, default=5, verbose_name="Estoque mínimo (sacos)")
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        unique_together = ['fazenda', 'tipo_racao']
+        verbose_name = 'Estoque de Ração'
+        verbose_name_plural = 'Estoques de Ração'
+    
+    def __str__(self):
+        return f"{self.tipo_racao.nome}: {self.quantidade_sacos} sacos"
+    
+    @property
+    def alerta_estoque_baixo(self):
+        return self.quantidade_sacos <= self.estoque_minimo_sacos
+    
+    @property
+    def quantidade_kg(self):
+        return self.quantidade_sacos * self.tipo_racao.peso_por_saco
+
+
 class Animal(models.Model):
     """Modelo de animal do rebanho"""
     ESPECIE_CHOICES = (
         ('bovino', 'Bovino'),
-        ('suino', 'Suíno'),
-        ('caprino', 'Caprino'),
-        ('ovino', 'Ovino'),
-        ('equino', 'Equino'),
-        ('avicola', 'Aves'),
     )
     
     SEXO_CHOICES = (
@@ -87,6 +127,7 @@ class Animal(models.Model):
     def __str__(self):
         return f"{self.brinco} - {self.nome or 'Sem nome'}"
 
+
 class AnimalSaude(models.Model):
     """Registro de saúde do animal"""
     TIPO_CHOICES = (
@@ -116,13 +157,15 @@ class AnimalSaude(models.Model):
     def __str__(self):
         return f"{self.animal.brinco} - {self.tipo} - {self.data_registro}"
 
+
 class AlimentacaoRegistro(models.Model):
     """Registro de alimentação"""
     fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='alimentacao_registros')
+    tipo_racao = models.ForeignKey(TipoRacao, on_delete=models.CASCADE, related_name='alimentacoes')
     data = models.DateField(default=timezone.now)
-    tipo_racao = models.CharField(max_length=100)
-    quantidade_kg = models.DecimalField(max_digits=10, decimal_places=2)
-    custo_total = models.DecimalField(max_digits=10, decimal_places=2)
+    quantidade_sacos = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Quantidade de sacos")
+    quantidade_kg = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+    custo_total = models.DecimalField(max_digits=12, decimal_places=2, editable=False)
     observacoes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -131,30 +174,48 @@ class AlimentacaoRegistro(models.Model):
         verbose_name = 'Registro de Alimentação'
         verbose_name_plural = 'Registros de Alimentação'
     
+    def save(self, *args, **kwargs):
+        from decimal import Decimal
+        quantidade = Decimal(str(self.quantidade_sacos))
+        peso = Decimal(str(self.tipo_racao.peso_por_saco))
+        preco = Decimal(str(self.tipo_racao.preco_por_saco))
+        
+        self.quantidade_kg = quantidade * peso
+        self.custo_total = quantidade * preco
+        super().save(*args, **kwargs)
+    
     def __str__(self):
-        return f"{self.data} - {self.tipo_racao} - {self.quantidade_kg}kg"
+        return f"{self.data} - {self.tipo_racao.nome} - {self.quantidade_sacos} sacos"
 
-class EstoqueAlimentacao(models.Model):
-    """Estoque de alimentação"""
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='estoque_alimentacao')
-    tipo_racao = models.CharField(max_length=100)
-    quantidade_atual_kg = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    quantidade_minima_kg = models.DecimalField(max_digits=10, decimal_places=2, default=0)
-    ultima_compra = models.DateField(blank=True, null=True)
-    custo_por_kg = models.DecimalField(max_digits=8, decimal_places=2, default=0)
-    updated_at = models.DateTimeField(auto_now=True)
+
+class CompraRacao(models.Model):
+    """Registro de compra de ração para adicionar ao estoque"""
+    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='compras_racao')
+    tipo_racao = models.ForeignKey(TipoRacao, on_delete=models.CASCADE, related_name='compras')
+    data = models.DateField(default=timezone.now)
+    quantidade_sacos = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Quantidade de sacos")
+    quantidade_kg = models.DecimalField(max_digits=10, decimal_places=2, editable=False)
+    valor_total = models.DecimalField(max_digits=12, decimal_places=2)
+    nota_fiscal = models.CharField(max_length=100, blank=True)
+    fornecedor = models.CharField(max_length=200, blank=True)
+    observacoes = models.TextField(blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
     
     class Meta:
-        unique_together = ['fazenda', 'tipo_racao']
-        verbose_name = 'Estoque de Alimentação'
-        verbose_name_plural = 'Estoques de Alimentação'
+        ordering = ['-data']
+        verbose_name = 'Compra de Ração'
+        verbose_name_plural = 'Compras de Ração'
+    
+    def save(self, *args, **kwargs):
+        from decimal import Decimal
+        quantidade = Decimal(str(self.quantidade_sacos))
+        peso = Decimal(str(self.tipo_racao.peso_por_saco))
+        self.quantidade_kg = quantidade * peso
+        super().save(*args, **kwargs)
     
     def __str__(self):
-        return f"{self.tipo_racao} - {self.quantidade_atual_kg}kg"
-    
-    @property
-    def alerta_estoque_baixo(self):
-        return self.quantidade_atual_kg <= self.quantidade_minima_kg
+        return f"{self.data} - {self.tipo_racao.nome} - {self.quantidade_sacos} sacos"
+
 
 class TransacaoFinanceira(models.Model):
     """Transações financeiras do produtor"""
@@ -191,7 +252,8 @@ class TransacaoFinanceira(models.Model):
         verbose_name_plural = 'Transações Financeiras'
     
     def __str__(self):
-        return f"{self.tipo} - {self.categoria} - R${self.valor}"
+        return f"{self.tipo} - {self.categoria} - AOA {self.valor}"
+
 
 class Alerta(models.Model):
     """Alertas e notificações do produtor"""
@@ -226,6 +288,7 @@ class Alerta(models.Model):
     def __str__(self):
         return f"{self.titulo} - {self.prioridade}"
 
+
 class Atividade(models.Model):
     """Atividades recentes do produtor"""
     TIPO_CHOICES = (
@@ -234,6 +297,7 @@ class Atividade(models.Model):
         ('financeiro', 'Financeiro'),
         ('alimentacao', 'Alimentação'),
         ('venda', 'Venda'),
+        ('compra', 'Compra'),
     )
     
     fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='atividades')
@@ -249,6 +313,7 @@ class Atividade(models.Model):
     
     def __str__(self):
         return f"{self.tipo} - {self.descricao[:50]}"
+
 
 class RelatorioProducao(models.Model):
     """Relatórios de produção gerados"""
@@ -274,3 +339,21 @@ class RelatorioProducao(models.Model):
     def __str__(self):
         return f"Relatório {self.periodo} - {self.fazenda.nome}"
 
+
+class PreferenciasNotificacoes(models.Model):
+    """Preferências de notificações para uma fazenda"""
+    fazenda = models.OneToOneField(Fazenda, on_delete=models.CASCADE, related_name='preferencias_notificacoes')
+    alertas_saude = models.BooleanField(default=True)
+    alertas_estoque = models.BooleanField(default=True)
+    alertas_relatorios = models.BooleanField(default=False)
+    frequencia_saude = models.CharField(max_length=20, default='imediato')
+    frequencia_estoque = models.CharField(max_length=20, default='imediato')
+    frequencia_relatorios = models.CharField(max_length=20, default='mensal')
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Preferência de Notificações'
+        verbose_name_plural = 'Preferências de Notificações'
+
+    def __str__(self):
+        return f"Preferências - {self.fazenda.nome}"

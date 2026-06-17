@@ -23,9 +23,14 @@ const addTokenInterceptor = (instance) => {
   instance.interceptors.request.use(
     (config) => {
       const token = localStorage.getItem("access_token");
-      if (token) {
-        config.headers.Authorization = `Bearer ${token}`;
+
+      // Garante que o header só é setado quando existir token válido
+      // e evita enviar Authorization inválido (que quebra no backend com "bad_authorization_header").
+      if (token && typeof token === "string" && token.trim().length > 0) {
+        config.headers = config.headers || {};
+        config.headers.Authorization = `Bearer ${token.trim()}`;
       }
+
       return config;
     },
     (error) => Promise.reject(error),
@@ -38,24 +43,37 @@ const addRefreshInterceptor = (instance) => {
     (response) => response,
     async (error) => {
       const originalRequest = error.config;
-      if (error.response?.status === 401 && !originalRequest._retry) {
+
+      if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
         originalRequest._retry = true;
+
         try {
+          // Debug: ajudar a entender se o refresh está sendo acionado
+          // eslint-disable-next-line no-console
+          console.debug('[api] 401 detectado, tentando refresh...');
+
           const refresh = localStorage.getItem("refresh_token");
-          const response = await axios.post(
-            `${API_URL}/api/auth/token/refresh/`,
-            {
-              refresh,
-            },
-          );
-          localStorage.setItem("access_token", response.data.access);
-          originalRequest.headers.Authorization = `Bearer ${response.data.access}`;
+          if (!refresh) throw new Error("Missing refresh_token");
+
+          // Requisita refresh usando a instância correta (mantém config/baseURL/cabeçalhos)
+          const refreshResponse = await authApi.post("token/refresh/", { refresh });
+          const newAccessToken = refreshResponse.data.access;
+
+          // eslint-disable-next-line no-console
+          console.debug('[api] refresh ok, reexecutando request:', originalRequest?.url);
+
+          localStorage.setItem("access_token", newAccessToken);
+
+          originalRequest.headers = originalRequest.headers || {};
+          originalRequest.headers.Authorization = `Bearer ${newAccessToken}`;
+
           return instance(originalRequest);
-        } catch {
-          localStorage.clear();
-          window.location.href = "/login";
+        } catch (refreshError) {
+          // se refresh falhar, não mascara o erro original
+          return Promise.reject(error);
         }
       }
+
       return Promise.reject(error);
     },
   );

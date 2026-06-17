@@ -4,22 +4,9 @@ import { useNavigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  LayoutDashboard,
-  ClipboardList,
-  CheckSquare,
-  Clock,
-  Calendar,
-  PawPrint,
-  Utensils,
-  AlertTriangle,
-  User,
-  LogOut,
-  Menu,
-  X,
-  TrendingUp,
-  Weight,
-  Baby,
-  Loader2
+  LayoutDashboard, ClipboardList, CheckSquare, Clock,
+  Calendar, PawPrint, Utensils, AlertTriangle, User,
+  LogOut, Menu, X
 } from 'lucide-react';
 import { funcionarioService } from '@/services/FuncionarioService';
 import ListaTarefas from './components/ListaTarefas';
@@ -29,20 +16,16 @@ import AtualizarAnimais from './components/AtualizarAnimais';
 import PerfilFuncionario from './components/PerfilFuncionario';
 
 function FuncionarioDashboard() {
-  const { user, logout } = useAuth();
+  const { user, perfil, logout } = useAuth();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [abaAtiva, setAbaAtiva] = useState('dashboard');
+  const [ocorrencias, setOcorrencias] = useState([]);
   const [dashboardData, setDashboardData] = useState({
-    tarefas_hoje: 0,
-    tarefas_concluidas: 0,
-    tarefas_pendentes: 0,
-    tarefas_proximas: 0,
-    alimentacoes_registradas: 0,
-    animais_atualizados: 0,
-    nascimentos_mes: 0,
-    ocorrencias: 0
+    tarefas_hoje: 0, tarefas_concluidas: 0, tarefas_pendentes: 0,
+    tarefas_proximas: 0, alimentacoes_registradas: 0,
+    animais_atualizados: 0, nascimentos_mes: 0, ocorrencias: 0
   });
 
   useEffect(() => {
@@ -52,7 +35,12 @@ function FuncionarioDashboard() {
   const carregarDadosDashboard = async () => {
     setLoading(true);
     try {
-      const data = await funcionarioService.getDashboard();
+      // ← tudo dentro do try, incluindo ocorrências
+      const [data, ocorrenciasData] = await Promise.all([
+        funcionarioService.getDashboard(),
+        funcionarioService.getOcorrencias(),
+      ]);
+
       setDashboardData({
         tarefas_hoje: data.tarefas_hoje || 0,
         tarefas_concluidas: data.tarefas_concluidas || 0,
@@ -61,8 +49,14 @@ function FuncionarioDashboard() {
         alimentacoes_registradas: data.alimentacoes_registradas || 0,
         animais_atualizados: data.animais_atualizados || 0,
         nascimentos_mes: data.nascimentos_mes || 0,
-        ocorrencias: data.ocorrencias || 0
+        ocorrencias: data.ocorrencias || 0,
       });
+
+      const lista = Array.isArray(ocorrenciasData)
+        ? ocorrenciasData
+        : ocorrenciasData.results || [];
+      setOcorrencias(lista.slice(0, 5));
+
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error);
     } finally {
@@ -75,48 +69,35 @@ function FuncionarioDashboard() {
     navigate("/login");
   };
 
+  const getNomeExibicao = () => {
+    if (perfil?.nome_completo?.trim()) return perfil.nome_completo;
+    if (user?.nome_completo) return user.nome_completo;
+    if (user?.nome) return user.nome;
+    if (user?.email) return user.email.split('@')[0];
+    return 'Funcionário';
+  };
+
+  const getUrgenciaColor = (urgencia) => ({
+    urgente: 'border-red-500 bg-red-50',
+    alta:    'border-orange-500 bg-orange-50',
+    media:   'border-yellow-500 bg-yellow-50',
+    baixa:   'border-blue-500 bg-blue-50',
+  }[urgencia] || 'border-gray-300 bg-gray-50');
+
   const menuItems = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-    { id: 'tarefas', label: 'Minhas Tarefas', icon: ClipboardList },
+    { id: 'dashboard',   label: 'Dashboard',           icon: LayoutDashboard },
+    { id: 'tarefas',     label: 'Minhas Tarefas',       icon: ClipboardList },
     { id: 'alimentacao', label: 'Registro Alimentação', icon: Utensils },
     { id: 'ocorrencias', label: 'Registro Ocorrências', icon: AlertTriangle },
-    { id: 'animais', label: 'Atualizar Animais', icon: PawPrint },
-    { id: 'perfil', label: 'Perfil', icon: User },
+    { id: 'animais',     label: 'Atualizar Animais',    icon: PawPrint },
+    { id: 'perfil',      label: 'Perfil',               icon: User },
   ];
 
   const statsCards = [
-    {
-      title: 'Tarefas Hoje',
-      value: dashboardData.tarefas_hoje,
-      icon: ClipboardList,
-      change: 'Tarefas programadas',
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100'
-    },
-    {
-      title: 'Concluídas',
-      value: dashboardData.tarefas_concluidas,
-      icon: CheckSquare,
-      change: `${dashboardData.tarefas_concluidas} de ${dashboardData.tarefas_hoje}`,
-      color: 'text-green-600',
-      bgColor: 'bg-green-100'
-    },
-    {
-      title: 'Pendentes',
-      value: dashboardData.tarefas_pendentes,
-      icon: Clock,
-      change: 'Aguardando execução',
-      color: 'text-yellow-600',
-      bgColor: 'bg-yellow-100'
-    },
-    {
-      title: 'Próximas Tarefas',
-      value: dashboardData.tarefas_proximas,
-      icon: Calendar,
-      change: 'Para os próximos dias',
-      color: 'text-purple-600',
-      bgColor: 'bg-purple-100'
-    }
+    { title: 'Tarefas Hoje',     value: dashboardData.tarefas_hoje,      icon: ClipboardList, change: 'Tarefas programadas',         color: 'text-purple-600', bgColor: 'bg-purple-100' },
+    { title: 'Concluídas',       value: dashboardData.tarefas_concluidas, icon: CheckSquare,  change: `${dashboardData.tarefas_concluidas} de ${dashboardData.tarefas_hoje}`, color: 'text-green-600', bgColor: 'bg-green-100' },
+    { title: 'Pendentes',        value: dashboardData.tarefas_pendentes,  icon: Clock,        change: 'Aguardando execução',          color: 'text-yellow-600', bgColor: 'bg-yellow-100' },
+    { title: 'Próximas Tarefas', value: dashboardData.tarefas_proximas,   icon: Calendar,     change: 'Para os próximos dias',        color: 'text-purple-600', bgColor: 'bg-purple-100' },
   ];
 
   if (loading) {
@@ -182,10 +163,11 @@ function FuncionarioDashboard() {
               <User className="w-5 h-5 text-white" />
             </div>
             <div className="flex-1">
-              <p className="text-sm font-medium text-gray-800 truncate">
-                {user?.nome || user?.email?.split('@')[0] || 'Funcionário'}
-              </p>
+              <p className="text-sm font-medium text-gray-800 truncate">{getNomeExibicao()}</p>
               <p className="text-xs text-gray-500">Funcionário</p>
+              {perfil?.fazenda_nome && (
+                <p className="text-xs text-purple-600 mt-1">🏠 {perfil.fazenda_nome}</p>
+              )}
             </div>
           </div>
           <Button onClick={handleLogout} className="w-full justify-start gap-2 bg-red-50 text-red-600 hover:bg-red-100 hover:text-red-700">
@@ -218,10 +200,7 @@ function FuncionarioDashboard() {
               {menuItems.map((item) => (
                 <button
                   key={item.id}
-                  onClick={() => {
-                    setAbaAtiva(item.id);
-                    setSidebarOpen(false);
-                  }}
+                  onClick={() => { setAbaAtiva(item.id); setSidebarOpen(false); }}
                   className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-200 ${
                     abaAtiva === item.id
                       ? "bg-gradient-to-r from-purple-50 to-violet-50 text-purple-700 shadow-sm"
@@ -246,17 +225,16 @@ function FuncionarioDashboard() {
       {/* Main Content */}
       <main className="lg:ml-72 min-h-screen">
         <div className="p-4 md:p-6 lg:p-8">
-          {/* Header da Página */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-800">Painel do Funcionário</h1>
             <p className="text-gray-500 text-sm mt-1">
-              Olá {user?.nome || user?.email?.split('@')[0]} - Gerencie suas atividades diárias
+              Olá {getNomeExibicao()} - Gerencie suas atividades diárias
             </p>
           </div>
 
-          {/* Conteúdo da Aba Dashboard */}
           {abaAtiva === 'dashboard' && (
             <>
+              {/* Stats Cards */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
                 {statsCards.map((stat, index) => (
                   <Card key={index} className="hover:shadow-xl transition-all">
@@ -274,6 +252,7 @@ function FuncionarioDashboard() {
                 ))}
               </div>
 
+              {/* Cards coloridos */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
                 <Card className="bg-gradient-to-r from-purple-500 to-violet-600 text-white">
                   <CardContent className="pt-6">
@@ -293,7 +272,7 @@ function FuncionarioDashboard() {
                         <p className="text-emerald-100">Animais Atualizados</p>
                         <p className="text-3xl font-bold">{dashboardData.animais_atualizados}</p>
                       </div>
-                      <Weight className="h-8 w-8 text-white/80" />
+                      <PawPrint className="h-8 w-8 text-white/80" />
                     </div>
                   </CardContent>
                 </Card>
@@ -304,22 +283,89 @@ function FuncionarioDashboard() {
                         <p className="text-blue-100">Nascimentos no Mês</p>
                         <p className="text-3xl font-bold">{dashboardData.nascimentos_mes}</p>
                       </div>
-                      <Baby className="h-8 w-8 text-white/80" />
+                      <CheckSquare className="h-8 w-8 text-white/80" />
                     </div>
                   </CardContent>
                 </Card>
               </div>
 
+              {/* Tarefas recentes */}
               <ListaTarefas limit={4} />
+
+              {/* ← HISTÓRICO DE OCORRÊNCIAS */}
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2 text-base">
+                    <AlertTriangle className="h-5 w-5 text-orange-500" />
+                    Minhas Ocorrências Recentes
+                    {ocorrencias.filter(oc => !oc.resolvido).length > 0 && (
+                      <span className="ml-2 bg-orange-500 text-white text-xs px-2 py-0.5 rounded-full">
+                        {ocorrencias.filter(oc => !oc.resolvido).length} pendentes
+                      </span>
+                    )}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  {ocorrencias.length === 0 ? (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      Nenhuma ocorrência registrada ainda.
+                    </p>
+                  ) : (
+                    <div className="space-y-3">
+                      {ocorrencias.map((oc) => (
+                        <div
+                          key={oc.id}
+                          className={`p-3 rounded-lg border-l-4 ${
+                            oc.resolvido
+                              ? 'border-green-400 bg-green-50 opacity-70'
+                              : getUrgenciaColor(oc.urgencia)
+                          }`}
+                        >
+                          <div className="flex justify-between items-start gap-2">
+                            <div className="flex-1">
+                              <p className="font-medium text-sm text-gray-800">{oc.titulo}</p>
+                              <div className="flex flex-wrap gap-2 mt-1 text-xs text-gray-500">
+                                <span>
+                                  {new Date(oc.data_hora).toLocaleString('pt-BR')}
+                                </span>
+                                {oc.animal && (
+                                  <span>
+                                    <PawPrint className="inline h-3 w-3 mr-0.5" />
+                                    {oc.animal}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            <span className={`text-xs px-2 py-0.5 rounded-full shrink-0 ${
+                              oc.resolvido
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-orange-100 text-orange-700'
+                            }`}>
+                              {oc.resolvido ? '✅ Resolvida' : '⏳ Pendente'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Botão para ver todas */}
+                      <button
+                        onClick={() => setAbaAtiva('ocorrencias')}
+                        className="w-full text-center text-sm text-purple-600 hover:text-purple-800 hover:underline mt-2 py-1"
+                      >
+                        Ver todas as ocorrências →
+                      </button>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
             </>
           )}
 
-          {/* Outras Abas */}
-          {abaAtiva === 'tarefas' && <ListaTarefas />}
+          {abaAtiva === 'tarefas'     && <ListaTarefas />}
           {abaAtiva === 'alimentacao' && <RegistroAlimentacao />}
           {abaAtiva === 'ocorrencias' && <RegistroOcorrencias />}
-          {abaAtiva === 'animais' && <AtualizarAnimais />}
-          {abaAtiva === 'perfil' && <PerfilFuncionario />}
+          {abaAtiva === 'animais'     && <AtualizarAnimais />}
+          {abaAtiva === 'perfil'      && <PerfilFuncionario />}
         </div>
       </main>
     </div>

@@ -29,7 +29,7 @@ def create_admin():
         # Criar novo admin
         user = CustomUser.objects.create_superuser(
             email="admin@agrotech.com",
-            password="Admin@123456",
+            password="Admin@123",
             first_name="Admin",
             last_name="Sistema",
             role="administrador",
@@ -38,7 +38,7 @@ def create_admin():
         )
         print("✅ Admin criado com sucesso!")
         print(f"Email: admin@agrotech.com")
-        print(f"Senha: Admin@123456")
+        print(f"Senha: Admin@123")
     
     print("\n=== DADOS DO ADMIN ===")
     print(f"Email: {user.email}")

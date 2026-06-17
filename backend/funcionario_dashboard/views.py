@@ -1,4 +1,4 @@
-from rest_framework import viewsets, status, filters
+from rest_framework import viewsets, status, filters, serializers
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
 from django.http import JsonResponse
@@ -10,9 +10,9 @@ from django.db.models import Count, Q, Sum
 from django.utils import timezone
 from datetime import timedelta, date
 from django_filters.rest_framework import DjangoFilterBackend
-from login_cadastro.models import CustomUser, Perfil
-from produtor_dashboard.models import Fazenda, Animal
-from produtor_dashboard.serializers import AnimalSerializer
+from login_cadastro.models import CustomUser
+from produtor_dashboard.models import Fazenda, Animal, TipoRacao
+from produtor_dashboard.serializers import AnimalSerializer, TipoRacaoSerializer
 from .models import (
     Funcionario, Tarefa, RegistroAlimentacaoFuncionario,
     Ocorrencia, AtualizacaoAnimal, Nascimento
@@ -48,6 +48,7 @@ class IsFuncionarioOrAdmin(IsAuthenticated):
         return super().has_permission(request, view) and (
             request.user.role == 'funcionario' or 
             request.user.role == 'produtor' or
+            request.user.role == 'gestor_financeiro' or
             request.user.role == 'administrador' or 
             request.user.is_superuser
         )
@@ -64,6 +65,36 @@ class FuncionarioViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         serializer.save(user=self.request.user)
 
+@api_view(['GET'])
+@permission_classes([IsFuncionarioOrAdmin])
+def get_animais_funcionario(request):
+    if request.user.role == 'funcionario':
+        funcionario = Funcionario.objects.get(user=request.user)
+        animais = Animal.objects.filter(fazenda=funcionario.fazenda)
+    elif request.user.role == 'produtor':
+        fazenda = Fazenda.objects.get(produtor=request.user)
+        animais = Animal.objects.filter(fazenda=fazenda)
+    else:
+        animais = Animal.objects.none()
+
+    serializer = AnimalSerializer(animais, many=True)
+    return Response(serializer.data)
+
+@api_view(['GET'])
+@permission_classes([IsFuncionarioOrAdmin])
+def get_tipos_racao_funcionario(request):
+    if request.user.role == 'funcionario':
+        funcionario = Funcionario.objects.get(user=request.user)
+        tipos = TipoRacao.objects.filter(fazenda=funcionario.fazenda)
+    elif request.user.role == 'produtor':
+        fazenda = Fazenda.objects.get(produtor=request.user)
+        tipos = TipoRacao.objects.filter(fazenda=fazenda)
+    else:
+        tipos = TipoRacao.objects.none()
+
+    serializer = TipoRacaoSerializer(tipos, many=True)
+    return Response(serializer.data)
+
 class TarefaViewSet(viewsets.ModelViewSet):
     serializer_class = TarefaSerializer
     permission_classes = [IsFuncionarioOrAdmin]
@@ -79,11 +110,19 @@ class TarefaViewSet(viewsets.ModelViewSet):
         elif self.request.user.role == 'produtor':
             fazenda = Fazenda.objects.get(produtor=self.request.user)
             return Tarefa.objects.filter(fazenda=fazenda)
+        elif self.request.user.role == 'gestor_financeiro':
+            from Gestor_financeiro_dashboard.models import GestorFinanceiro
+            gestor = GestorFinanceiro.objects.filter(user=self.request.user).first()
+            if not gestor or not gestor.fazenda:
+                return Tarefa.objects.none()
+            return Tarefa.objects.filter(fazenda=gestor.fazenda)
         return Tarefa.objects.all()
     
     def perform_create(self, serializer):
         if self.request.user.role == 'produtor':
             fazenda = Fazenda.objects.get(produtor=self.request.user)
+            if 'funcionario' not in serializer.validated_data or serializer.validated_data.get('funcionario') is None:
+                raise serializers.ValidationError({'funcionario_id': 'O funcionário responsável pela tarefa deve ser informado.'})
             serializer.save(fazenda=fazenda)
         else:
             funcionario = Funcionario.objects.get(user=self.request.user)
@@ -241,7 +280,39 @@ class NascimentoViewSet(viewsets.ModelViewSet):
             fazenda = Fazenda.objects.get(produtor=self.request.user)
             serializer.save(fazenda=fazenda)
 
-
+class FuncionarioViewSet(viewsets.ModelViewSet):
+    serializer_class = FuncionarioSerializer
+    permission_classes = [IsFuncionarioOrAdmin]
+    
+    def get_queryset(self):
+        if self.request.user.role == 'funcionario':
+            return Funcionario.objects.filter(user=self.request.user)
+        return Funcionario.objects.all()
+    
+    def perform_create(self, serializer):
+        serializer.save(user=self.request.user)
+    
+    @action(detail=False, methods=['get'])
+    def para_produtor(self, request):
+        """Listar funcionários para o produtor"""
+        if request.user.role == 'produtor':
+            from produtor_dashboard.models import Fazenda
+            fazenda = Fazenda.objects.get(produtor=request.user)
+            funcionarios = Funcionario.objects.filter(fazenda=fazenda)
+            
+            resultados = []
+            for func in funcionarios:
+                nome = func.user.email.split('@')[0]
+                if hasattr(func.user, 'perfil') and func.user.perfil and func.user.perfil.nome_completo:
+                    nome = func.user.perfil.nome_completo
+                
+                resultados.append({
+                    'id': func.id,
+                    'nome': nome,
+                    'email': func.user.email,
+                })
+            return Response(resultados)
+        return Response([])
 
 @api_view(['GET'])
 @permission_classes([IsFuncionarioOrAdmin])
@@ -327,96 +398,46 @@ def get_funcionario_dashboard(request):
         'ocorrencias': ocorrencias,
     })
 
+# Adicione no final do arquivo
 
-@api_view(['GET', 'PUT', 'PATCH'])
-@permission_classes([IsFuncionarioOrAdmin])
-def get_funcionario_profile(request):
-    user = request.user
-    perfil = getattr(user, 'perfil', None)
-    funcionario = Funcionario.objects.filter(user=user).first()
+# backend/funcionario_dashboard/views.py
 
-    if request.method == 'GET':
-        return Response({
-            'nome': perfil.nome_completo if perfil and perfil.nome_completo else user.email.split('@')[0],
-            'email': user.email,
-            'telefone': str(perfil.telefone) if perfil and perfil.telefone else '',
-            'cargo': funcionario.cargo if funcionario else 'Funcionário Operacional',
-            'data_admissao': funcionario.data_contratacao.isoformat() if funcionario and funcionario.data_contratacao else '',
-            'setor': perfil.setor if perfil and perfil.setor else 'Operações de Campo',
-            'id_funcionario': f"F{user.id}",
-        })
-
-    data = request.data
-    if perfil is None:
-        perfil = Perfil.objects.create(
-            user=user,
-            nome_completo=user.email.split('@')[0],
-        )
-
-    if 'nome' in data:
-        perfil.nome_completo = data.get('nome')
-    if 'telefone' in data:
-        perfil.telefone = data.get('telefone') or None
-    if 'setor' in data:
-        perfil.setor = data.get('setor')
-    if 'email' in data:
-        user.email = data.get('email')
-    if funcionario and 'cargo' in data:
-        funcionario.cargo = data.get('cargo')
-
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def get_funcionarios_list(request):
+    """Listar todos os funcionários para o produtor"""
     try:
-        perfil.save()
-        if funcionario:
-            funcionario.save()
-        user.full_clean()
-        user.save()
-    except ValidationError as e:
-        return Response(
-            {'errors': e.message_dict if hasattr(e, 'message_dict') else e.messages},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        if request.user.role == 'produtor':
+            from produtor_dashboard.models import Fazenda
+            from login_cadastro.models import Perfil
+            
+            fazenda = Fazenda.objects.get(produtor=request.user)
+            funcionarios = Funcionario.objects.filter(fazenda=fazenda)
+            
+            resultados = []
+            for func in funcionarios:
+                # Buscar o nome do perfil do funcionário
+                nome_funcionario = func.user.email.split('@')[0]
+                
+                # Tentar pegar do perfil
+                try:
+                    perfil = Perfil.objects.get(user=func.user)
+                    if perfil.nome_completo:
+                        nome_funcionario = perfil.nome_completo
+                except Perfil.DoesNotExist:
+                    pass
+                
+                resultados.append({
+                    'id': func.id,
+                    'user_id': func.user.id,
+                    'email': func.user.email,
+                    'nome': nome_funcionario,
+                    'fazenda': func.fazenda.nome if func.fazenda else None,
+                })
+            
+            print(f"✅ Funcionários encontrados: {len(resultados)}")  # Debug
+            return Response(resultados)
+        return Response([])
     except Exception as e:
-        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
-
-    return Response({
-        'nome': perfil.nome_completo if perfil.nome_completo else user.email.split('@')[0],
-        'email': user.email,
-        'telefone': str(perfil.telefone) if perfil.telefone else '',
-        'cargo': funcionario.cargo if funcionario else 'Funcionário Operacional',
-        'data_admissao': funcionario.data_contratacao.isoformat() if funcionario and funcionario.data_contratacao else '',
-        'setor': perfil.setor if perfil and perfil.setor else 'Operações de Campo',
-        'id_funcionario': f"F{user.id}",
-    })
-
-
-@api_view(['GET'])
-@permission_classes([IsFuncionarioOrAdmin])
-def get_funcionario_animais(request):
-    user = request.user
-    if user.role == 'funcionario':
-        funcionario = Funcionario.objects.filter(user=user).first()
-        if not funcionario:
-            return Response({'error': 'Funcionário não vinculado a uma fazenda.'}, status=status.HTTP_404_NOT_FOUND)
-        animais = Animal.objects.filter(fazenda=funcionario.fazenda)
-    elif user.role == 'produtor':
-        fazenda = Fazenda.objects.filter(produtor=user).first()
-        animais = Animal.objects.filter(fazenda=fazenda) if fazenda else Animal.objects.none()
-    else:
-        animais = Animal.objects.none()
-
-    serializer = AnimalSerializer(animais, many=True)
-    return Response(serializer.data)
-
-
-@api_view(['GET'])
-@permission_classes([IsFuncionarioOrAdmin])
-def get_funcionario_tipos_racao(request):
-    tipos = [
-        {'id': 'ração_comum', 'nome': 'Ração Comum'},
-        {'id': 'ração_premium', 'nome': 'Ração Premium'},
-        {'id': 'ração_energética', 'nome': 'Ração Energética'},
-        {'id': 'suplemento', 'nome': 'Suplemento Nutricional'},
-        {'id': 'mistura', 'nome': 'Mistura Concentrada'},
-    ]
-    return Response(tipos)
-
+        print(f"❌ Erro em get_funcionarios_list: {e}")
+        return Response([], status=500)

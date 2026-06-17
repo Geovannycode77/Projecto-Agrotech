@@ -63,6 +63,12 @@ def login(request):
             'error': 'Conta desativada. Contacte o administrador.'
         }, status=status.HTTP_403_FORBIDDEN)
     
+    # Garante que o perfil existe
+    Perfil.objects.get_or_create(
+        user=user,
+        defaults={'nome_completo': ''}
+    )
+    
     refresh = RefreshToken.for_user(user)
     return Response({
         'refresh': str(refresh),
@@ -89,6 +95,7 @@ def logout(request):
         return Response({'message': 'Logout realizado com sucesso'})
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def change_password(request):
@@ -177,6 +184,18 @@ def google_login(request):
                 'error': 'Conta desativada. Contacte o administrador.'
             }, status=status.HTTP_403_FORBIDDEN)
         
+        # Garante que o perfil existe e atualiza o nome se necessário
+        perfil, created = Perfil.objects.get_or_create(
+            user=user,
+            defaults={'nome_completo': name or user.email.split('@')[0]}
+        )
+        
+        # Se o perfil já existia mas está sem nome, atualiza com o nome do Google
+        if not created and not perfil.nome_completo and name:
+            perfil.nome_completo = name
+            perfil.save()
+            print(f"✅ Nome do perfil atualizado para: {name}")
+        
         refresh = RefreshToken.for_user(user)
         
         return Response({
@@ -206,7 +225,7 @@ def google_register(request):
         picture = data.get('picture', '')
         google_id = data.get('google_id')
         
-        print(f"🔵 Google Register - Email: {email}, Role: {role}")
+        print(f"🔵 Google Register - Email: {email}, Role: {role}, Name: {name}")
         
         # Validações
         if not email:
@@ -247,10 +266,10 @@ def google_register(request):
         
         print(f"✅ Usuário Google criado: {user.email}")
         
-        # Cria o perfil básico
+        # Cria o perfil com o nome do Google
         Perfil.objects.create(
             user=user,
-            nome_completo=name
+            nome_completo=name or email.split('@')[0]  # Usa o nome ou primeira parte do email
         )
         
         return Response({
@@ -265,8 +284,6 @@ def google_register(request):
         return Response({
             'error': f'Erro ao criar conta: {str(e)}'
         }, status=status.HTTP_400_BAD_REQUEST)
-
-
 
 
 # ========== CONFIRMAÇÃO DE EMAIL ==========
@@ -307,6 +324,12 @@ def confirm_email(request):
         user.email_confirmation_token = None
         user.is_approved = True
         user.save()
+        
+        # Garante que o perfil existe
+        Perfil.objects.get_or_create(
+            user=user,
+            defaults={'nome_completo': ''}
+        )
         
         refresh = RefreshToken.for_user(user)
         
@@ -379,6 +402,9 @@ def complete_profile(request):
         google_id = data.get('google_id')
         name = data.get('name', '')
         
+        print(f"🔵 Complete Profile - Email: {email}, Role: {role}, IsGoogle: {is_google}")
+        print(f"📝 Profile data: {profile}")
+        
         if not email:
             return Response({
                 'success': False,
@@ -395,6 +421,48 @@ def complete_profile(request):
         user = CustomUser.objects.filter(email=email).first()
         
         if user:
+            # ✅ CORREÇÃO: Se o usuário já existe e tem perfil, atualiza os dados
+            if user.email_confirmed:
+                # Tenta obter ou criar o perfil
+                perfil, created = Perfil.objects.get_or_create(
+                    user=user,
+                    defaults={'nome_completo': profile.get('nome_completo', name)}
+                )
+                
+                # Se o perfil já existe, atualiza os campos se estiverem vazios
+                if not created:
+                    # Atualiza o nome completo se estiver vazio
+                    if not perfil.nome_completo and profile.get('nome_completo'):
+                        perfil.nome_completo = profile.get('nome_completo')
+                    
+                    # Atualiza outros campos se fornecidos
+                    if profile.get('telefone'):
+                        perfil.telefone = profile.get('telefone')
+                    if profile.get('endereco'):
+                        perfil.endereco = profile.get('endereco')
+                    if profile.get('data_nascimento'):
+                        perfil.data_nascimento = profile.get('data_nascimento')
+                    
+                    # Campos específicos por role
+                    if role == 'produtor' and profile.get('fazenda_nome'):
+                        perfil.fazenda_nome = profile.get('fazenda_nome')
+                    elif role == 'veterinario' and profile.get('especialidade'):
+                        perfil.especialidade = profile.get('especialidade')
+                    elif role == 'funcionario' and profile.get('setor'):
+                        perfil.setor = profile.get('setor')
+                    elif role == 'gestor_financeiro' and profile.get('area_atuacao'):
+                        perfil.area_atuacao = profile.get('area_atuacao')
+                    
+                    perfil.save()
+                    print(f"✅ Perfil atualizado para {user.email}: {perfil.nome_completo}")
+                
+                return Response({
+                    'success': True,
+                    'message': 'Perfil atualizado com sucesso!',
+                    'user': UserSerializer(user).data
+                }, status=status.HTTP_200_OK)
+            
+            # Usuário existe mas não confirmou email
             if not user.email_confirmed:
                 send_confirmation_email(user, request)
                 return Response({
@@ -408,7 +476,7 @@ def complete_profile(request):
                 'error': 'Este email já está cadastrado. Faça login.'
             }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Cria o usuário
+        # Cria novo usuário
         if is_google and google_credential:
             # Usuário do Google - cria sem senha
             user = CustomUser.objects.create_user(
@@ -422,11 +490,23 @@ def complete_profile(request):
                 profile_picture=data.get('picture', ''),
                 needs_password_setup=False
             )
-            # Cria o perfil com o nome do Google
+            
+            # Pega o nome do perfil ou do Google
+            nome_para_perfil = profile.get('nome_completo') or name or email.split('@')[0]
+            
+            # Cria o perfil com todos os dados
             Perfil.objects.create(
                 user=user,
-                nome_completo=name or profile.get('nome_completo', '')
+                nome_completo=nome_para_perfil,
+                telefone=profile.get('telefone', ''),
+                endereco=profile.get('endereco', ''),
+                data_nascimento=profile.get('data_nascimento') or None,
+                fazenda_nome=profile.get('fazenda_nome', ''),
+                especialidade=profile.get('especialidade', ''),
+                setor=profile.get('setor', ''),
+                area_atuacao=profile.get('area_atuacao', '')
             )
+            print(f"✅ Usuário Google criado com perfil: {nome_para_perfil}")
         else:
             # Usuário normal
             if not password:
@@ -467,7 +547,9 @@ def complete_profile(request):
         }, status=status.HTTP_201_CREATED)
         
     except Exception as e:
-        print(f"Complete profile error: {str(e)}")
+        print(f"❌ Complete profile error: {str(e)}")
+        import traceback
+        traceback.print_exc()
         return Response({
             'success': False,
             'error': 'Ocorreu um erro ao processar seu cadastro. Tente novamente.'
@@ -647,27 +729,62 @@ def delete_user(request, user_id):
 # ========== PERFIL ==========
 
 @api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
 def get_update_profile(request):
     """Obter ou atualizar perfil do usuário"""
     if request.method == 'GET':
         try:
-            perfil = request.user.perfil
+            # Tenta buscar o perfil existente
+            try:
+                perfil = Perfil.objects.get(user=request.user)
+            except Perfil.DoesNotExist:
+                # Se não existir, cria um novo
+                nome_padrao = request.user.email.split('@')[0]
+                perfil = Perfil.objects.create(
+                    user=request.user,
+                    nome_completo=nome_padrao
+                )
+                print(f"✅ Perfil criado automaticamente para {request.user.email} com nome: {nome_padrao}")
+            
             serializer = PerfilSerializer(perfil)
             return Response(serializer.data)
-        except:
-            return Response({'error': 'Perfil não encontrado'}, status=status.HTTP_404_NOT_FOUND)
+            
+        except Exception as e:
+            print(f"❌ Erro ao obter perfil: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'error': f'Erro ao obter perfil: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
     
     elif request.method == 'PUT':
         try:
-            perfil = request.user.perfil
+            # Tenta buscar o perfil existente
+            try:
+                perfil = Perfil.objects.get(user=request.user)
+            except Perfil.DoesNotExist:
+                # Se não existir, cria um novo
+                perfil = Perfil.objects.create(
+                    user=request.user,
+                    nome_completo=''
+                )
+            
             serializer = PerfilSerializer(perfil, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
+                print(f"✅ Perfil atualizado para {request.user.email}")
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-        except:
-            return Response({'error': 'Perfil não encontrado'}, status=status.HTTP_404_NOT_FOUND)
-
+            
+        except Exception as e:
+            print(f"❌ Erro ao atualizar perfil: {str(e)}")
+            import traceback
+            traceback.print_exc()
+            return Response(
+                {'error': f'Erro ao atualizar perfil: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
 # ========== DASHBOARD STATS ==========
 

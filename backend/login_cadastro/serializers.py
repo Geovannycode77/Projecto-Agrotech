@@ -152,6 +152,13 @@ class RegisterSerializer(serializers.ModelSerializer):
                 is_active=True
             )
         
+        # Criar Perfil automaticamente se não existir
+        if not hasattr(user, 'perfil') or user.perfil is None:
+            Perfil.objects.create(
+                user=user,
+                nome_completo=''  # Será preenchido depois no complete_profile
+            )
+        
         return user
 
 

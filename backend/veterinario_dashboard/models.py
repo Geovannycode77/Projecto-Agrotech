@@ -1,10 +1,11 @@
+# backend/veterinario_dashboard/models.py
+
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
 from login_cadastro.models import CustomUser
-from produtor_dashboard.models import Fazenda, Animal
 from django.utils import timezone
 import uuid
 
+# NÃO importe Fazenda e Animal diretamente - use strings
 class Veterinario(models.Model):
     """Modelo do veterinário vinculado a uma fazenda"""
     ESPECIALIDADE_CHOICES = (
@@ -16,10 +17,10 @@ class Veterinario(models.Model):
         ('geral', 'Clínica Geral'),
     )
     
-    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='veterinario')
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='veterinarios')
+    user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='veterinario_perfil')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='veterinarios')
     especialidade = models.CharField(max_length=50, choices=ESPECIALIDADE_CHOICES, default='geral')
-    registro_crmv = models.CharField(max_length=50, unique=True)
+    registro_crmv = models.CharField(max_length=50, unique=True, blank=True, null=True)
     ativo = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -30,7 +31,8 @@ class Veterinario(models.Model):
         verbose_name_plural = 'Veterinários'
     
     def __str__(self):
-        return f"Dr(a). {self.user.username} - CRMV: {self.registro_crmv}"
+        return f"Dr(a). {self.user.email} - {self.especialidade}"
+
 
 class Consulta(models.Model):
     """Registro de consultas veterinárias"""
@@ -53,8 +55,8 @@ class Consulta(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     veterinario = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='consultas')
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='consultas')
-    animal = models.ForeignKey(Animal, on_delete=models.CASCADE, related_name='consultas')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='consultas')
+    animal = models.ForeignKey('produtor_dashboard.Animal', on_delete=models.CASCADE, related_name='consultas')
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='agendado')
     data_consulta = models.DateField()
@@ -70,25 +72,28 @@ class Consulta(models.Model):
         ordering = ['data_consulta', 'horario']
     
     def __str__(self):
-        return f"Consulta {self.tipo} - {self.animal.brinco} - {self.data_consulta}"
+        return f"Consulta {self.tipo} - {self.animal.brinco if self.animal else 'N/A'} - {self.data_consulta}"
+
 
 class Vacina(models.Model):
     """Registro de vacinas aplicadas"""
+    VIA_CHOICES = (
+        ('intramuscular', 'Intramuscular'),
+        ('subcutanea', 'Subcutânea'),
+        ('oral', 'Oral'),
+        ('intravenosa', 'Intravenosa'),
+    )
+    
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     veterinario = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='vacinas')
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='vacinas')
-    animal = models.ForeignKey(Animal, on_delete=models.CASCADE, related_name='vacinas')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='vacinas')
+    animal = models.ForeignKey('produtor_dashboard.Animal', on_delete=models.CASCADE, related_name='vacinas')
     nome_vacina = models.CharField(max_length=200)
     lote = models.CharField(max_length=100)
     data_aplicacao = models.DateField()
     data_proxima_dose = models.DateField(blank=True, null=True)
     dose = models.CharField(max_length=50)
-    via_aplicacao = models.CharField(max_length=50, choices=(
-        ('intramuscular', 'Intramuscular'),
-        ('subcutanea', 'Subcutânea'),
-        ('oral', 'Oral'),
-        ('intravenosa', 'Intravenosa'),
-    ))
+    via_aplicacao = models.CharField(max_length=50, choices=VIA_CHOICES)
     observacoes = models.TextField(blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     
@@ -97,7 +102,8 @@ class Vacina(models.Model):
         ordering = ['-data_aplicacao']
     
     def __str__(self):
-        return f"{self.nome_vacina} - {self.animal.brinco} - {self.data_aplicacao}"
+        return f"{self.nome_vacina} - {self.animal.brinco if self.animal else 'N/A'} - {self.data_aplicacao}"
+
 
 class Tratamento(models.Model):
     """Registro de tratamentos realizados"""
@@ -109,8 +115,8 @@ class Tratamento(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     veterinario = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='tratamentos')
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='tratamentos')
-    animal = models.ForeignKey(Animal, on_delete=models.CASCADE, related_name='tratamentos')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='tratamentos')
+    animal = models.ForeignKey('produtor_dashboard.Animal', on_delete=models.CASCADE, related_name='tratamentos')
     diagnostico = models.TextField()
     tratamento = models.TextField()
     medicamentos = models.TextField(blank=True)
@@ -126,7 +132,8 @@ class Tratamento(models.Model):
         ordering = ['-data_inicio']
     
     def __str__(self):
-        return f"Tratamento - {self.animal.brinco} - {self.data_inicio}"
+        return f"Tratamento - {self.animal.brinco if self.animal else 'N/A'} - {self.data_inicio}"
+
 
 class AlertaSaude(models.Model):
     """Alertas de saúde do rebanho"""
@@ -146,8 +153,8 @@ class AlertaSaude(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     veterinario = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='alertas')
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='alertas_saude')
-    animal = models.ForeignKey(Animal, on_delete=models.SET_NULL, null=True, blank=True, related_name='alertas')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='alertas_saude')
+    animal = models.ForeignKey('produtor_dashboard.Animal', on_delete=models.SET_NULL, null=True, blank=True, related_name='alertas')
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     prioridade = models.CharField(max_length=10, choices=PRIORIDADE_CHOICES, default='media')
     titulo = models.CharField(max_length=200)
@@ -163,6 +170,7 @@ class AlertaSaude(models.Model):
     def __str__(self):
         return f"{self.titulo} - {self.prioridade}"
 
+
 class LembreteSaude(models.Model):
     """Lembretes de saúde programados"""
     FREQUENCIA_CHOICES = (
@@ -175,7 +183,7 @@ class LembreteSaude(models.Model):
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     veterinario = models.ForeignKey(CustomUser, on_delete=models.CASCADE, related_name='lembretes')
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='lembretes')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='lembretes')
     titulo = models.CharField(max_length=200)
     descricao = models.TextField()
     data_lembrete = models.DateField()

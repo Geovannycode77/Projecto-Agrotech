@@ -24,10 +24,10 @@ export default function ConfirmEmail() {
         setStatus('success');
         setMessage(result.message);
         
-        // Redireciona após 3 segundos
+        // Redireciona após 5 segundos
         setTimeout(() => {
           navigate('/dashboard');
-        }, 3000);
+        }, 5000);
       } else {
         setStatus('error');
         setMessage(result.error || 'Erro ao confirmar email');

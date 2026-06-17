@@ -1,14 +1,15 @@
+# backend/Gestor_financeiro_dashboard/models.py
+
 from django.db import models
-from django.core.validators import MinValueValidator, MaxValueValidator
 from login_cadastro.models import CustomUser
-from produtor_dashboard.models import Fazenda, Animal
 from django.utils import timezone
 import uuid
 
+# NÃO importe Fazenda e Animal diretamente - use strings
 class GestorFinanceiro(models.Model):
     """Modelo do gestor financeiro vinculado a uma fazenda"""
     user = models.OneToOneField(CustomUser, on_delete=models.CASCADE, related_name='gestor_financeiro_perfil')
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='gestores_financeiros')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='gestores_financeiros')
     departamento = models.CharField(max_length=100, default='Financeiro')
     nivel_acesso = models.CharField(max_length=20, choices=(
         ('basico', 'Básico'),
@@ -25,7 +26,8 @@ class GestorFinanceiro(models.Model):
         verbose_name_plural = 'Gestores Financeiros'
     
     def __str__(self):
-        return f"{self.user.username} - {self.fazenda.nome}"
+        return f"{self.user.email} - {self.fazenda.nome if self.fazenda else 'Sem fazenda'}"
+
 
 class Receita(models.Model):
     """Registro de receitas da fazenda"""
@@ -39,13 +41,13 @@ class Receita(models.Model):
     )
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='receitas')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='receitas')
     gestor = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='receitas_registradas')
     categoria = models.CharField(max_length=50, choices=CATEGORIA_CHOICES)
     valor = models.DecimalField(max_digits=12, decimal_places=2)
     descricao = models.TextField()
     data = models.DateField(default=timezone.now)
-    animal = models.ForeignKey(Animal, on_delete=models.SET_NULL, null=True, blank=True, related_name='receitas')
+    animal = models.ForeignKey('produtor_dashboard.Animal', on_delete=models.SET_NULL, null=True, blank=True, related_name='receitas')
     comprovante = models.FileField(upload_to='comprovantes/receitas/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -58,6 +60,7 @@ class Receita(models.Model):
     
     def __str__(self):
         return f"{self.categoria} - AOA {self.valor} - {self.data}"
+
 
 class Despesa(models.Model):
     """Registro de despesas da fazenda"""
@@ -76,13 +79,13 @@ class Despesa(models.Model):
     )
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='despesas')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='despesas')
     gestor = models.ForeignKey(CustomUser, on_delete=models.SET_NULL, null=True, blank=True, related_name='despesas_registradas')
     categoria = models.CharField(max_length=50, choices=CATEGORIA_CHOICES)
     valor = models.DecimalField(max_digits=12, decimal_places=2)
     descricao = models.TextField()
     data = models.DateField(default=timezone.now)
-    animal = models.ForeignKey(Animal, on_delete=models.SET_NULL, null=True, blank=True, related_name='despesas')
+    animal = models.ForeignKey('produtor_dashboard.Animal', on_delete=models.SET_NULL, null=True, blank=True, related_name='despesas')
     comprovante = models.FileField(upload_to='comprovantes/despesas/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
@@ -95,6 +98,7 @@ class Despesa(models.Model):
     
     def __str__(self):
         return f"{self.categoria} - AOA {self.valor} - {self.data}"
+
 
 class MetaFinanceira(models.Model):
     """Metas financeiras da fazenda"""
@@ -111,7 +115,7 @@ class MetaFinanceira(models.Model):
         ('anual', 'Anual'),
     )
     
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='metas_financeiras')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='metas_financeiras')
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     periodo = models.CharField(max_length=20, choices=PERIODO_CHOICES)
     valor_meta = models.DecimalField(max_digits=12, decimal_places=2)
@@ -128,6 +132,7 @@ class MetaFinanceira(models.Model):
     def __str__(self):
         return f"{self.tipo} - {self.periodo} - AOA {self.valor_meta}"
 
+
 class AtividadeFinanceira(models.Model):
     """Registro de atividades financeiras (para o dashboard)"""
     TIPO_CHOICES = (
@@ -136,7 +141,7 @@ class AtividadeFinanceira(models.Model):
     )
     
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='atividades_financeiras')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='atividades_financeiras')
     tipo = models.CharField(max_length=20, choices=TIPO_CHOICES)
     valor = models.DecimalField(max_digits=12, decimal_places=2)
     descricao = models.TextField()
@@ -154,10 +159,11 @@ class AtividadeFinanceira(models.Model):
     def __str__(self):
         return f"{self.tipo} - {self.valor} - {self.data}"
 
+
 class RelatorioFinanceiro(models.Model):
     """Relatórios financeiros gerados"""
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    fazenda = models.ForeignKey(Fazenda, on_delete=models.CASCADE, related_name='relatorios_financeiros')
+    fazenda = models.ForeignKey('produtor_dashboard.Fazenda', on_delete=models.CASCADE, related_name='relatorios_financeiros')
     titulo = models.CharField(max_length=200)
     periodo_inicio = models.DateField()
     periodo_fim = models.DateField()
@@ -176,4 +182,3 @@ class RelatorioFinanceiro(models.Model):
     
     def __str__(self):
         return f"{self.titulo} - {self.periodo_inicio} a {self.periodo_fim}"
-

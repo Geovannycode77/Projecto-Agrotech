@@ -6,20 +6,16 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
   Save,
-  Edit,
   Trash2,
-  Search,
-  PawPrint,
-  Calendar,
-  Weight,
-  Syringe,
-  Heart,
   Eye,
-  FileText,
   Loader2,
+  CalendarIcon,
+  Weight,
+  Tag,
+  Info,
 } from "lucide-react";
 import PerfilAnimal from "./PerfilAnimal";
-import { produtorService } from "@/services/produtorService";
+import { produtorService } from "@/services/ProdutorService";
 import { toast } from "@/hooks/use-toast";
 import useConfirm from "@/components/ui/useConfirm";
 
@@ -30,10 +26,11 @@ export default function CadastroAnimais() {
   const [submitting, setSubmitting] = useState(false);
   const [animalSelecionado, setAnimalSelecionado] = useState(null);
   const [showPerfil, setShowPerfil] = useState(false);
+  const [errors, setErrors] = useState({});
+  const [touched, setTouched] = useState({});
   const [formData, setFormData] = useState({
     brinco: "",
     nome: "",
-    especie: "bovino",
     raca: "",
     sexo: "M",
     data_nascimento: "",
@@ -57,6 +54,26 @@ export default function CadastroAnimais() {
     }
   };
 
+  // Validação de data de nascimento (gado vive até 25 anos)
+  const validateDate = (date) => {
+    if (!date) return "Data de nascimento é obrigatória";
+    const selectedDate = new Date(date);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    
+    if (selectedDate > today) return "A data de nascimento não pode ser futura";
+    
+    const idadeMaxima = 25; // Gado vive até 25 anos
+    const minDate = new Date();
+    minDate.setFullYear(minDate.getFullYear() - idadeMaxima);
+    
+    if (selectedDate < minDate) {
+      return `Data inválida. Gado vive no máximo ${idadeMaxima} anos.`;
+    }
+    
+    return '';
+  };
+
   // Calcular idade baseado na data de nascimento
   const calcularIdade = (dataNascimento) => {
     if (!dataNascimento) return "Não informada";
@@ -70,14 +87,66 @@ export default function CadastroAnimais() {
     return `${idade} ${idade === 1 ? "ano" : "anos"}`;
   };
 
+  const handleChange = (e) => {
+    const { id, value } = e.target;
+    setFormData({ ...formData, [id]: value });
+    
+    if (touched[id]) {
+      let error = '';
+      if (id === 'data_nascimento') {
+        error = validateDate(value);
+      }
+      setErrors({ ...errors, [id]: error });
+    }
+  };
+
+  const handleBlur = (field) => {
+    setTouched({ ...touched, [field]: true });
+    
+    let error = '';
+    if (field === 'data_nascimento') {
+      error = validateDate(formData.data_nascimento);
+    }
+    setErrors({ ...errors, [field]: error });
+  };
+
+  const getFieldError = (field) => {
+    return touched[field] && errors[field] ? errors[field] : '';
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Valida a data antes de enviar
+    const dateError = validateDate(formData.data_nascimento);
+    if (dateError) {
+      setErrors({ ...errors, data_nascimento: dateError });
+      setTouched({ ...touched, data_nascimento: true });
+      toast({
+        title: "Erro",
+        description: dateError,
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    // Valida brinco
+    if (!formData.brinco.trim()) {
+      toast({
+        title: "Erro",
+        description: "Número do brinco é obrigatório",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     setSubmitting(true);
 
     try {
       const novoAnimal = await produtorService.createAnimal({
         ...formData,
-        peso_atual: parseFloat(formData.peso_atual),
+        especie: "bovino", // Fixo como bovino
+        peso_atual: parseFloat(formData.peso_atual) || 0,
         data_nascimento: formData.data_nascimento || null,
       });
 
@@ -85,13 +154,15 @@ export default function CadastroAnimais() {
       setFormData({
         brinco: "",
         nome: "",
-        especie: "bovino",
         raca: "",
         sexo: "M",
         data_nascimento: "",
         peso_atual: "",
         observacoes: "",
       });
+      setErrors({});
+      setTouched({});
+      
       toast({
         title: "Sucesso",
         description: "Animal cadastrado com sucesso!",
@@ -100,7 +171,7 @@ export default function CadastroAnimais() {
       console.error("Erro ao cadastrar animal:", error);
       toast({
         title: "Erro",
-        description: "Erro ao cadastrar animal. Tente novamente.",
+        description: error.response?.data?.message || "Erro ao cadastrar animal. Tente novamente.",
         variant: "destructive",
       });
     } finally {
@@ -141,16 +212,7 @@ export default function CadastroAnimais() {
       vendido: "bg-gray-100 text-gray-800",
       morto: "bg-black/10 text-gray-800",
     };
-    return colors[status] || "bg-gray-100 text-gray-800";
-  };
-
-  const getVacinacaoColor = (status) => {
-    const colors = {
-      atualizada: "bg-green-100 text-green-800",
-      pendente: "bg-yellow-100 text-yellow-800",
-      atrasada: "bg-red-100 text-red-800",
-    };
-    return colors[status] || "bg-gray-100 text-gray-800";
+    return colors[status] || "bg-emerald-100 text-emerald-800";
   };
 
   if (showPerfil && animalSelecionado) {
@@ -192,7 +254,10 @@ export default function CadastroAnimais() {
       {/* Formulário de Cadastro */}
       <Card>
         <CardHeader>
-          <CardTitle>Cadastrar Novo Animal</CardTitle>
+          <CardTitle className="flex items-center gap-2">
+            <Tag className="h-5 w-5" />
+            Cadastrar Novo Animal
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -217,24 +282,8 @@ export default function CadastroAnimais() {
                   onChange={(e) =>
                     setFormData({ ...formData, nome: e.target.value })
                   }
-                  placeholder="Nome opcional"
+                  placeholder="Nome opcional (ex: Mimosa)"
                 />
-              </div>
-              <div>
-                <Label htmlFor="especie">Espécie *</Label>
-                <select
-                  id="especie"
-                  className="w-full border rounded-md p-2"
-                  value={formData.especie}
-                  onChange={(e) =>
-                    setFormData({ ...formData, especie: e.target.value })
-                  }
-                >
-                  <option value="bovino">Bovino</option>
-                  <option value="suino">Suíno</option>
-                  <option value="caprino">Caprino</option>
-                  <option value="ovino">Ovino</option>
-                </select>
               </div>
               <div>
                 <Label htmlFor="raca">Raça</Label>
@@ -244,7 +293,7 @@ export default function CadastroAnimais() {
                   onChange={(e) =>
                     setFormData({ ...formData, raca: e.target.value })
                   }
-                  placeholder="Ex: Nelore, Jersey"
+                  placeholder="Ex: Nelore, Jersey, Holandês, Gir"
                 />
               </div>
               <div>
@@ -257,26 +306,37 @@ export default function CadastroAnimais() {
                     setFormData({ ...formData, sexo: e.target.value })
                   }
                 >
-                  <option value="M">Macho</option>
-                  <option value="F">Fêmea</option>
+                  <option value="M">Macho (Boi/Touro)</option>
+                  <option value="F">Fêmea (Vaca)</option>
                 </select>
               </div>
-              <div>
-                <Label htmlFor="data_nascimento">Data de Nascimento</Label>
+              <div className="space-y-2">
+                <Label htmlFor="data_nascimento">
+                  <CalendarIcon className="h-4 w-4 inline mr-2" />
+                  Data de Nascimento *
+                </Label>
                 <Input
                   id="data_nascimento"
                   type="date"
                   value={formData.data_nascimento}
-                  onChange={(e) =>
-                    setFormData({
-                      ...formData,
-                      data_nascimento: e.target.value,
-                    })
-                  }
+                  onChange={handleChange}
+                  onBlur={() => handleBlur('data_nascimento')}
+                  className={errors.data_nascimento ? 'border-red-500' : ''}
+                  max={new Date().toISOString().split('T')[0]}
+                  required
                 />
+                {getFieldError('data_nascimento') && (
+                  <p className="text-xs text-red-500">{getFieldError('data_nascimento')}</p>
+                )}
+                <p className="text-xs text-gray-400">
+                  💡 Gado vive até 25 anos
+                </p>
               </div>
               <div>
-                <Label htmlFor="peso_atual">Peso Atual (kg)</Label>
+                <Label htmlFor="peso_atual">
+                  <Weight className="h-4 w-4 inline mr-2" />
+                  Peso Atual (kg)
+                </Label>
                 <Input
                   id="peso_atual"
                   type="number"
@@ -289,14 +349,17 @@ export default function CadastroAnimais() {
                 />
               </div>
               <div className="md:col-span-2">
-                <Label htmlFor="observacoes">Observações</Label>
+                <Label htmlFor="observacoes">
+                  <Info className="h-4 w-4 inline mr-2" />
+                  Observações
+                </Label>
                 <Input
                   id="observacoes"
                   value={formData.observacoes}
                   onChange={(e) =>
                     setFormData({ ...formData, observacoes: e.target.value })
                   }
-                  placeholder="Informações adicionais"
+                  placeholder="Informações adicionais (saúde, vacinas, histórico, etc.)"
                 />
               </div>
             </div>
@@ -319,13 +382,12 @@ export default function CadastroAnimais() {
       {/* Lista de Animais */}
       <Card>
         <CardHeader>
-          <CardTitle>Animais Cadastrados</CardTitle>
+          <CardTitle>Rebanho Cadastrado</CardTitle>
         </CardHeader>
         <CardContent>
           {animais.length === 0 ? (
             <div className="text-center py-8 text-gray-500">
-              Nenhum animal cadastrado. Clique em "Cadastrar Novo Animal" para
-              começar.
+              🐄 Nenhum animal cadastrado. Comece cadastrando seu rebanho.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -335,9 +397,9 @@ export default function CadastroAnimais() {
                     <th className="px-4 py-2 text-left">Brinco</th>
                     <th className="px-4 py-2 text-left">Nome</th>
                     <th className="px-4 py-2 text-left">Raça</th>
+                    <th className="px-4 py-2 text-left">Sexo</th>
                     <th className="px-4 py-2 text-left">Idade</th>
-                    <th className="px-4 py-2 text-left">Peso</th>
-                    <th className="px-4 py-2 text-left">Vacinação</th>
+                    <th className="px-4 py-2 text-left">Peso (kg)</th>
                     <th className="px-4 py-2 text-left">Status</th>
                     <th className="px-4 py-2 text-left">Ações</th>
                   </tr>
@@ -352,19 +414,17 @@ export default function CadastroAnimais() {
                       <td className="px-4 py-2">{animal.nome || "-"}</td>
                       <td className="px-4 py-2">{animal.raca || "-"}</td>
                       <td className="px-4 py-2">
-                        {animal.idade || calcularIdade(animal.data_nascimento)}
+                        {animal.sexo === 'M' ? '♂️ Macho' : '♀️ Fêmea'}
                       </td>
-                      <td className="px-4 py-2">{animal.peso_atual} kg</td>
                       <td className="px-4 py-2">
-                        <Badge className={getVacinacaoColor(animal.vacinacao)}>
-                          {animal.vacinacao || "pendente"}
-                        </Badge>
-                      </td>
+                        {animal.idade || calcularIdade(animal.data_nascimento)}
+                       </td>
+                      <td className="px-4 py-2">{animal.peso_atual || 0} kg</td>
                       <td className="px-4 py-2">
                         <Badge className={getStatusColor(animal.status)}>
-                          {animal.status}
+                          {animal.status || "ativo"}
                         </Badge>
-                      </td>
+                       </td>
                       <td className="px-4 py-2">
                         <div className="flex gap-2">
                           <Button
@@ -372,6 +432,7 @@ export default function CadastroAnimais() {
                             size="sm"
                             className="text-emerald-600"
                             onClick={() => handleVerPerfil(animal)}
+                            title="Ver perfil completo"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
@@ -380,12 +441,13 @@ export default function CadastroAnimais() {
                             size="sm"
                             className="text-red-600"
                             onClick={() => handleDelete(animal.id)}
+                            title="Excluir animal"
                           >
                             <Trash2 className="h-4 w-4" />
                           </Button>
                         </div>
-                      </td>
-                    </tr>
+                       </td>
+                     </tr>
                   ))}
                 </tbody>
               </table>

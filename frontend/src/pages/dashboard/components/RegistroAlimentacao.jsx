@@ -1,25 +1,24 @@
-import React, { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Utensils, Plus, CheckCircle, Loader2 } from "lucide-react";
-import { funcionarioService } from "@/services/funcionarioService";
-import { toast } from "@/hooks/use-toast";
+import React, { useState, useEffect } from 'react';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Loader2, Utensils } from 'lucide-react';
+import { funcionarioService } from '@/services/FuncionarioService';
+import { toast } from '@/hooks/use-toast';
 
 export default function RegistroAlimentacao() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [animais, setAnimais] = useState([]);
   const [tiposRacao, setTiposRacao] = useState([]);
-  const [formData, setFormData] = useState({
-    animal_id: "",
-    tipo_racao_id: "",
-    quantidade: "",
-    horario: "",
-    observacoes: "",
+  const [form, setForm] = useState({
+    animal_id: '',
+    tipo_racao: '',
+    quantidade_kg: '',
+    observacoes: '',
+    horario: ''
   });
-  const [success, setSuccess] = useState(false);
 
   useEffect(() => {
     carregarDados();
@@ -28,14 +27,19 @@ export default function RegistroAlimentacao() {
   const carregarDados = async () => {
     setLoading(true);
     try {
-      const [animaisData, racasData] = await Promise.all([
-        funcionarioService.getAnimais({ status: "ativo" }),
-        funcionarioService.getTiposRacao(),
+      const [animaisData, tiposData] = await Promise.all([
+        funcionarioService.getAnimais(),
+        funcionarioService.getTiposRacao()
       ]);
       setAnimais(animaisData.results || animaisData);
-      setTiposRacao(racasData.results || racasData);
+      setTiposRacao(tiposData.results || tiposData);
     } catch (error) {
-      console.error("Erro ao carregar dados:", error);
+      console.error('Erro ao carregar dados:', error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -47,24 +51,27 @@ export default function RegistroAlimentacao() {
 
     try {
       await funcionarioService.registrarAlimentacao({
-        animal_id: formData.animal_id,
-        tipo_racao_id: formData.tipo_racao_id,
-        quantidade_kg: parseFloat(formData.quantidade),
-        horario: formData.horario,
-        observacoes: formData.observacoes,
+        animal_id: form.animal_id,
+        tipo_racao: form.tipo_racao,
+        quantidade_kg: parseFloat(form.quantidade_kg),
+        observacoes: form.observacoes,
+        horario: form.horario
       });
 
-      setSuccess(true);
-      setTimeout(() => setSuccess(false), 3000);
-      setFormData({
-        animal_id: "",
-        tipo_racao_id: "",
-        quantidade: "",
-        horario: "",
-        observacoes: "",
+      setForm({
+        animal_id: '',
+        tipo_racao: '',
+        quantidade_kg: '',
+        observacoes: '',
+        horario: ''
+      });
+
+      toast({
+        title: "Sucesso",
+        description: "Alimentação registrada com sucesso!",
       });
     } catch (error) {
-      console.error("Erro ao registrar alimentação:", error);
+      console.error('Erro ao registrar alimentação:', error);
       toast({
         title: "Erro",
         description: "Erro ao registrar alimentação. Tente novamente.",
@@ -75,24 +82,12 @@ export default function RegistroAlimentacao() {
     }
   };
 
-  const horarios = [
-    { value: "manha", label: "Manhã (06:00 - 08:00)" },
-    { value: "tarde", label: "Tarde (14:00 - 16:00)" },
-    { value: "noite", label: "Noite (18:00 - 20:00)" },
-  ];
-
   if (loading) {
     return (
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Utensils className="h-5 w-5 text-purple-600" />
-            Registrar Alimentação
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
+            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
           </div>
         </CardContent>
       </Card>
@@ -103,35 +98,25 @@ export default function RegistroAlimentacao() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Utensils className="h-5 w-5 text-purple-600" />
+          <Utensils className="h-5 w-5 text-emerald-600" />
           Registrar Alimentação
         </CardTitle>
       </CardHeader>
       <CardContent>
-        {success && (
-          <div className="mb-4 p-3 bg-green-50 text-green-800 rounded-lg flex items-center gap-2">
-            <CheckCircle className="h-5 w-5" />
-            Alimentação registrada com sucesso!
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label>Animal / Lote</Label>
+              <Label>Animal</Label>
               <select
                 className="w-full border rounded-lg p-2"
-                value={formData.animal_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, animal_id: e.target.value })
-                }
+                value={form.animal_id}
+                onChange={(e) => setForm({ ...form, animal_id: e.target.value })}
                 required
               >
                 <option value="">Selecione...</option>
-                {animais.map((animal) => (
+                {animais.map(animal => (
                   <option key={animal.id} value={animal.id}>
-                    {animal.brinco} - {animal.nome || "Sem nome"} (
-                    {animal.especie})
+                    {animal.brinco} - {animal.nome || 'Sem nome'}
                   </option>
                 ))}
               </select>
@@ -140,75 +125,49 @@ export default function RegistroAlimentacao() {
               <Label>Tipo de Ração</Label>
               <select
                 className="w-full border rounded-lg p-2"
-                value={formData.tipo_racao_id}
-                onChange={(e) =>
-                  setFormData({ ...formData, tipo_racao_id: e.target.value })
-                }
+                value={form.tipo_racao}
+                onChange={(e) => setForm({ ...form, tipo_racao: e.target.value })}
                 required
               >
                 <option value="">Selecione...</option>
-                {tiposRacao.map((racao) => (
-                  <option key={racao.id} value={racao.id}>
-                    {racao.nome} ({racao.peso_por_saco}kg/saco)
+                {tiposRacao.map(tipo => (
+                  <option key={tipo.id} value={tipo.nome}>
+                    {tipo.nome} ({tipo.peso_por_saco}kg/saco)
                   </option>
                 ))}
               </select>
             </div>
             <div>
               <Label>Quantidade (kg)</Label>
-              <input
+              <Input
                 type="number"
                 step="0.1"
-                className="w-full border rounded-lg p-2"
-                placeholder="Ex: 500"
-                value={formData.quantidade}
-                onChange={(e) =>
-                  setFormData({ ...formData, quantidade: e.target.value })
-                }
+                placeholder="Ex: 12.5"
+                value={form.quantidade_kg}
+                onChange={(e) => setForm({ ...form, quantité_kg: e.target.value })}
                 required
               />
             </div>
             <div>
               <Label>Horário</Label>
-              <select
-                className="w-full border rounded-lg p-2"
-                value={formData.horario}
-                onChange={(e) =>
-                  setFormData({ ...formData, horario: e.target.value })
-                }
-                required
-              >
-                <option value="">Selecione...</option>
-                {horarios.map((horario) => (
-                  <option key={horario.value} value={horario.value}>
-                    {horario.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="md:col-span-2">
-              <Label>Observações</Label>
-              <textarea
-                className="w-full border rounded-lg p-2"
-                rows="3"
-                placeholder="Informações adicionais..."
-                value={formData.observacoes}
-                onChange={(e) =>
-                  setFormData({ ...formData, observacoes: e.target.value })
-                }
+              <Input
+                type="time"
+                value={form.horario}
+                onChange={(e) => setForm({ ...form, horario: e.target.value })}
               />
             </div>
           </div>
-          <Button
-            type="submit"
-            className="bg-purple-600 hover:bg-purple-700"
-            disabled={submitting}
-          >
-            {submitting ? (
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-            ) : (
-              <Plus className="h-4 w-4 mr-2" />
-            )}
+          <div>
+            <Label>Observações</Label>
+            <textarea
+              className="w-full border rounded-lg p-2 min-h-[80px]"
+              placeholder="Observações adicionais..."
+              value={form.observacoes}
+              onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+            />
+          </div>
+          <Button type="submit" disabled={submitting} className="bg-emerald-600 hover:bg-emerald-700">
+            {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Utensils className="h-4 w-4 mr-2" />}
             Registrar Alimentação
           </Button>
         </form>

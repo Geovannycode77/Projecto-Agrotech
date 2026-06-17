@@ -29,9 +29,58 @@ export const produtorService = {
     return response.data;
   },
 
-  updateAnimal: async (id, data) => {
-    const response = await api.put(`produtor/animais/${id}/`, data);
+  // Tarefas do funcionário
+  getTarefas: async (params = {}) => {
+    const response = await api.get("funcionario/tarefas/", { params });
     return response.data;
+  },
+
+  createTarefa: async (data) => {
+    try {
+      const response = await api.post("funcionario/tarefas/", data);
+      return response.data;
+    } catch (error) {
+      console.error("Erro na requisição createTarefa:", error.response?.data || error);
+      throw error;
+    }
+  },
+
+  getFuncionarios: async (params = {}) => {
+    const response = await api.get("funcionario/funcionarios-list/", {
+      params,
+    });
+    return response.data;
+  },
+
+  async updateAnimal(id, data) {
+    try {
+      // Garantir que os dados estão no formato correto
+      const dadosFormatados = {
+        brinco: data.brinco,
+        nome: data.nome || "",
+        raca: data.raca || "",
+        sexo: data.sexo,
+        data_nascimento: data.data_nascimento || null,
+        peso_atual: data.peso_atual ? parseFloat(data.peso_atual) : 0,
+        observacoes: data.observacoes || "",
+        status: data.status || "ativo",
+        vacinacao: data.vacinacao || "pendente",
+      };
+
+      console.log("📤 Enviando PUT para:", `produtor/animais/${id}/`);
+      console.log("📦 Dados enviados:", dadosFormatados);
+
+      const response = await api.put(
+        `produtor/animais/${id}/`,
+        dadosFormatados,
+      );
+      return response.data;
+    } catch (error) {
+      console.error("❌ Erro ao atualizar animal:", error);
+      console.error("📋 Resposta do erro:", error.response?.data);
+      console.error("🔍 Status:", error.response?.status);
+      throw error;
+    }
   },
 
   deleteAnimal: async (id) => {
@@ -73,14 +122,43 @@ export const produtorService = {
     return response.data;
   },
 
-  registrarAlimentacao: async (data) => {
-    const response = await api.post("produtor/alimentacao/", data);
-    return response.data;
+  async registrarAlimentacao(data) {
+    try {
+      // O backend já deve adicionar a fazenda automaticamente baseado no usuário
+      // Não precisa enviar o campo fazenda
+      const response = await api.post("produtor/alimentacao/", {
+        tipo_racao: data.tipo_racao,
+        quantidade_sacos: data.quantidade_sacos,
+        data: data.data || new Date().toISOString().split("T")[0],
+        observacoes: data.observacoes || "",
+      });
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao registrar alimentação:", error);
+      throw error;
+    }
   },
 
   getEstoqueRacao: async () => {
     const response = await api.get("produtor/alimentacao/estoque/");
     return response.data;
+  },
+
+  getConsumoDiario: async () => {
+    try {
+      const response = await api.get("produtor/alimentacao/consumo_diario/");
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar consumo diário:", error);
+      // Retornar dados mockados em caso de erro
+      return {
+        total: 0,
+        por_animal: 0,
+        sacos_por_dia: 0,
+        custo_diario: 0,
+        custo_mensal: 0,
+      };
+    }
   },
 
   getConsumoMensal: async () => {
@@ -112,9 +190,70 @@ export const produtorService = {
     return response.data;
   },
 
-  gerarRelatorio: async () => {
-    const response = await api.post("produtor/relatorios/gerar/");
-    return response.data;
+  async gerarRelatorio(data) {
+    try {
+      const response = await api.post("produtor/relatorios/gerar/", data);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao gerar relatório:", error);
+      throw error;
+    }
+  },
+
+  async downloadRelatorio(id) {
+    try {
+      const response = await api.get(`produtor/relatorios/${id}/download/`, {
+        responseType: "blob",
+      });
+
+      // Criar um link para download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = url;
+      link.setAttribute("download", `relatorio_${id}.txt`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao baixar relatório:", error);
+      throw error;
+    }
+  },
+
+  // frontend/src/services/ProdutorService.js
+
+  async getIndicadoresProducao() {
+    try {
+      // URL mais curta
+      const response = await api.get("produtor/indicadores/");
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao buscar indicadores:", error);
+      return {
+        taxa_natalidade: 0,
+        taxa_mortalidade: 0,
+        peso_medio: 0,
+        producao_mensal: 0,
+        variacao_natalidade: 0,
+        variacao_mortalidade: 0,
+        variacao_peso: 0,
+        variacao_producao: 0,
+      };
+    }
+  },
+
+  // Para compatibilidade, mantenha este mas usando o mesmo endpoint
+  async getRelatoriosDisponiveis() {
+    try {
+      const response = await this.getRelatoriosProducao({ limit: 10 });
+      return response;
+    } catch (error) {
+      console.error("Erro ao buscar relatórios:", error);
+      return { results: [], count: 0 };
+    }
   },
 
   // Alertas
@@ -140,13 +279,37 @@ export const produtorService = {
 
   // Preferências de Notificações
   getPreferenciasNotificacoes: async () => {
-    const response = await api.get("produtor/preferencias/notificacoes/");
-    return response.data;
+    try {
+      const response = await api.get("produtor/preferencias/notificacoes/");
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return {
+          alertas_saude: true,
+          alertas_estoque: true,
+          alertas_relatorios: false,
+          frequencia_saude: "imediato",
+          frequencia_estoque: "imediato",
+          frequencia_relatorios: "mensal",
+        };
+      }
+      throw error;
+    }
   },
 
   updatePreferenciasNotificacoes: async (data) => {
-    const response = await api.put("produtor/preferencias/notificacoes/", data);
-    return response.data;
+    try {
+      const response = await api.put(
+        "produtor/preferencias/notificacoes/",
+        data,
+      );
+      return response.data;
+    } catch (error) {
+      if (error.response?.status === 404) {
+        return data;
+      }
+      throw error;
+    }
   },
 
   // Estatísticas do Perfil
@@ -154,4 +317,72 @@ export const produtorService = {
     const response = await api.get("produtor/perfil/estatisticas/");
     return response.data;
   },
+
+  async criarTipoRacao(data) {
+    const response = await api.post("produtor/tipos-racao/", data);
+    return response.data;
+  },
+
+  async getTiposRacao() {
+    const response = await api.get("produtor/tipos-racao/");
+    return response.data;
+  },
+
+  // frontend/src/services/produtorService.js
+
+  async adicionarEstoque(data) {
+    try {
+      // Garantir que os dados estão no formato correto
+      const dadosEnvio = {
+        tipo_racao: data.tipo_racao, // ID do tipo de ração
+        quantidade_sacos: parseFloat(data.quantidade_sacos),
+        valor_total:
+          parseFloat(data.preco_pago_saco) * parseFloat(data.quantidade_sacos),
+        data: new Date().toISOString().split("T")[0],
+        fornecedor: data.fornecedor || "",
+        observacoes: data.observacoes || "",
+      };
+
+      console.log("📤 Enviando compra:", dadosEnvio);
+
+      const response = await api.post("produtor/compras-racao/", dadosEnvio);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao adicionar estoque:", error);
+      console.error("Resposta do erro:", error.response?.data);
+      throw error;
+    }
+  },
+
+  async atualizarTipoRacao(id, data) {
+    try {
+      const response = await api.put(`produtor/tipos-racao/${id}/`, data);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao atualizar tipo de ração:", error);
+      throw error;
+    }
+  },
+
+  async deletarTipoRacao(id) {
+    try {
+      const response = await api.delete(`produtor/tipos-racao/${id}/`);
+      return response.data;
+    } catch (error) {
+      console.error("Erro ao deletar tipo de ração:", error);
+      throw error;
+    }
+  },
+
+
+getOcorrenciasFazenda: async (apenasPendentes = false) => {
+  const params = apenasPendentes ? '?pendentes=true' : '';
+  const response = await api.get(`produtor/ocorrencias/${params}`);
+  return response.data;
+},
+
+resolverOcorrencia: async (id) => {
+  const response = await api.post(`produtor/ocorrencias/${id}/resolver/`);
+  return response.data;
+},
 };

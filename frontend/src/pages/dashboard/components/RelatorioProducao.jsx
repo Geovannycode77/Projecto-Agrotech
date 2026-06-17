@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,27 +8,40 @@ import {
   BarChart3,
   Loader2,
 } from "lucide-react";
-import { produtorService } from "@/services/produtorService";
+import { produtorService } from "@/services/ProdutorService";
 import { toast } from "@/hooks/use-toast";
 
 export default function RelatorioProducao() {
   const [loading, setLoading] = useState(true);
   const [gerando, setGerando] = useState(false);
+  const [relatorioAtual, setRelatorioAtual] = useState(null);
   const [indicadores, setIndicadores] = useState({
     taxa_natalidade: 0,
     taxa_mortalidade: 0,
     peso_medio: 0,
     producao_mensal: 0,
-    variacao_natalidade: 0,
-    variacao_mortalidade: 0,
-    variacao_peso: 0,
-    variacao_producao: 0,
   });
   const [relatoriosDisponiveis, setRelatoriosDisponiveis] = useState([]);
   const [formData, setFormData] = useState({
     tipo: "producao",
-    periodo: "mes",
+    periodo: "ultimo_mes",
   });
+
+  const chartData = useMemo(() => {
+    const values = [
+      { label: "Nascimentos", value: indicadores.producao_mensal || 0 },
+      { label: "Peso Médio", value: indicadores.peso_medio || 0 },
+      { label: "Natalidade", value: indicadores.taxa_natalidade || 0 },
+      { label: "Mortalidade", value: indicadores.taxa_mortalidade || 0 },
+    ];
+
+    const maxValue = Math.max(...values.map((item) => item.value), 1);
+
+    return values.map((item) => ({
+      ...item,
+      height: `${(item.value / maxValue) * 100}%`,
+    }));
+  }, [indicadores]);
 
   useEffect(() => {
     carregarIndicadores();
@@ -44,10 +57,6 @@ export default function RelatorioProducao() {
         taxa_mortalidade: data.taxa_mortalidade || 0,
         peso_medio: data.peso_medio || 0,
         producao_mensal: data.producao_mensal || 0,
-        variacao_natalidade: data.variacao_natalidade || 0,
-        variacao_mortalidade: data.variacao_mortalidade || 0,
-        variacao_peso: data.variacao_peso || 0,
-        variacao_producao: data.variacao_producao || 0,
       });
     } catch (error) {
       console.error("Erro ao carregar indicadores:", error);
@@ -58,28 +67,29 @@ export default function RelatorioProducao() {
 
   const carregarRelatoriosDisponiveis = async () => {
     try {
-      const data = await produtorService.getRelatoriosDisponiveis();
-      setRelatoriosDisponiveis(data.results || data);
+      const response = await produtorService.getRelatoriosProducao({
+        limit: 10,
+      });
+      const lista = response.results || response || [];
+      setRelatoriosDisponiveis(lista);
     } catch (error) {
       console.error("Erro ao carregar relatórios:", error);
+      setRelatoriosDisponiveis([]);
     }
   };
 
   const handleGerarRelatorio = async () => {
     setGerando(true);
     try {
-      const blob = await produtorService.gerarRelatorio(
-        formData.tipo,
-        formData.periodo,
-      );
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `relatorio_${formData.tipo}_${formData.periodo}_${new Date().toISOString().split("T")[0]}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      const relatorio = await produtorService.gerarRelatorio({
+        periodo: formData.periodo,
+      });
+      setRelatorioAtual(relatorio);
+      await carregarRelatoriosDisponiveis();
+      toast({
+        title: "Sucesso",
+        description: "Relatório gerado com sucesso!",
+      });
     } catch (error) {
       console.error("Erro ao gerar relatório:", error);
       toast({
@@ -92,17 +102,13 @@ export default function RelatorioProducao() {
     }
   };
 
-  const handleDownloadRelatorio = async (id, nome) => {
+  const handleDownloadRelatorio = async (id) => {
     try {
-      const blob = await produtorService.downloadRelatorio(id);
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = nome;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.URL.revokeObjectURL(url);
+      await produtorService.downloadRelatorio(id);
+      toast({
+        title: "Sucesso",
+        description: "Download iniciado!",
+      });
     } catch (error) {
       console.error("Erro ao baixar relatório:", error);
       toast({
@@ -140,14 +146,8 @@ export default function RelatorioProducao() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-gray-600">Taxa de Natalidade</p>
-              <p className="text-2xl font-bold text-blue-600">
+              <p className="text-3xl font-bold text-blue-600">
                 {indicadores.taxa_natalidade}%
-              </p>
-              <p
-                className={`text-xs mt-1 ${indicadores.variacao_natalidade >= 0 ? "text-green-600" : "text-red-600"}`}
-              >
-                {indicadores.variacao_natalidade >= 0 ? "↑" : "↓"}{" "}
-                {Math.abs(indicadores.variacao_natalidade)}% vs mês anterior
               </p>
             </div>
           </CardContent>
@@ -156,14 +156,8 @@ export default function RelatorioProducao() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-gray-600">Taxa de Mortalidade</p>
-              <p className="text-2xl font-bold text-red-600">
+              <p className="text-3xl font-bold text-red-600">
                 {indicadores.taxa_mortalidade}%
-              </p>
-              <p
-                className={`text-xs mt-1 ${indicadores.variacao_mortalidade <= 0 ? "text-green-600" : "text-red-600"}`}
-              >
-                {indicadores.variacao_mortalidade <= 0 ? "↓" : "↑"}{" "}
-                {Math.abs(indicadores.variacao_mortalidade)}% vs mês anterior
               </p>
             </div>
           </CardContent>
@@ -172,14 +166,8 @@ export default function RelatorioProducao() {
           <CardContent className="pt-6">
             <div className="text-center">
               <p className="text-sm text-gray-600">Peso Médio do Rebanho</p>
-              <p className="text-2xl font-bold text-green-600">
+              <p className="text-3xl font-bold text-green-600">
                 {indicadores.peso_medio} kg
-              </p>
-              <p
-                className={`text-xs mt-1 ${indicadores.variacao_peso >= 0 ? "text-green-600" : "text-red-600"}`}
-              >
-                {indicadores.variacao_peso >= 0 ? "↑" : "↓"}{" "}
-                {Math.abs(indicadores.variacao_peso)} kg vs mês anterior
               </p>
             </div>
           </CardContent>
@@ -187,20 +175,66 @@ export default function RelatorioProducao() {
         <Card>
           <CardContent className="pt-6">
             <div className="text-center">
-              <p className="text-sm text-gray-600">Produção Mensal</p>
-              <p className="text-2xl font-bold text-purple-600">
-                +{indicadores.producao_mensal} animais
+              <p className="text-sm text-gray-600">Nascimentos Mensais</p>
+              <p className="text-3xl font-bold text-purple-600">
+                {indicadores.producao_mensal ?? 0} animais
               </p>
-              <p
-                className={`text-xs mt-1 ${indicadores.variacao_producao >= 0 ? "text-green-600" : "text-red-600"}`}
-              >
-                {indicadores.variacao_producao >= 0 ? "↑" : "↓"}{" "}
-                {Math.abs(indicadores.variacao_producao)}% vs mês anterior
+              <p className="text-xs text-gray-400 mt-1">
+                Apenas nascimentos do mês atual são contados aqui.
               </p>
             </div>
           </CardContent>
         </Card>
       </div>
+
+      {/* Relatório Atual */}
+      {relatorioAtual && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5 text-emerald-600" />
+              Relatório Gerado
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+              <div className="p-3 bg-emerald-50 rounded-lg">
+                <p className="text-xs text-gray-500">Total de Animais</p>
+                <p className="text-2xl font-bold">
+                  {relatorioAtual.total_animais || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-blue-50 rounded-lg">
+                <p className="text-xs text-gray-500">Nascimentos</p>
+                <p className="text-2xl font-bold">
+                  {relatorioAtual.nascimentos || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-red-50 rounded-lg">
+                <p className="text-xs text-gray-500">Mortes</p>
+                <p className="text-2xl font-bold">
+                  {relatorioAtual.mortes || 0}
+                </p>
+              </div>
+              <div className="p-3 bg-purple-50 rounded-lg">
+                <p className="text-xs text-gray-500">Vendas</p>
+                <p className="text-2xl font-bold">
+                  {relatorioAtual.vendas || 0}
+                </p>
+              </div>
+            </div>
+            <div className="flex justify-end">
+              <Button
+                variant="outline"
+                onClick={() => handleDownloadRelatorio(relatorioAtual.id)}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Baixar Relatório
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Gráficos e Relatórios */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -209,9 +243,34 @@ export default function RelatorioProducao() {
             <CardTitle>Evolução do Rebanho</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-64 flex items-center justify-center bg-gray-50 rounded">
-              <BarChart3 className="h-12 w-12 text-gray-400" />
-              <p className="text-gray-500 ml-2">Gráfico em desenvolvimento</p>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between text-sm text-gray-600">
+                <span>Últimos indicadores</span>
+                <span className="font-semibold text-gray-800">Mês atual</span>
+              </div>
+              <div className="h-64 p-4 bg-gray-50 rounded-lg">
+                <div className="h-full flex items-end gap-3">
+                  {chartData.map((item) => (
+                    <div
+                      key={item.label}
+                      className="flex-1 flex flex-col justify-end"
+                    >
+                      <div className="relative h-full w-full bg-slate-100 rounded-xl overflow-hidden">
+                        <div
+                          className="absolute bottom-0 left-0 right-0 bg-emerald-500"
+                          style={{ height: item.height }}
+                        />
+                      </div>
+                      <p className="mt-3 text-center text-xs font-medium text-gray-700">
+                        {item.label}
+                      </p>
+                      <p className="text-center text-xs text-gray-500">
+                        {item.value}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
@@ -223,22 +282,36 @@ export default function RelatorioProducao() {
           <CardContent>
             {relatoriosDisponiveis.length === 0 ? (
               <div className="text-center py-8 text-gray-500">
-                Nenhum relatório disponível.
+                Nenhum relatório disponível. Clique em "Gerar Relatório" para
+                criar um.
               </div>
             ) : (
               <div className="space-y-3">
                 {relatoriosDisponiveis.map((relatorio) => (
-                  <Button
+                  <div
                     key={relatorio.id}
-                    variant="outline"
-                    className="w-full justify-between"
-                    onClick={() =>
-                      handleDownloadRelatorio(relatorio.id, relatorio.nome)
-                    }
+                    className="flex items-center justify-between p-3 border rounded-lg hover:bg-gray-50"
                   >
-                    <span>{relatorio.nome}</span>
-                    <Download className="h-4 w-4" />
-                  </Button>
+                    <div>
+                      <p className="font-medium">
+                        {relatorio.nome || `Relatório ${relatorio.periodo}`}
+                      </p>
+                      <p className="text-xs text-gray-500">
+                        {relatorio.data
+                          ? new Date(relatorio.data).toLocaleDateString("pt-BR")
+                          : new Date(relatorio.created_at).toLocaleDateString(
+                              "pt-BR",
+                            )}
+                      </p>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDownloadRelatorio(relatorio.id)}
+                    >
+                      <Download className="h-4 w-4" />
+                    </Button>
+                  </div>
                 ))}
               </div>
             )}
@@ -272,17 +345,21 @@ export default function RelatorioProducao() {
                 setFormData({ ...formData, periodo: e.target.value })
               }
             >
-              <option value="mes">Último Mês</option>
-              <option value="trimestre">Último Trimestre</option>
-              <option value="ano">Último Ano</option>
+              <option value="ultimo_mes">Último Mês</option>
+              <option value="ultimo_trimestre">Último Trimestre</option>
+              <option value="ultimo_ano">Último Ano</option>
             </select>
-            <Button onClick={handleGerarRelatorio} disabled={gerando}>
+            <Button
+              onClick={handleGerarRelatorio}
+              disabled={gerando}
+              className="bg-emerald-600 hover:bg-emerald-700"
+            >
               {gerando ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
                 <FileText className="h-4 w-4 mr-2" />
               )}
-              Gerar
+              {gerando ? "Gerando..." : "Gerar Relatório"}
             </Button>
           </div>
         </CardContent>
