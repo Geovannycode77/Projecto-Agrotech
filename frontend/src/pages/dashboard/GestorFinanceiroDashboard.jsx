@@ -26,6 +26,7 @@ import RelatorioFinanceiro from './components/RelatorioFinanceiro';
 import AnaliseLucros from './components/AnaliseLucros';
 import PerfilGestor from './components/PerfilGestor';
 
+
 function GestorFinanceiroDashboard() {
   const { user, perfil, logout } = useAuth();
   const navigate = useNavigate();

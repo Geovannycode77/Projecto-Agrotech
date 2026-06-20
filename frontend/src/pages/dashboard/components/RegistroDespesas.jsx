@@ -59,8 +59,8 @@ export default function RegistroDespesas() {
   const carregarDespesas = async () => {
     setLoading(true);
     try {
-      const data = await gestorService.getDespesas();
-      setDespesas(data.results || data);
+     const data = await gestorService.getTodosDespesas();
+     setDespesas(Array.isArray(data) ? data : data.results || []);
     } catch (error) {
       console.error("Erro ao carregar despesas:", error);
     } finally {

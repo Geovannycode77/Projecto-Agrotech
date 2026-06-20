@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { authService } from '@/services/api';
 import { toast } from '@/hooks/use-toast';
+import { gestorService } from '@/services/GestorService';
 
 // ─── Modal de confirmação de exclusão ─────────────────────────────────────────
 function DeleteAccountModal({ isOpen, onClose, onDeleteAccount, loading }) {
@@ -106,14 +107,21 @@ export default function PerfilGestor() {
   const [infoProfissional, setInfoProfissional] = useState({
     cargo: '', departamento: '', data_admissao: '',
   });
-  const [estatisticas, setEstatisticas] = useState({
-    total_gerenciado: 0, economia_gerada: 0, projetos_aprovados: 0,
-  });
+ const [estatisticas, setEstatisticas] = useState({
+  total_gerenciado: 0, margem_lucro: 0, lucro_ano: 0,
+});
 
-  const carregarPerfil = useCallback(async () => {
-    setCarregando(true);
-    try {
-      const data = await authService.getProfile();
+// Substitui o carregarPerfil para também buscar o dashboard
+const carregarPerfil = useCallback(async () => {
+  setCarregando(true);
+  try {
+    const [perfilRes, dashRes] = await Promise.allSettled([
+      authService.getProfile(),
+      gestorService.getDashboard(),
+    ]);
+
+    if (perfilRes.status === 'fulfilled') {
+      const data = perfilRes.value;
       setFormData({
         nome_completo:   data.nome_completo   || perfil?.nome_completo  || '',
         email:           data.email           || user?.email            || '',
@@ -123,33 +131,27 @@ export default function PerfilGestor() {
         endereco:        data.endereco        || perfil?.endereco       || '',
       });
       setInfoProfissional({
-        cargo:        data.cargo        || 'Gestor Financeiro',
-        departamento: data.departamento || 'Financeiro',
-        data_admissao:data.data_admissao|| '',
+        cargo:         data.cargo         || 'Gestor Financeiro',
+        departamento:  data.departamento  || 'Financeiro',
+        data_admissao: data.data_admissao || '',
       });
-      if (data.estatisticas) {
-        setEstatisticas({
-          total_gerenciado:  data.estatisticas.total_gerenciado  || 0,
-          economia_gerada:   data.estatisticas.economia_gerada   || 0,
-          projetos_aprovados:data.estatisticas.projetos_aprovados|| 0,
-        });
-      }
-      if (data.foto_url || data.picture) {
-        setFotoPreview(data.foto_url || data.picture);
-      }
-    } catch {
-      setFormData({
-        nome_completo:   perfil?.nome_completo   || '',
-        email:           user?.email             || '',
-        telefone:        perfil?.telefone        || '',
-        area_atuacao:    perfil?.area_atuacao    || '',
-        data_nascimento: perfil?.data_nascimento || '',
-        endereco:        perfil?.endereco        || '',
-      });
-    } finally {
-      setCarregando(false);
+      if (data.foto_url || data.picture) setFotoPreview(data.foto_url || data.picture);
     }
-  }, [perfil, user]);
+
+    if (dashRes.status === 'fulfilled') {
+      const d = dashRes.value;
+      setEstatisticas({
+        total_gerenciado:  d.receitas_ano  || 0,
+        margem_lucro:      d.margem_lucro  || 0,
+        lucro_ano:         d.lucro_ano     || 0,
+      });
+    }
+  } catch {
+    // fallback
+  } finally {
+    setCarregando(false);
+  }
+}, [perfil, user]);
 
   useEffect(() => { carregarPerfil(); }, [carregarPerfil]);
 
@@ -223,10 +225,11 @@ export default function PerfilGestor() {
   const formatarMoeda = (valor) =>
     new Intl.NumberFormat('pt-AO', { style: 'currency', currency: 'AOA' }).format(valor);
 
+  // Cards
   const estatisticasCards = [
-    { label: 'Total Gerenciado',  valor: formatarMoeda(estatisticas.total_gerenciado), icon: Wallet,      cor: 'text-amber-600' },
-    { label: 'Economia Gerada',   valor: `${estatisticas.economia_gerada}%`,            icon: TrendingUp,  cor: 'text-green-600' },
-    { label: 'Projetos Aprovados',valor: estatisticas.projetos_aprovados,               icon: CheckCircle, cor: 'text-emerald-600' },
+    { label: 'Receitas do Ano',   valor: formatarMoeda(estatisticas.total_gerenciado), icon: Wallet,     cor: 'text-amber-600' },
+    { label: 'Margem de Lucro',   valor: `${estatisticas.margem_lucro}%`,              icon: TrendingUp, cor: 'text-green-600' },
+    { label: 'Lucro do Ano',      valor: formatarMoeda(estatisticas.lucro_ano),        icon: CheckCircle,cor: 'text-emerald-600' },
   ];
 
   if (carregando) {

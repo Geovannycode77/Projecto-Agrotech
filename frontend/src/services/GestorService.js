@@ -139,6 +139,14 @@ getAnaliseLucros: async (periodo = '6meses') => {
     return { lucro_mensal: [], tendencia: { lucro: '0%', receita: '0%', despesa: '0%' }, projecao: { proximo_mes: 0, trimestre: 0, ano: 0 } };
   }
 },
+getTodosDespesas: async () => {
+  try {
+    const response = await api.get('gestor-financeiro/todas-despesas/');
+    return response.data;
+  } catch {
+    return [];
+  }
+},
 
   // Perfil
   getPerfil: async () => {

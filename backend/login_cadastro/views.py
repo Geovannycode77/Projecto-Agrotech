@@ -748,9 +748,9 @@ def get_update_profile(request):
                     data['departamento']  = gestor.departamento or 'Financeiro'
                     data['nivel_acesso']  = gestor.nivel_acesso or 'avancado'
                 except Exception:
-                    pass
-
-            return Response(data)
+                    data['cargo']        = 'Gestor Financeiro'
+                    data['departamento'] = 'Financeiro'
+                return Response(data)
 
         except Exception as e:
             print(f"❌ Erro ao obter perfil: {str(e)}")

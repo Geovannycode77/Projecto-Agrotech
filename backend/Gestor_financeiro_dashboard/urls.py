@@ -3,7 +3,7 @@ from rest_framework.routers import DefaultRouter
 from .views import (
     GestorFinanceiroViewSet, ReceitaViewSet, DespesaViewSet,
     MetaFinanceiraViewSet, AtividadeFinanceiraViewSet, 
-    RelatorioFinanceiroViewSet, get_gestor_financeiro_dashboard, get_animais_gestor, get_analise_lucros
+    RelatorioFinanceiroViewSet, get_gestor_financeiro_dashboard, get_animais_gestor, get_analise_lucros, get_todas_despesas
 )
 
 router = DefaultRouter()
@@ -19,4 +19,6 @@ urlpatterns = [
     path('dashboard/', get_gestor_financeiro_dashboard, name='gestor-financeiro-dashboard'),
     path('animais/', get_animais_gestor, name='gestor-financeiro-animais'),
     path('analise-lucros/', get_analise_lucros, name='gestor-analise-lucros'),
+    path('todas-despesas/', get_todas_despesas, name='gestor-todas-despesas'),
+
 ]
