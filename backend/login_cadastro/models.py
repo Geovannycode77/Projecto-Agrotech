@@ -321,7 +321,9 @@ def criar_perfil_usuario(sender, instance, created, **kwargs):
                     user=instance,
                     defaults={
                         'fazenda': fazenda,
-                        'cargo': 'Gestor Financeiro'
+                        'departamento': 'Financeiro',
+                        'nivel_acesso': 'avancado',
+                        'ativo': True
                     }
                 )
                 if created:
