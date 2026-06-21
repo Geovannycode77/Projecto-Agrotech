@@ -9,6 +9,7 @@ from produtor_dashboard.models import TransacaoFinanceira
 from datetime import timedelta, date
 from django_filters.rest_framework import DjangoFilterBackend
 from login_cadastro.models import CustomUser
+from login_cadastro.permissions import ModulePermission
 from produtor_dashboard.models import Fazenda, Animal
 from .models import (
     GestorFinanceiro, Receita, Despesa,
@@ -34,7 +35,7 @@ class IsGestorFinanceiroOrAdmin(IsAuthenticated):
 
 class GestorFinanceiroViewSet(viewsets.ModelViewSet):
     serializer_class = GestorFinanceiroSerializer
-    permission_classes = [IsGestorFinanceiroOrAdmin]
+    permission_classes = [IsGestorFinanceiroOrAdmin, ModulePermission('financas')]
 
     def get_queryset(self):
         if self.request.user.role == 'gestor_financeiro':
@@ -47,7 +48,7 @@ class GestorFinanceiroViewSet(viewsets.ModelViewSet):
 
 class ReceitaViewSet(viewsets.ModelViewSet):
     serializer_class = ReceitaSerializer
-    permission_classes = [IsGestorFinanceiroOrAdmin]
+    permission_classes = [IsGestorFinanceiroOrAdmin, ModulePermission('financas')]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['categoria']
     search_fields = ['descricao']
@@ -83,7 +84,7 @@ class ReceitaViewSet(viewsets.ModelViewSet):
 
 class DespesaViewSet(viewsets.ModelViewSet):
     serializer_class = DespesaSerializer
-    permission_classes = [IsGestorFinanceiroOrAdmin]
+    permission_classes = [IsGestorFinanceiroOrAdmin, ModulePermission('financas')]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['categoria']
     search_fields = ['descricao']
@@ -119,7 +120,7 @@ class DespesaViewSet(viewsets.ModelViewSet):
 
 class MetaFinanceiraViewSet(viewsets.ModelViewSet):
     serializer_class = MetaFinanceiraSerializer
-    permission_classes = [IsGestorFinanceiroOrAdmin]
+    permission_classes = [IsGestorFinanceiroOrAdmin, ModulePermission('financas')]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['tipo', 'periodo', 'ano']
 
@@ -143,7 +144,7 @@ class MetaFinanceiraViewSet(viewsets.ModelViewSet):
 
 class AtividadeFinanceiraViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AtividadeFinanceiraSerializer
-    permission_classes = [IsGestorFinanceiroOrAdmin]
+    permission_classes = [IsGestorFinanceiroOrAdmin, ModulePermission('financas')]
     ordering = ['-data']
 
     def get_queryset(self):
@@ -164,7 +165,7 @@ class AtividadeFinanceiraViewSet(viewsets.ReadOnlyModelViewSet):
 
 class RelatorioFinanceiroViewSet(viewsets.ModelViewSet):
     serializer_class = RelatorioFinanceiroSerializer
-    permission_classes = [IsGestorFinanceiroOrAdmin]
+    permission_classes = [IsGestorFinanceiroOrAdmin, ModulePermission('financas', 'relatorios')]
 
     def get_queryset(self):
         if self.request.user.role == 'gestor_financeiro':
@@ -254,7 +255,7 @@ class RelatorioFinanceiroViewSet(viewsets.ModelViewSet):
 
 
 @api_view(['GET'])
-@permission_classes([IsGestorFinanceiroOrAdmin])
+@permission_classes([IsGestorFinanceiroOrAdmin, ModulePermission('financas')])
 def get_gestor_financeiro_dashboard(request):
     user = request.user
 
@@ -328,7 +329,7 @@ def get_gestor_financeiro_dashboard(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsGestorFinanceiroOrAdmin])
+@permission_classes([IsGestorFinanceiroOrAdmin, ModulePermission('financas')])
 def get_animais_gestor(request):
     try:
         gestor = GestorFinanceiro.objects.get(user=request.user)
@@ -340,7 +341,7 @@ def get_animais_gestor(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsGestorFinanceiroOrAdmin])
+@permission_classes([IsGestorFinanceiroOrAdmin, ModulePermission('financas', 'relatorios')])
 def get_analise_lucros(request):
     periodo = request.query_params.get('periodo', '6meses')
 
@@ -411,7 +412,7 @@ def get_analise_lucros(request):
     })
 
 @api_view(['GET'])
-@permission_classes([IsGestorFinanceiroOrAdmin])
+@permission_classes([IsGestorFinanceiroOrAdmin, ModulePermission('financas')])
 def get_todas_despesas(request):
     """Retorna despesas do gestor + transações de despesa do produtor"""
     try:

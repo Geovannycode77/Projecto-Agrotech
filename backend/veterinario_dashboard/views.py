@@ -9,6 +9,7 @@ from produtor_dashboard.models import Animal, Fazenda
 from produtor_dashboard.serializers import AnimalSerializer
 from django_filters.rest_framework import DjangoFilterBackend
 from login_cadastro.models import CustomUser
+from login_cadastro.permissions import ModulePermission
 from produtor_dashboard.models import Fazenda, Animal
 from .models import (
     Veterinario, Consulta, Vacina, Tratamento, AlertaSaude, LembreteSaude
@@ -42,7 +43,7 @@ class VeterinarioViewSet(viewsets.ModelViewSet):
 
 class ConsultaViewSet(viewsets.ModelViewSet):
     serializer_class = ConsultaSerializer
-    permission_classes = [IsVeterinarioOrAdmin]
+    permission_classes = [IsVeterinarioOrAdmin, ModulePermission('consultas')]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'tipo']
     search_fields = ['descricao', 'diagnostico']
@@ -81,7 +82,7 @@ class ConsultaViewSet(viewsets.ModelViewSet):
 
 class VacinaViewSet(viewsets.ModelViewSet):
     serializer_class = VacinaSerializer
-    permission_classes = [IsVeterinarioOrAdmin]
+    permission_classes = [IsVeterinarioOrAdmin, ModulePermission('vacinas')]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter]
     filterset_fields = ['nome_vacina']
     search_fields = ['nome_vacina', 'lote']
@@ -112,7 +113,7 @@ class VacinaViewSet(viewsets.ModelViewSet):
 
 class TratamentoViewSet(viewsets.ModelViewSet):
     serializer_class = TratamentoSerializer
-    permission_classes = [IsVeterinarioOrAdmin]
+    permission_classes = [IsVeterinarioOrAdmin, ModulePermission('consultas', 'vacinas')]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['status']
     ordering = ['-data_inicio']
@@ -143,7 +144,7 @@ class TratamentoViewSet(viewsets.ModelViewSet):
 
 class AlertaSaudeViewSet(viewsets.ModelViewSet):
     serializer_class = AlertaSaudeSerializer
-    permission_classes = [IsVeterinarioOrAdmin]
+    permission_classes = [IsVeterinarioOrAdmin, ModulePermission('consultas', 'vacinas')]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['prioridade', 'tipo', 'lido']
     ordering = ['-created_at']
@@ -179,7 +180,7 @@ class AlertaSaudeViewSet(viewsets.ModelViewSet):
 
 class LembreteSaudeViewSet(viewsets.ModelViewSet):
     serializer_class = LembreteSaudeSerializer
-    permission_classes = [IsVeterinarioOrAdmin]
+    permission_classes = [IsVeterinarioOrAdmin, ModulePermission('consultas', 'vacinas')]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['ativo', 'frequencia']
     ordering = ['data_lembrete']
@@ -201,7 +202,7 @@ class LembreteSaudeViewSet(viewsets.ModelViewSet):
             serializer.save(fazenda=fazenda)
 
 @api_view(['GET'])
-@permission_classes([IsVeterinarioOrAdmin])
+@permission_classes([IsVeterinarioOrAdmin, ModulePermission('dashboard')])
 def get_veterinario_dashboard(request):
     """Dados completos do dashboard do veterinário"""
     user = request.user
@@ -296,7 +297,7 @@ def get_veterinario_dashboard(request):
     })
 
 @api_view(['GET'])
-@permission_classes([IsVeterinarioOrAdmin])
+@permission_classes([IsVeterinarioOrAdmin, ModulePermission('animais', 'consultas', 'vacinas')])
 def get_animais_veterinario(request):
     try:
         vet = Veterinario.objects.get(user=request.user)
@@ -330,7 +331,7 @@ def get_animais_veterinario(request):
 
 
 @api_view(['GET'])
-@permission_classes([IsVeterinarioOrAdmin])
+@permission_classes([IsVeterinarioOrAdmin, ModulePermission('consultas', 'vacinas')])
 def get_resumo_saude(request):
     try:
         vet = Veterinario.objects.get(user=request.user)

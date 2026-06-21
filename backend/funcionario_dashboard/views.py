@@ -7,6 +7,7 @@ from django.utils import timezone
 from datetime import timedelta, date
 from django_filters.rest_framework import DjangoFilterBackend
 from login_cadastro.models import CustomUser
+from login_cadastro.permissions import ModulePermission
 from produtor_dashboard.models import Fazenda, Animal, TipoRacao
 from produtor_dashboard.serializers import AnimalSerializer, TipoRacaoSerializer
 from .models import (
@@ -42,7 +43,7 @@ class FuncionarioViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 @api_view(['GET'])
-@permission_classes([IsFuncionarioOrAdmin])
+@permission_classes([IsFuncionarioOrAdmin, ModulePermission('animais', 'animais_leitura')])
 def get_animais_funcionario(request):
     if request.user.role == 'funcionario':
         funcionario = Funcionario.objects.get(user=request.user)
@@ -57,7 +58,7 @@ def get_animais_funcionario(request):
     return Response(serializer.data)
 
 @api_view(['GET'])
-@permission_classes([IsFuncionarioOrAdmin])
+@permission_classes([IsFuncionarioOrAdmin, ModulePermission('producao', 'tarefas')])
 def get_tipos_racao_funcionario(request):
     if request.user.role == 'funcionario':
         funcionario = Funcionario.objects.get(user=request.user)
@@ -73,7 +74,7 @@ def get_tipos_racao_funcionario(request):
 
 class TarefaViewSet(viewsets.ModelViewSet):
     serializer_class = TarefaSerializer
-    permission_classes = [IsFuncionarioOrAdmin]
+    permission_classes = [IsFuncionarioOrAdmin, ModulePermission('tarefas')]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'prioridade', 'tipo']
     search_fields = ['titulo', 'descricao']
@@ -147,7 +148,7 @@ class TarefaViewSet(viewsets.ModelViewSet):
 
 class RegistroAlimentacaoViewSet(viewsets.ModelViewSet):
     serializer_class = RegistroAlimentacaoFuncionarioSerializer
-    permission_classes = [IsFuncionarioOrAdmin]
+    permission_classes = [IsFuncionarioOrAdmin, ModulePermission('producao', 'tarefas')]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['tipo_racao']
     ordering_fields = ['data_hora']
@@ -174,7 +175,7 @@ class RegistroAlimentacaoViewSet(viewsets.ModelViewSet):
 
 class OcorrenciaViewSet(viewsets.ModelViewSet):
     serializer_class = OcorrenciaSerializer
-    permission_classes = [IsFuncionarioOrAdmin]
+    permission_classes = [IsFuncionarioOrAdmin, ModulePermission('animais', 'tarefas')]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['tipo', 'resolvido']
     search_fields = ['titulo', 'descricao']
@@ -210,7 +211,7 @@ class OcorrenciaViewSet(viewsets.ModelViewSet):
 
 class AtualizacaoAnimalViewSet(viewsets.ModelViewSet):
     serializer_class = AtualizacaoAnimalSerializer
-    permission_classes = [IsFuncionarioOrAdmin]
+    permission_classes = [IsFuncionarioOrAdmin, ModulePermission('animais', 'tarefas')]
     ordering = ['-data_hora']
 
     def get_queryset(self):
@@ -267,7 +268,7 @@ class AtualizacaoAnimalViewSet(viewsets.ModelViewSet):
 
 class NascimentoViewSet(viewsets.ModelViewSet):
     serializer_class = NascimentoSerializer
-    permission_classes = [IsFuncionarioOrAdmin]
+    permission_classes = [IsFuncionarioOrAdmin, ModulePermission('animais', 'tarefas')]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['especie']
     ordering = ['-data_nascimento']
@@ -326,7 +327,7 @@ class FuncionarioViewSet(viewsets.ModelViewSet):
         return Response([])
 
 @api_view(['GET'])
-@permission_classes([IsFuncionarioOrAdmin])
+@permission_classes([IsFuncionarioOrAdmin, ModulePermission('dashboard')])
 def get_funcionario_dashboard(request):
     """Dados completos do dashboard do funcionário"""
     user = request.user

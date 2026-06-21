@@ -8,6 +8,7 @@ from datetime import timedelta, date
 from funcionario_dashboard.models import Ocorrencia
 from django_filters.rest_framework import DjangoFilterBackend
 from login_cadastro.models import CustomUser
+from login_cadastro.permissions import ModulePermission
 from .models import (
     Fazenda, Animal, AnimalSaude, 
     TipoRacao, EstoqueRacao,
@@ -60,7 +61,7 @@ class IsProdutorOrAdmin(IsAuthenticated):
 
 class FazendaViewSet(viewsets.ModelViewSet):
     serializer_class = FazendaSerializer
-    permission_classes = [IsProdutorOrAdmin]
+    permission_classes = [IsProdutorOrAdmin, ModulePermission('fazenda')]
     
     def get_queryset(self):
         if self.request.user.role == 'produtor':
@@ -72,7 +73,7 @@ class FazendaViewSet(viewsets.ModelViewSet):
 
 class AnimalViewSet(viewsets.ModelViewSet):
     serializer_class = AnimalSerializer
-    permission_classes = [IsProdutorOrAdmin]
+    permission_classes = [IsProdutorOrAdmin, ModulePermission('animais')]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['especie', 'sexo', 'status']
     search_fields = ['brinco', 'nome', 'raca']
@@ -200,7 +201,7 @@ class AnimalViewSet(viewsets.ModelViewSet):
 
 class TipoRacaoViewSet(viewsets.ModelViewSet):
     serializer_class = TipoRacaoSerializer
-    permission_classes = [IsProdutorOrAdmin]
+    permission_classes = [IsProdutorOrAdmin, ModulePermission('producao')]
     
     def get_queryset(self):
         if self.request.user.role == 'produtor':
@@ -218,7 +219,7 @@ class TipoRacaoViewSet(viewsets.ModelViewSet):
 
 class EstoqueRacaoViewSet(viewsets.ModelViewSet):
     serializer_class = EstoqueRacaoSerializer
-    permission_classes = [IsProdutorOrAdmin]
+    permission_classes = [IsProdutorOrAdmin, ModulePermission('producao')]
     
     def get_queryset(self):
         if self.request.user.role == 'produtor':
@@ -254,7 +255,7 @@ class EstoqueRacaoViewSet(viewsets.ModelViewSet):
 
 class AlimentacaoViewSet(viewsets.ModelViewSet):
     serializer_class = AlimentacaoRegistroSerializer
-    permission_classes = [IsProdutorOrAdmin]
+    permission_classes = [IsProdutorOrAdmin, ModulePermission('producao')]
     
     def get_queryset(self):
         if self.request.user.role == 'produtor':
@@ -458,7 +459,7 @@ class AlimentacaoViewSet(viewsets.ModelViewSet):
 
 class CompraRacaoViewSet(viewsets.ModelViewSet):
     serializer_class = CompraRacaoSerializer
-    permission_classes = [IsProdutorOrAdmin]
+    permission_classes = [IsProdutorOrAdmin, ModulePermission('producao')]
     
     def get_queryset(self):
         if self.request.user.role == 'produtor':
@@ -546,7 +547,7 @@ class CompraRacaoViewSet(viewsets.ModelViewSet):
 
 class FinanceiroViewSet(viewsets.ModelViewSet):
     serializer_class = TransacaoFinanceiraSerializer
-    permission_classes = [IsProdutorOrAdmin]
+    permission_classes = [IsProdutorOrAdmin, ModulePermission('financas')]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['tipo', 'categoria']
     ordering_fields = ['data', 'valor']
@@ -637,7 +638,7 @@ class FinanceiroViewSet(viewsets.ModelViewSet):
 
 class AlertaViewSet(viewsets.ModelViewSet):
     serializer_class = AlertaSerializer
-    permission_classes = [IsProdutorOrAdmin]
+    permission_classes = [IsProdutorOrAdmin, ModulePermission('dashboard')]
     
     def get_queryset(self):
         if self.request.user.role == 'produtor':
@@ -659,7 +660,7 @@ class AlertaViewSet(viewsets.ModelViewSet):
 
 class AtividadeViewSet(viewsets.ReadOnlyModelViewSet):
     serializer_class = AtividadeSerializer
-    permission_classes = [IsProdutorOrAdmin]
+    permission_classes = [IsProdutorOrAdmin, ModulePermission('dashboard')]
     
     def get_queryset(self):
         if self.request.user.role == 'produtor':
@@ -669,7 +670,7 @@ class AtividadeViewSet(viewsets.ReadOnlyModelViewSet):
 
 class RelatorioViewSet(viewsets.ModelViewSet):
     serializer_class = RelatorioProducaoSerializer
-    permission_classes = [IsProdutorOrAdmin]
+    permission_classes = [IsProdutorOrAdmin, ModulePermission('relatorios')]
     
     def get_queryset(self):
         if self.request.user.role == 'produtor':
@@ -868,7 +869,7 @@ Gerado em: {timezone.now().strftime('%d/%m/%Y %H:%M:%S')}
 
 
 @api_view(['GET'])
-@permission_classes([IsProdutorOrAdmin])
+@permission_classes([IsProdutorOrAdmin, ModulePermission('producao')])
 def get_indicadores_producao(request):
     """Retorna indicadores de produção para o dashboard"""
     try:
@@ -1045,7 +1046,7 @@ def get_perfil_estatisticas(request):
         return Response({'error': str(e)}, status=500)
     
 @api_view(['GET'])
-@permission_classes([IsProdutorOrAdmin])
+@permission_classes([IsProdutorOrAdmin, ModulePermission('dashboard')])
 def get_produtor_dashboard(request):
     try:
         fazenda = Fazenda.objects.get(produtor=request.user)
@@ -1137,7 +1138,7 @@ def get_produtor_dashboard(request):
     return Response(data)
 
 @api_view(['GET'])
-@permission_classes([IsProdutorOrAdmin])
+@permission_classes([IsProdutorOrAdmin, ModulePermission('animais')])
 def get_ocorrencias_fazenda(request):
     try:
         fazenda = Fazenda.objects.get(produtor=request.user)
@@ -1174,7 +1175,7 @@ def get_ocorrencias_fazenda(request):
         return Response([])
 
 @api_view(['POST'])
-@permission_classes([IsProdutorOrAdmin])
+@permission_classes([IsProdutorOrAdmin, ModulePermission('animais')])
 def resolver_ocorrencia_produtor(request, ocorrencia_id):
     try:
         fazenda = Fazenda.objects.get(produtor=request.user)
@@ -1187,7 +1188,7 @@ def resolver_ocorrencia_produtor(request, ocorrencia_id):
         return Response({'error': str(e)}, status=400)
     
 @api_view(['GET'])
-@permission_classes([IsProdutorOrAdmin])
+@permission_classes([IsProdutorOrAdmin, ModulePermission('animais')])
 def get_ocorrencias_fazenda(request):
     try:
         fazenda = Fazenda.objects.get(produtor=request.user)
@@ -1224,7 +1225,7 @@ def get_ocorrencias_fazenda(request):
         return Response([])
 
 @api_view(['POST'])
-@permission_classes([IsProdutorOrAdmin])
+@permission_classes([IsProdutorOrAdmin, ModulePermission('animais')])
 def resolver_ocorrencia_produtor(request, ocorrencia_id):
     try:
         fazenda = Fazenda.objects.get(produtor=request.user)

@@ -750,7 +750,9 @@ def get_update_profile(request):
                 except Exception:
                     data['cargo']        = 'Gestor Financeiro'
                     data['departamento'] = 'Financeiro'
-                return Response(data)
+
+            # ✅ ÚNICO return, cobre TODOS os papéis (admin, produtor, veterinario, etc.)
+            return Response(data)
 
         except Exception as e:
             print(f"❌ Erro ao obter perfil: {str(e)}")
@@ -762,6 +764,7 @@ def get_update_profile(request):
             )
 
     elif request.method == 'PUT':
+        # ... (essa parte já está correta, sem mudanças)
         try:
             try:
                 perfil = Perfil.objects.get(user=request.user)

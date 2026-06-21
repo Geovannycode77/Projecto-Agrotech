@@ -122,6 +122,27 @@ STATIC_URL = 'static/'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
+# ======================
+# Celery / Celery Beat
+# ======================
+# Agendamento de backups automáticos a cada 24h.
+# (Funciona sem django-celery-beat, usando apenas CELERY_BEAT_SCHEDULE.)
+CELERY_TIMEZONE = os.getenv('CELERY_TIMEZONE', 'UTC')
+
+# Identidade/namespace do Celery (usado pelo app.config_from_object no celery.py)
+# A maioria dos deployments já define broker/result via env; se não, estes defaults ajudam em dev.
+CELERY_BROKER_URL = os.getenv('CELERY_BROKER_URL', 'redis://localhost:6379/0')
+CELERY_RESULT_BACKEND = os.getenv('CELERY_RESULT_BACKEND', 'redis://localhost:6379/1')
+
+
+CELERY_BEAT_SCHEDULE = {
+    'backup-database-every-24-hours': {
+        'task': 'dashboard_admin.tasks.backup_database_task',
+        'schedule': timedelta(hours=24),
+    },
+}
+
+
 # Configuração REST Framework
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
@@ -177,16 +198,16 @@ LOGIN_URL = '/api/auth/login/'
 LOGIN_REDIRECT_URL = '/'
 
 # ========== SEGURANÇA (dev vs prod) ==========
-if DEBUG:
-    # Em desenvolvimento, relaxa algumas restrições
-    SECURE_SSL_REDIRECT = False
-    SESSION_COOKIE_SECURE = False
-    CSRF_COOKIE_SECURE = False
-else:
-    # Em produção, ativa tudo
-    SECURE_SSL_REDIRECT = True
-    SESSION_COOKIE_SECURE = True
-    CSRF_COOKIE_SECURE = True
+# Força HTTPS quando possível (independente de DEBUG), e mantém permissões de cookies seguras.
+# Nota: se estiveres a rodar localmente sem TLS, pode ser necessário EXCLUIR/ajustar SECURE_SSL_REDIRECT.
+SECURE_SSL_REDIRECT = not DEBUG
+SECURE_HSTS_SECONDS = 0 if DEBUG else 3600
+SECURE_HSTS_INCLUDE_SUBDOMAINS = not DEBUG
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
+# HSTS apenas quando não estamos em DEBUG (evita dificultar dev/local).
+if not DEBUG:
     SECURE_HSTS_SECONDS = 3600
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
 

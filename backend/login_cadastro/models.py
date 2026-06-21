@@ -181,11 +181,25 @@ class Perfil(models.Model):
         """Validações customizadas"""
         from datetime import date
         
-        # Validação da data de nascimento (não pode ser futura)
-        if self.data_nascimento and self.data_nascimento > date.today():
-            raise ValidationError({
-                'data_nascimento': 'A data de nascimento não pode ser futura.'
-            })
+        if self.data_nascimento:
+            hoje = date.today()
+
+            # Não pode ser futura
+            if self.data_nascimento > hoje:
+                raise ValidationError({
+                    'data_nascimento': 'A data de nascimento não pode ser futura.'
+                })
+
+            # Deve ser maior/igual a 18 anos
+            idade_anos = hoje.year - self.data_nascimento.year
+            if (hoje.month, hoje.day) < (self.data_nascimento.month, self.data_nascimento.day):
+                idade_anos -= 1
+
+            if idade_anos < 18:
+                raise ValidationError({
+                    'data_nascimento': 'O utilizador deve ser maior de 18 anos.'
+                })
+
         
         # Validação do nome completo (mínimo 3 caracteres)
         if self.nome_completo and len(self.nome_completo.strip()) < 3:
