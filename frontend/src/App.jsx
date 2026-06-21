@@ -22,12 +22,10 @@ import ResetPassword from "./pages/auth/ResetPassword";
 // Admin Pages
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminUsers from "./pages/admin/Users";
-import SystemSettings from "./pages/admin/SystemSettings";
 import AdminReports from "./pages/admin/Reports";
 import AdminBackups from "./pages/admin/Backups";
 import Permissions from "./pages/admin/Permissions";
 import Security from "./pages/admin/Security";
-import Monitoring from "./pages/admin/Monitoring";
 import AdminLayout from "./components/layouts/AdminLayout";
 
 // Dashboards dos usuários (sem layout wrapper)
@@ -168,11 +166,9 @@ function App() {
               <Route path="dashboard" element={<AdminDashboard />} />
               <Route path="users" element={<AdminUsers />} />
               <Route path="permissions" element={<Permissions />} />
-              <Route path="settings" element={<SystemSettings />} />
               <Route path="reports" element={<AdminReports />} />
               <Route path="backups" element={<AdminBackups />} />
               <Route path="security" element={<Security />} />
-              <Route path="monitoring" element={<Monitoring />} />
             </Route>
 
             {/* Redirect padrão */}

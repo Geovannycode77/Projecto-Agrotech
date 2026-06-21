@@ -268,6 +268,42 @@ export const adminService = {
     return response.data;
   },
 
+  // REPORTS
+  getRecentReports: async () => {
+    try {
+      const response = await api.get('dashboard-admin/reports/');
+      return response.data;
+    } catch {
+      return [];
+    }
+  },
+
+  generateReport: async (reportId, dateRange) => {
+    try {
+      const response = await api.get('dashboard-admin/reports/generate/', {
+        params: { tipo: reportId, start: dateRange.start, end: dateRange.end },
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error);
+      throw error;
+    }
+  },
+
+  exportData: async (formato, dateRange) => {
+    try {
+      const response = await api.get('dashboard-admin/reports/export/', {
+        params: { formato, start: dateRange.start, end: dateRange.end },
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao exportar:', error);
+      throw error;
+    }
+  },
+
   // BACKUPS
   getBackups: async () => {
     try {
