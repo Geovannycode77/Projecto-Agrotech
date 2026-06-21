@@ -223,20 +223,18 @@ export default function CompleteProfile() {
               <Building2 className="h-4 w-4 inline mr-2" />
               Nome da Fazenda *
             </Label>
-              <Input
-                id="data_nascimento"
-                type="date"
-                value={profileData.data_nascimento}
-                onChange={handleChange}
-                onBlur={() => handleBlur('data_nascimento')}
-                className={errors.data_nascimento ? 'border-red-500' : ''}
-                max={(() => {
-                  const d = new Date();
-                  d.setFullYear(d.getFullYear() - 18);
-                  return d.toISOString().split('T')[0];
-                })()}
-                required
-              />
+            <Input
+              id="fazenda_nome"
+              placeholder="Ex: Fazenda Boa Esperança"
+              value={profileData.fazenda_nome}
+              onChange={handleChange}
+              onBlur={() => {
+                setTouched(t => ({ ...t, fazenda_nome: true }));
+                if (!profileData.fazenda_nome) setErrors(err => ({ ...err, fazenda_nome: 'Nome da fazenda é obrigatório' }));
+              }}
+              className={errors.fazenda_nome ? 'border-red-500' : ''}
+              required
+            />
             {getFieldError('fazenda_nome') && <p className="text-xs text-red-500">{getFieldError('fazenda_nome')}</p>}
           </div>
         );
