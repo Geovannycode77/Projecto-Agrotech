@@ -53,7 +53,6 @@ export default function ListaAnimaisVet() {
 
   const filteredAnimais = animais.filter(animal => {
     const matchesSearch =
-      (animal.nome || '').toLowerCase().includes(searchTerm.toLowerCase()) ||
       (animal.brinco || '').toLowerCase().includes(searchTerm.toLowerCase());
     // ✅ CORRIGIDO: compara animal.status (campo real) em vez de animal.status_saude
     const matchesFiltro = filtroSaude === 'todos' || animal.status === filtroSaude;
@@ -101,7 +100,7 @@ export default function ListaAnimaisVet() {
             <div className="flex-1 relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
               <Input
-                placeholder="Buscar por nome ou brinco..."
+                placeholder="Buscar brinco."
                 className="pl-10"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -132,7 +131,6 @@ export default function ListaAnimaisVet() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Brinco</th>
-                    <th className="px-4 py-3 text-left text-sm font-semibold">Nome</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Espécie</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Raça</th>
                     <th className="px-4 py-3 text-left text-sm font-semibold">Peso</th>
@@ -144,7 +142,6 @@ export default function ListaAnimaisVet() {
                   {filteredAnimais.map((animal) => (
                     <tr key={animal.id} className="border-t hover:bg-cyan-50 transition-colors">
                       <td className="px-4 py-3 font-medium">{animal.brinco}</td>
-                      <td className="px-4 py-3">{animal.nome || '-'}</td>
                       <td className="px-4 py-3 capitalize">{animal.especie}</td>
                       <td className="px-4 py-3">{animal.raca || '-'}</td>
                       <td className="px-4 py-3">{animal.peso_atual} kg</td>

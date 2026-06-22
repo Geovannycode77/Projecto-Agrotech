@@ -117,8 +117,8 @@ export default function RegistroAlimentacao() {
               >
                 <option value="">Selecione...</option>
                 {tiposRacao.map((tipo) => (
-                  <option key={tipo.id} value={tipo.nome}>
-                    {tipo.nome} ({tipo.peso_por_saco}kg/saco)
+                  <option key={tipo.id} value={tipo.id} >
+                    ({tipo.peso_por_saco}kg/saco)
                   </option>
                 ))}
               </select>
@@ -154,7 +154,7 @@ export default function RegistroAlimentacao() {
                 <option value="">Todos / Sem animal específico</option>
                 {animais.map((animal) => (
                   <option key={animal.id} value={animal.id}>
-                    {animal.brinco} {animal.nome ? `- ${animal.nome}` : ''}
+                    {animal.brinco} 
                     {animal.especie_display ? ` (${animal.especie_display})` : ''}
                   </option>
                 ))}

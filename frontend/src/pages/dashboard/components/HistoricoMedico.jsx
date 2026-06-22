@@ -46,7 +46,7 @@ export default function HistoricoMedico() {
         d.forEach(c => lista.push({
           id: `consulta-${c.id}`,
           tipo: 'consulta',
-          animal_nome: c.animal_nome || c.animal_brinco || '—',
+          animal_nome: c.animal_brinco || '—',
           descricao: c.descricao || c.tipo || '—',
           data: c.data_consulta,
           status: c.status,
@@ -59,7 +59,7 @@ export default function HistoricoMedico() {
         d.forEach(v => lista.push({
           id: `vacina-${v.id}`,
           tipo: 'vacina',
-          animal_nome: v.animal_nome || v.animal_brinco || '—',
+          animal_nome:  v.animal_brinco || '—',
           descricao: v.nome_vacina || v.vacina || '—',
           data: v.data_aplicacao,
           status: 'concluido',
@@ -73,7 +73,7 @@ export default function HistoricoMedico() {
         d.forEach(t => lista.push({
           id: `tratamento-${t.id}`,
           tipo: 'tratamento',
-          animal_nome: t.animal_nome || t.animal_brinco || '—',
+          animal_nome: t.animal_brinco || '—',
           descricao: t.diagnostico || t.tratamento || '—',
           data: t.data_inicio,
           status: t.status,
@@ -100,7 +100,7 @@ export default function HistoricoMedico() {
   const getTipoLabel = (tipo) => ({ consulta: 'Consulta', tratamento: 'Tratamento', vacina: 'Vacina' }[tipo] || tipo);
 
   const filteredHistorico = historico.filter(item => {
-    const matchesSearch = item.animal_nome?.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSearch = item.animal_id?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesFiltro = filtroTipo === 'todos' || item.tipo === filtroTipo;
     return matchesSearch && matchesFiltro;
   });
@@ -136,7 +136,7 @@ export default function HistoricoMedico() {
               <option value="">Todos os animais</option>
               {animais.map(a => (
                 <option key={a.id} value={a.id}>
-                  {a.brinco} - {a.nome || 'Sem nome'} ({a.status})
+                  {a.brinco} - ({a.status})
                 </option>
               ))}
             </select>
@@ -163,7 +163,6 @@ export default function HistoricoMedico() {
                     <div className="flex items-center gap-3">
                       <span className="text-2xl">{getTipoIcon(item.tipo)}</span>
                       <div>
-                        <h3 className="font-semibold">{item.animal_nome}</h3>
                         <p className="text-sm text-gray-600">{getTipoLabel(item.tipo)}: {item.descricao}</p>
                         <div className="flex flex-wrap gap-4 mt-1 text-xs text-gray-500">
                           <span className="flex items-center gap-1">

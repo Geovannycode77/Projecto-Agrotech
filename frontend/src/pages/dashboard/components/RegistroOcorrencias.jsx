@@ -307,9 +307,9 @@ export default function RegistroOcorrencias() {
                     <option value="">Nenhum animal específico</option>
                     {animais.map((a) => (
                       <option key={a.id} value={a.id}>
-                        {a.nome || a.brinco}
+                        {a.brinco}
                         {a.especie_display ? ` — ${a.especie_display}` : ""}
-                        {a.brinco && a.nome ? ` (${a.brinco})` : ""}
+                        {a.brinco ? ` (${a.brinco})` : ""}
                       </option>
                     ))}
                   </select>

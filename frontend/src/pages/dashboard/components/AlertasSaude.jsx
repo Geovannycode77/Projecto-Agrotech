@@ -115,7 +115,7 @@ export default function AlertasSaude({ alertas: alertasProps, onAtualizar }) {
                       <div>
                         <p className="font-medium">{alerta.mensagem}</p>
                         <p className="text-sm text-gray-600 mt-1">
-                          Animal: {alerta.animal_nome || alerta.animal}
+                          Animal: { alerta.animal}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
                           Prioridade: {alerta.prioridade?.toUpperCase() || 'NORMAL'}

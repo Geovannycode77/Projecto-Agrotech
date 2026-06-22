@@ -84,7 +84,7 @@ export default function RegistroTratamento() {
   const set = (field) => (e) => setFormData((prev) => ({ ...prev, [field]: e.target.value }));
 
   const tratamentosFiltrados = tratamentos.filter((t) => {
-    const nome = t.animal_info?.nome || t.animal_info?.brinco || "";
+    const nome =  t.animal_info?.brinco || "";
     return nome.toLowerCase().includes(searchTerm.toLowerCase()) ||
       t.diagnostico?.toLowerCase().includes(searchTerm.toLowerCase());
   });
@@ -137,7 +137,7 @@ export default function RegistroTratamento() {
                       <option value="">Selecione...</option>
                       {animais.map((a) => (
                         <option key={a.id} value={a.id}>
-                          {a.brinco} — {a.nome || "Sem nome"} ({a.status})
+                          {a.brinco} ({a.status})
                         </option>
                       ))}
                     </select>
@@ -213,7 +213,7 @@ export default function RegistroTratamento() {
                   <div className="flex items-start justify-between">
                     <div>
                       <h3 className="font-semibold">
-                        {trat.animal_info?.brinco || "—"} — {trat.animal_info?.nome || "Sem nome"}
+                        {trat.animal_info?.brinco || "—"}
                       </h3>
                       <p className="text-sm text-gray-600 mt-1">Diagnóstico: {trat.diagnostico}</p>
                       <p className="text-sm text-gray-600">Tratamento: {trat.tratamento}</p>

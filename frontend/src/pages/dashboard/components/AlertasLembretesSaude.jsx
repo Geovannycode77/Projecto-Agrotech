@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Bell, Syringe, AlertTriangle, Calendar, CheckCircle, Heart, Loader2 } from "lucide-react";
-import { veterinarioService } from "@/services/veterinarioService";
+import { veterinarioService } from "@/services/VeterinarioService";
 import { produtorService } from "@/services/ProdutorService";
 
 export default function AlertasLembretesSaude({ userRole = "veterinario" }) {
@@ -193,10 +193,10 @@ export default function AlertasLembretesSaude({ userRole = "veterinario" }) {
                       )}
                       <div className="flex flex-wrap gap-3 mt-2 text-xs text-gray-500">
                         {/* Suporta tanto animal_info (vet) quanto animal_nome (produtor) */}
-                        {(alerta.animal_info?.nome || alerta.animal_info?.brinco || alerta.animal_nome || alerta.animal) && (
+                        {( alerta.animal_info?.brinco || alerta.animal) && (
                           <span>
                             <Heart className="inline h-3 w-3 mr-0.5" />
-                            {alerta.animal_info?.nome || alerta.animal_info?.brinco || alerta.animal_nome || alerta.animal}
+                            { alerta.animal_info?.brinco  || alerta.animal}
                           </span>
                         )}
                         {(alerta.created_at || alerta.data_criacao) && (
@@ -253,7 +253,7 @@ export default function AlertasLembretesSaude({ userRole = "veterinario" }) {
                   <div>
                     <p className="font-medium">{vacina.nome_vacina || vacina.vacina || "—"}</p>
                     <p className="text-sm text-gray-500">
-                      {vacina.animal_info?.brinco || vacina.animal_info?.nome || vacina.animal_nome || vacina.animal_brinco || "—"}
+                      {vacina.animal_info?.brinco || vacina.animal_brinco || "—"}
                     </p>
                   </div>
                   <div className="text-right">

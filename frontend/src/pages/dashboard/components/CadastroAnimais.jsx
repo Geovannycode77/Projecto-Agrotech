@@ -275,17 +275,6 @@ export default function CadastroAnimais() {
                 />
               </div>
               <div>
-                <Label htmlFor="nome">Nome do Animal</Label>
-                <Input
-                  id="nome"
-                  value={formData.nome}
-                  onChange={(e) =>
-                    setFormData({ ...formData, nome: e.target.value })
-                  }
-                  placeholder="Nome opcional (ex: Mimosa)"
-                />
-              </div>
-              <div>
                 <Label htmlFor="raca">Raça</Label>
                 <Input
                   id="raca"
@@ -395,7 +384,6 @@ export default function CadastroAnimais() {
                 <thead className="bg-gray-50">
                   <tr>
                     <th className="px-4 py-2 text-left">Brinco</th>
-                    <th className="px-4 py-2 text-left">Nome</th>
                     <th className="px-4 py-2 text-left">Raça</th>
                     <th className="px-4 py-2 text-left">Sexo</th>
                     <th className="px-4 py-2 text-left">Idade</th>
@@ -411,7 +399,6 @@ export default function CadastroAnimais() {
                       className="border-t hover:bg-emerald-50 transition-colors"
                     >
                       <td className="px-4 py-2 font-medium">{animal.brinco}</td>
-                      <td className="px-4 py-2">{animal.nome || "-"}</td>
                       <td className="px-4 py-2">{animal.raca || "-"}</td>
                       <td className="px-4 py-2">
                         {animal.sexo === 'M' ? '♂️ Macho' : '♀️ Fêmea'}

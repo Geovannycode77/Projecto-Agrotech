@@ -415,7 +415,7 @@ const getNomeExibicao = () => {
                             <div>
                               <div className="flex items-center gap-2">
                                 <PawPrint className="h-4 w-4 text-cyan-600" />
-                                <span className="font-semibold">{consulta.animal_nome || consulta.animal_brinco}</span>
+                                <span className="font-semibold">{ consulta.animal_brinco}</span>
                               </div>
                               <p className="text-sm text-gray-500 mt-1">{consulta.tipo}</p>
                             </div>
@@ -448,7 +448,7 @@ const getNomeExibicao = () => {
                         {animaisObservacao.map((animal, index) => (
                           <div key={index} className="p-3 border rounded-lg hover:bg-cyan-50 transition-colors">
                             <div className="flex justify-between items-start mb-2">
-                              <span className="font-semibold">{animal.brinco} - {animal.nome || 'Sem nome'}</span>
+                              <span className="font-semibold">{animal.brinco} </span>
                               <Badge className={getPrioridadeColor(animal.prioridade)}>
                                 {animal.prioridade === 'alta' ? 'Alta Prioridade' : 
                                  animal.prioridade === 'media' ? 'Média Prioridade' : 'Baixa Prioridade'}

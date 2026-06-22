@@ -114,7 +114,7 @@ export default function RegistroVacinas() {
 
   const filteredVacinas = vacinas.filter(
     (v) =>
-      (v.animal_info?.nome || v.animal_info?.brinco || "")
+      (v.animal_info?.brinco || "")
         .toLowerCase().includes(searchTerm.toLowerCase()) ||
       (v.nome_vacina || "").toLowerCase().includes(searchTerm.toLowerCase()),
   );
@@ -171,7 +171,7 @@ export default function RegistroVacinas() {
                       <option value="">Selecione...</option>
                       {animais.map((a) => (
                         <option key={a.id} value={a.id}>
-                          {a.brinco} — {a.nome || "Sem nome"} ({a.status})
+                          {a.brinco} ({a.status})
                         </option>
                       ))}
                     </select>
