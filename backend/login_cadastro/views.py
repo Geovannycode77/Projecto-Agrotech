@@ -15,6 +15,9 @@ from .serializers import UserSerializer, RegisterSerializer, PerfilSerializer
 from .utils import send_confirmation_email
 from django.utils import timezone
 from datetime import timedelta
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 # ========== AUTENTICAÇÃO ==========
 
@@ -37,13 +40,21 @@ def register(request):
     print(f"❌ Erros: {serializer.errors}")
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def login(request):
     """Login com email e senha"""
     email = request.data.get('email')
     password = request.data.get('password')
-    
+
+    # ✅ Verifica se a conta existe mas não tem password utilizável (conta Google sem password definida)
+    user_check = CustomUser.objects.filter(email=email).first()
+    if user_check and not user_check.has_usable_password():
+        return Response({
+            'error': 'Esta conta foi criada com Google. Use o botão "Entrar com Google" ou defina uma password no seu perfil.'
+        }, status=status.HTTP_400_BAD_REQUEST)
+
     user = authenticate(request, email=email, password=password)
     
     if not user:
@@ -76,6 +87,7 @@ def login(request):
         'user': UserSerializer(user).data
     })
 
+
 @api_view(['GET'])
 def get_current_user(request):
     """Obter dados do usuário atual"""
@@ -83,6 +95,7 @@ def get_current_user(request):
         serializer = UserSerializer(request.user)
         return Response(serializer.data)
     return Response({'error': 'Não autenticado'}, status=status.HTTP_401_UNAUTHORIZED)
+
 
 @api_view(['POST'])
 def logout(request):
@@ -95,6 +108,7 @@ def logout(request):
         return Response({'message': 'Logout realizado com sucesso'})
     except Exception as e:
         return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
@@ -114,6 +128,7 @@ def change_password(request):
     user.save()
     
     return Response({'message': 'Senha alterada com sucesso'})
+
 
 # ========== GOOGLE LOGIN ==========
 
@@ -170,7 +185,6 @@ def google_login(request):
                 'google_id': google_id
             }, status=status.HTTP_404_NOT_FOUND)
         
-        # Usuário existe - verifica se email está confirmado
         if not user.email_confirmed:
             return Response({
                 'success': False,
@@ -190,7 +204,6 @@ def google_login(request):
             defaults={'nome_completo': name or user.email.split('@')[0]}
         )
         
-        # Se o perfil já existia mas está sem nome, atualiza com o nome do Google
         if not created and not perfil.nome_completo and name:
             perfil.nome_completo = name
             perfil.save()
@@ -227,31 +240,20 @@ def google_register(request):
         
         print(f"🔵 Google Register - Email: {email}, Role: {role}, Name: {name}")
         
-        # Validações
         if not email:
-            return Response({
-                'error': 'Email é obrigatório'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Email é obrigatório'}, status=status.HTTP_400_BAD_REQUEST)
         
         if not password:
-            return Response({
-                'error': 'Senha é obrigatória'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Senha é obrigatória'}, status=status.HTTP_400_BAD_REQUEST)
         
         if not role:
-            return Response({
-                'error': 'Tipo de usuário é obrigatório'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Tipo de usuário é obrigatório'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Verifica se usuário já existe
         user = CustomUser.objects.filter(email=email).first()
-        
         if user:
-            return Response({
-                'error': 'Usuário já existe. Faça login.'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Usuário já existe. Faça login.'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Cria o usuário com senha
+        #Cria o utilizador com a password definida (hash bcrypt automático)
         user = CustomUser.objects.create_user(
             email=email,
             password=password,
@@ -266,10 +268,9 @@ def google_register(request):
         
         print(f"✅ Usuário Google criado: {user.email}")
         
-        # Cria o perfil com o nome do Google
         Perfil.objects.create(
             user=user,
-            nome_completo=name or email.split('@')[0]  # Usa o nome ou primeira parte do email
+            nome_completo=name or email.split('@')[0]
         )
         
         return Response({
@@ -325,7 +326,6 @@ def confirm_email(request):
         user.is_approved = True
         user.save()
         
-        # Garante que o perfil existe
         Perfil.objects.get_or_create(
             user=user,
             defaults={'nome_completo': ''}
@@ -348,6 +348,7 @@ def confirm_email(request):
             'error': 'Erro ao confirmar email. Tente novamente.'
         }, status=status.HTTP_400_BAD_REQUEST)
 
+
 @api_view(['POST'])
 @permission_classes([permissions.AllowAny])
 def resend_confirmation_email(request):
@@ -356,21 +357,15 @@ def resend_confirmation_email(request):
         email = request.data.get('email')
         
         if not email:
-            return Response({
-                'error': 'Email não fornecido'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Email não fornecido'}, status=status.HTTP_400_BAD_REQUEST)
         
         user = CustomUser.objects.filter(email=email).first()
         
         if not user:
-            return Response({
-                'error': 'Usuário não encontrado'
-            }, status=status.HTTP_404_NOT_FOUND)
+            return Response({'error': 'Usuário não encontrado'}, status=status.HTTP_404_NOT_FOUND)
         
         if user.email_confirmed:
-            return Response({
-                'message': 'Email já está confirmado.'
-            }, status=status.HTTP_200_OK)
+            return Response({'message': 'Email já está confirmado.'}, status=status.HTTP_200_OK)
         
         send_confirmation_email(user, request)
         
@@ -406,34 +401,35 @@ def complete_profile(request):
         print(f"📥 complete_profile chamado")
         print(f"   email: {email}")
         print(f"   role:  {role}")
+        print(f"   isGoogle: {is_google}")
         print(f"   profile recebido: {profile}")
-        print(f"   nome_completo dentro de profile: {profile.get('nome_completo')}")
-        print(f"   crmv: {profile.get('crmv')}")
-        print(f"   especialidade: {profile.get('especialidade')}")
         print("=" * 60)
-
-        print(f"🔵 Complete Profile - Email: {email}, Role: {role}, IsGoogle: {is_google}")
-        print(f"📝 Profile data: {profile}")
 
         if not email:
             return Response({'success': False, 'error': 'O email é obrigatório.'}, status=400)
         if not role:
             return Response({'success': False, 'error': 'Selecione um tipo de usuário.'}, status=400)
+        if not password:
+            return Response({'success': False, 'error': 'A password é obrigatória.'}, status=400)
 
-        # Utilizador já existe
+        #Utilizador já existe 
         user = CustomUser.objects.filter(email=email).first()
         if user:
+            if password:
+                user.set_password(password)
+                user.needs_password_setup = False
+                user.save(update_fields=['password', 'needs_password_setup'])
+
             if user.email_confirmed:
-                # Atualiza perfil existente
                 perfil, _ = Perfil.objects.get_or_create(user=user)
-                if profile.get('nome_completo'): perfil.nome_completo = profile['nome_completo']
-                if profile.get('telefone'):      perfil.telefone      = profile['telefone']
-                if profile.get('endereco'):      perfil.endereco      = profile['endereco']
+                if profile.get('nome_completo'): perfil.nome_completo    = profile['nome_completo']
+                if profile.get('telefone'):      perfil.telefone         = profile['telefone']
+                if profile.get('endereco'):      perfil.endereco         = profile['endereco']
                 if profile.get('data_nascimento'): perfil.data_nascimento = profile['data_nascimento']
-                if profile.get('fazenda_nome'):  perfil.fazenda_nome  = profile['fazenda_nome']
-                if profile.get('especialidade'): perfil.especialidade = profile['especialidade']
-                if profile.get('setor'):         perfil.setor         = profile['setor']
-                if profile.get('area_atuacao'):  perfil.area_atuacao  = profile['area_atuacao']
+                if profile.get('fazenda_nome'):  perfil.fazenda_nome     = profile['fazenda_nome']
+                if profile.get('especialidade'): perfil.especialidade    = profile['especialidade']
+                if profile.get('setor'):         perfil.setor            = profile['setor']
+                if profile.get('area_atuacao'):  perfil.area_atuacao     = profile['area_atuacao']
                 perfil.save()
                 return Response({'success': True, 'message': 'Perfil atualizado!', 'user': UserSerializer(user).data})
 
@@ -443,25 +439,49 @@ def complete_profile(request):
 
             return Response({'success': False, 'error': 'Este email já está cadastrado.'}, status=400)
 
-        # Cria novo utilizador
+        #Cria novo utilizador 
         if is_google and google_credential:
+        
+            if not password:
+                return Response({
+                    'success': False,
+                    'error': 'Define uma password para poderes aceder também por email.'
+                }, status=400)
+
+            if len(password) < 6:
+                return Response({
+                    'success': False,
+                    'error': 'A password deve ter mínimo 6 caracteres.'
+                }, status=400)
+
             user = CustomUser.objects.create_user(
-                email=email, password=None, role=role,
-                is_approved=False, email_confirmed=False, is_active=True,
-                google_id=google_id, profile_picture=data.get('picture', ''),
+                email=email,
+                password=password,        
+                role=role,
+                is_approved=False,
+                email_confirmed=False,
+                is_active=True,
+                google_id=google_id,
+                profile_picture=data.get('picture', ''),
                 needs_password_setup=False
             )
+            print(f"✅ Utilizador Google criado com password: {user.email}")
+
         else:
             if not password:
                 return Response({'success': False, 'error': 'A senha é obrigatória.'}, status=400)
             user = CustomUser.objects.create_user(
-                email=email, password=password, role=role,
-                is_approved=False, email_confirmed=False, is_active=True
+                email=email,
+                password=password,
+                role=role,
+                is_approved=False,
+                email_confirmed=False,
+                is_active=True
             )
+            print(f"✅ Utilizador normal criado: {user.email}")
 
-        # ← get_or_create em vez de create (o signal pode ter criado já)
+        #Cria / actualiza perfil 
         nome_para_perfil = profile.get('nome_completo') or name or email.split('@')[0]
-
         print(f"🔑 Nome que vai ser gravado: '{nome_para_perfil}'")
 
         perfil, criado = Perfil.objects.update_or_create(
@@ -479,14 +499,13 @@ def complete_profile(request):
         )
         print(f"✅ Perfil {'criado' if criado else 'atualizado'}: nome={perfil.nome_completo}, tel={perfil.telefone}")
 
-        # ── Veterinário: CRMV + especialidade ───────────────────
+        #Veterinário: CRMV + especialidade
         if role == 'veterinario':
             try:
                 from veterinario_dashboard.models import Veterinario
-                crmv         = profile.get('crmv') or ''
+                crmv          = profile.get('crmv') or ''
                 especialidade = profile.get('especialidade') or 'geral'
 
-                # update_or_create para não duplicar nem perder dados
                 vet, vet_criado = Veterinario.objects.update_or_create(
                     user=user,
                     defaults={
@@ -497,19 +516,6 @@ def complete_profile(request):
                 print(f"✅ Veterinário {'criado' if vet_criado else 'atualizado'}: CRMV={vet.registro_crmv}, esp={vet.especialidade}")
             except Exception as e:
                 print(f"⚠️ Erro ao atualizar Veterinário: {e}")
-
-        # Guarda CRMV no model Veterinario se aplicável
-        if role == 'veterinario' and (profile.get('crmv') or profile.get('especialidade')):
-            try:
-                from veterinario_dashboard.models import Veterinario
-                vet = Veterinario.objects.filter(user=user).first()
-                if vet:
-                    if profile.get('crmv'):         vet.registro_crmv = profile['crmv']
-                    if profile.get('especialidade'): vet.especialidade  = profile.get('especialidade', 'geral')
-                    vet.save()
-                    print(f"✅ Veterinário atualizado: CRMV={vet.registro_crmv}")
-            except Exception as e:
-                print(f"⚠️ Erro ao atualizar veterinário: {e}")
 
         send_confirmation_email(user, request)
 
@@ -536,9 +542,7 @@ def forgot_password(request):
         email = request.data.get('email')
         
         if not email:
-            return Response({
-                'error': 'Email é obrigatório'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Email é obrigatório'}, status=status.HTTP_400_BAD_REQUEST)
         
         user = CustomUser.objects.filter(email=email).first()
         
@@ -548,14 +552,12 @@ def forgot_password(request):
                 'message': 'Se o email estiver cadastrado, você receberá um link de recuperação.'
             }, status=status.HTTP_200_OK)
         
-        # Gera token de recuperação
         import secrets
         reset_token = secrets.token_urlsafe(32)
         user.reset_password_token = reset_token
         user.reset_password_token_created_at = timezone.now()
         user.save()
         
-        # Envia email de recuperação
         from .utils import send_reset_password_email
         send_reset_password_email(user, request)
         
@@ -565,9 +567,7 @@ def forgot_password(request):
         
     except Exception as e:
         print(f"Forgot password error: {str(e)}")
-        return Response({
-            'error': 'Erro ao processar solicitação'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Erro ao processar solicitação'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['POST'])
@@ -579,23 +579,16 @@ def reset_password(request):
         new_password = request.data.get('new_password')
         
         if not token or not new_password:
-            return Response({
-                'error': 'Token e nova senha são obrigatórios'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Token e nova senha são obrigatórios'}, status=status.HTTP_400_BAD_REQUEST)
         
         if len(new_password) < 6:
-            return Response({
-                'error': 'A senha deve ter no mínimo 6 caracteres'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'A senha deve ter no mínimo 6 caracteres'}, status=status.HTTP_400_BAD_REQUEST)
         
         user = CustomUser.objects.filter(reset_password_token=token).first()
         
         if not user:
-            return Response({
-                'error': 'Token inválido ou expirado'
-            }, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'error': 'Token inválido ou expirado'}, status=status.HTTP_400_BAD_REQUEST)
         
-        # Verifica se token expirou (24 horas)
         if user.reset_password_token_created_at:
             from django.utils import timezone
             from datetime import timedelta
@@ -605,7 +598,6 @@ def reset_password(request):
                     'error': 'Token expirado. Solicite um novo link de recuperação.'
                 }, status=status.HTTP_400_BAD_REQUEST)
         
-        # Define nova senha
         user.set_password(new_password)
         user.reset_password_token = None
         user.reset_password_token_created_at = None
@@ -617,9 +609,7 @@ def reset_password(request):
         
     except Exception as e:
         print(f"Reset password error: {str(e)}")
-        return Response({
-            'error': 'Erro ao redefinir senha'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'error': 'Erro ao redefinir senha'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 # ========== ADMIN - GESTÃO DE UTILIZADORES ==========
@@ -632,6 +622,7 @@ def list_users(request):
     serializer = UserSerializer(users, many=True)
     return Response(serializer.data)
 
+
 @api_view(['GET'])
 @permission_classes([permissions.IsAdminUser])
 def get_pending_users(request):
@@ -639,6 +630,7 @@ def get_pending_users(request):
     users = CustomUser.objects.filter(is_approved=False, is_superuser=False)
     serializer = UserSerializer(users, many=True)
     return Response(serializer.data)
+
 
 @api_view(['POST'])
 @permission_classes([permissions.IsAdminUser])
@@ -654,6 +646,7 @@ def approve_user(request, user_id):
         })
     except CustomUser.DoesNotExist:
         return Response({'error': 'Usuário não encontrado'}, status=status.HTTP_404_NOT_FOUND)
+
 
 @api_view(['PUT'])
 @permission_classes([permissions.IsAdminUser])
@@ -680,6 +673,7 @@ def update_user_role(request, user_id):
     except CustomUser.DoesNotExist:
         return Response({'error': 'Usuário não encontrado'}, status=status.HTTP_404_NOT_FOUND)
 
+
 @api_view(['DELETE'])
 @permission_classes([permissions.IsAdminUser])
 def delete_user(request, user_id):
@@ -687,9 +681,10 @@ def delete_user(request, user_id):
     try:
         user = CustomUser.objects.get(id=user_id)
         if user.is_superuser:
-            return Response({'error': 'Não é possível deletar o superusuário'}, 
-                          status=status.HTTP_403_FORBIDDEN)
-        
+            return Response(
+                {'error': 'Não é possível deletar o superusuário'},
+                status=status.HTTP_403_FORBIDDEN
+            )
         user.delete()
         return Response({'message': 'Usuário deletado com sucesso'})
     except CustomUser.DoesNotExist:
@@ -713,10 +708,13 @@ def get_update_profile(request):
 
             data = PerfilSerializer(perfil).data
             data['email'] = request.user.email
+
+            # ✅ Informa o frontend se a conta tem password ou não
+            data['has_password'] = request.user.has_usable_password()
+
             if 'telefone' in data and data['telefone']:
                 data['telefone'] = str(data['telefone'])
 
-            # Dados extra do model Veterinario
             if request.user.role == 'veterinario':
                 try:
                     from veterinario_dashboard.models import Veterinario
@@ -726,19 +724,17 @@ def get_update_profile(request):
                 except Exception:
                     data['registro_crmv'] = perfil.especialidade or ''
 
-            # Dados extra do model Funcionario
             elif request.user.role == 'funcionario':
                 try:
                     from funcionario_dashboard.models import Funcionario
                     func = Funcionario.objects.get(user=request.user)
                     data['fazenda_nome'] = func.fazenda.nome if func.fazenda else ''
-                    data['cargo'] = func.cargo or ''
-                    data['turno'] = func.turno or ''
+                    data['cargo']        = func.cargo or ''
+                    data['turno']        = func.turno or ''
                     data['data_contratacao'] = func.data_contratacao or ''
                 except Exception:
                     pass
 
-            # Dados extra do model GestorFinanceiro
             elif request.user.role == 'gestor_financeiro':
                 try:
                     from Gestor_financeiro_dashboard.models import GestorFinanceiro
@@ -751,7 +747,6 @@ def get_update_profile(request):
                     data['cargo']        = 'Gestor Financeiro'
                     data['departamento'] = 'Financeiro'
 
-            # ✅ ÚNICO return, cobre TODOS os papéis (admin, produtor, veterinario, etc.)
             return Response(data)
 
         except Exception as e:
@@ -764,7 +759,6 @@ def get_update_profile(request):
             )
 
     elif request.method == 'PUT':
-        # ... (essa parte já está correta, sem mudanças)
         try:
             try:
                 perfil = Perfil.objects.get(user=request.user)
@@ -775,7 +769,6 @@ def get_update_profile(request):
             if serializer.is_valid():
                 serializer.save()
 
-                # Atualiza também o model Veterinario se aplicável
                 if request.user.role == 'veterinario':
                     try:
                         from veterinario_dashboard.models import Veterinario
@@ -799,6 +792,7 @@ def get_update_profile(request):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+
 # ========== DASHBOARD STATS ==========
 
 @api_view(['GET'])
@@ -816,12 +810,13 @@ def get_admin_stats(request):
     }
     return Response(stats)
 
+
 # ========== EXCLUIR CONTA ==========
 
 @api_view(['DELETE'])
 @permission_classes([IsAuthenticated])
 def delete_own_account(request):
-    """Utilizador elimina a própria conta (dados pessoais apenas)"""
+    """Utilizador elimina a própria conta"""
     try:
         user = request.user
         if user.is_superuser:
@@ -834,8 +829,9 @@ def delete_own_account(request):
     except Exception as e:
         print(f"❌ Erro ao eliminar conta: {str(e)}")
         return Response({'error': 'Erro ao eliminar conta.'}, status=status.HTTP_400_BAD_REQUEST)
-    
-    # ========== FOTO DE PERFIL ==========
+
+
+# ========== FOTO DE PERFIL ==========
 
 @api_view(['PATCH'])
 @permission_classes([IsAuthenticated])
@@ -846,7 +842,6 @@ def update_profile_photo(request):
         if not foto:
             return Response({'error': 'Nenhuma foto enviada.'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Por agora guarda o nome do ficheiro — adapta para S3/Cloudinary se necessário
         import os
         from django.conf import settings as django_settings
 
@@ -870,3 +865,28 @@ def update_profile_photo(request):
     except Exception as e:
         print(f"❌ Erro ao atualizar foto: {str(e)}")
         return Response({'error': 'Erro ao guardar foto.'}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# ========== DEFINIR PASSWORD (para contas Google existentes sem password) ==========
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def set_password(request):
+    """Define password para contas que ainda não têm (ex: contas Google antigas)"""
+    user = request.user
+    password = request.data.get('password')
+    confirm  = request.data.get('confirm_password')
+
+    if not password or not confirm:
+        return Response({'error': 'Preencha todos os campos.'}, status=400)
+
+    if password != confirm:
+        return Response({'error': 'As passwords não coincidem.'}, status=400)
+
+    if len(password) < 6:
+        return Response({'error': 'Password deve ter mínimo 6 caracteres.'}, status=400)
+
+    user.set_password(password)
+    user.save()
+
+    return Response({'message': 'Password definida com sucesso! Já pode fazer login com email e password.'})

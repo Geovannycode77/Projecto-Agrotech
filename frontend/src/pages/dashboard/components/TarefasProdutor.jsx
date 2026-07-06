@@ -47,6 +47,7 @@ export default function TarefasProdutor() {
   const [tarefas, setTarefas] = useState([]);
   const [funcionarios, setFuncionarios] = useState([]);
   const [animais, setAnimais] = useState([]);
+  const [isAnimalOpen, setIsAnimalOpen] = useState(false);
   const [form, setForm] = useState({
     titulo: "",
     descricao: "",
@@ -60,6 +61,19 @@ export default function TarefasProdutor() {
   useEffect(() => {
     carregarDados();
   }, []);
+
+  useEffect(() => {
+    if (!isAnimalOpen) return;
+
+    const handleClickOutside = (event) => {
+      if (!event.target.closest("[data-animal-dropdown]")) {
+        setIsAnimalOpen(false);
+      }
+    };
+
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [isAnimalOpen]);
 
   const carregarDados = async () => {
     setLoading(true);
@@ -136,6 +150,10 @@ export default function TarefasProdutor() {
       setSubmitting(false);
     }
   };
+
+  const selectedAnimal = animais.find(
+    (animal) => String(animal.id) === String(form.animal_id),
+  );
 
   if (loading) {
     return (
@@ -220,28 +238,59 @@ export default function TarefasProdutor() {
                   </option>{" "}
                   {/* ← Mostra a quantidade */}
                   {funcionarios.map((funcionario) => (
-                    <option key={funcionario.id} value={funcionario.user_id || funcionario.id}>
+                    <option
+                      key={funcionario.id}
+                      value={funcionario.user_id || funcionario.id}
+                    >
                       {getFuncionarioNomeExibicao(funcionario)}
                     </option>
                   ))}
                 </select>
               </div>
-              <div>
+              <div data-animal-dropdown className="relative">
                 <Label>Animal (opcional)</Label>
-                <select
-                  className="w-full border rounded-lg p-2"
-                  value={form.animal_id}
-                  onChange={(e) =>
-                    setForm({ ...form, animal_id: e.target.value })
-                  }
+                <button
+                  type="button"
+                  className="w-full border rounded-lg p-2 bg-white text-left flex items-center justify-between"
+                  onClick={() => setIsAnimalOpen((prev) => !prev)}
                 >
-                  <option value="">Nenhum</option>
-                  {animais.map((animal) => (
-                    <option key={animal.id} value={animal.id}>
-                      {animal.brinco} 
-                    </option>
-                  ))}
-                </select>
+                  <span
+                    className={
+                      form.animal_id ? "text-gray-900" : "text-gray-500"
+                    }
+                  >
+                    {selectedAnimal?.brinco || "Nenhum"}
+                  </span>
+                  <span className="text-gray-400">▾</span>
+                </button>
+
+                {isAnimalOpen && (
+                  <div className="absolute z-20 mt-1 w-full rounded-lg border border-gray-200 bg-white shadow-lg max-h-44 overflow-y-auto">
+                    <button
+                      type="button"
+                      className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                      onClick={() => {
+                        setForm({ ...form, animal_id: "" });
+                        setIsAnimalOpen(false);
+                      }}
+                    >
+                      Nenhum
+                    </button>
+                    {animais.map((animal) => (
+                      <button
+                        key={animal.id}
+                        type="button"
+                        className="w-full px-3 py-2 text-left text-sm hover:bg-gray-100"
+                        onClick={() => {
+                          setForm({ ...form, animal_id: String(animal.id) });
+                          setIsAnimalOpen(false);
+                        }}
+                      >
+                        {animal.brinco}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
               <div>
                 <Label>Prazo</Label>

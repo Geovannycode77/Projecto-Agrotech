@@ -10,7 +10,7 @@ from django.db import migrations, models
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('login_cadastro', '0009_remove_customuser_is_blocked'),
+        ('login_cadastro', '0010_customuser_is_blocked'),
     ]
 
     operations = [
@@ -21,11 +21,6 @@ class Migration(migrations.Migration):
         migrations.AlterModelOptions(
             name='useractivity',
             options={'ordering': ['-created_at'], 'verbose_name': 'Atividade de Usuário', 'verbose_name_plural': 'Atividades de Usuários'},
-        ),
-        migrations.AddField(
-            model_name='customuser',
-            name='is_blocked',
-            field=models.BooleanField(default=False, help_text='Usuário bloqueado'),
         ),
         migrations.AddField(
             model_name='perfil',

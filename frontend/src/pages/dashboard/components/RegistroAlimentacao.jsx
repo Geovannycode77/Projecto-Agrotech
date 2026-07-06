@@ -1,11 +1,11 @@
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Loader2, Utensils, CheckCircle } from 'lucide-react';
-import { funcionarioService } from '@/services/FuncionarioService';
-import { toast } from '@/hooks/use-toast';
+import React, { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Loader2, Utensils, CheckCircle } from "lucide-react";
+import { funcionarioService } from "@/services/FuncionarioService";
+import { toast } from "@/hooks/use-toast";
 
 export default function RegistroAlimentacao() {
   const [loading, setLoading] = useState(false);
@@ -14,10 +14,10 @@ export default function RegistroAlimentacao() {
   const [animais, setAnimais] = useState([]);
   const [tiposRacao, setTiposRacao] = useState([]);
   const [form, setForm] = useState({
-    animal_id: '',
-    tipo_racao: '',
-    quantidade_kg: '',
-    observacoes: '',
+    animal_id: "",
+    tipo_racao: "",
+    quantidade_kg: "",
+    observacoes: "",
     horario: new Date().toTimeString().slice(0, 5), // HH:MM atual
   });
 
@@ -32,11 +32,19 @@ export default function RegistroAlimentacao() {
         funcionarioService.getAnimais(),
         funcionarioService.getTiposRacao(),
       ]);
-      setAnimais(Array.isArray(animaisData) ? animaisData : animaisData.results || []);
-      setTiposRacao(Array.isArray(tiposData) ? tiposData : tiposData.results || []);
+      setAnimais(
+        Array.isArray(animaisData) ? animaisData : animaisData.results || [],
+      );
+      setTiposRacao(
+        Array.isArray(tiposData) ? tiposData : tiposData.results || [],
+      );
     } catch (error) {
-      console.error('Erro ao carregar dados:', error);
-      toast({ title: 'Erro', description: 'Não foi possível carregar os dados.', variant: 'destructive' });
+      console.error("Erro ao carregar dados:", error);
+      toast({
+        title: "Erro",
+        description: "Não foi possível carregar os dados.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -48,31 +56,34 @@ export default function RegistroAlimentacao() {
 
     try {
       // Monta o datetime completo combinando data de hoje + horário selecionado
-      const hoje = new Date().toISOString().split('T')[0]; // "2026-06-06"
+      const hoje = new Date().toISOString().split("T")[0]; // "2026-06-06"
       const horarioISO = new Date(`${hoje}T${form.horario}:00`).toISOString();
 
       await funcionarioService.registrarAlimentacao({
-        animal_id:    form.animal_id   || undefined, // opcional
-        tipo_racao:   form.tipo_racao,
+        animal_id: form.animal_id || undefined, // opcional
+        tipo_racao: form.tipo_racao,
         quantidade_kg: parseFloat(form.quantidade_kg),
-        observacoes:  form.observacoes,
-        horario:      horarioISO,       // ← datetime completo para o serializer mapear em data_hora
+        observacoes: form.observacoes,
+        horario: horarioISO, // ← datetime completo para o serializer mapear em data_hora
       });
 
       setSuccess(true);
       setTimeout(() => setSuccess(false), 3000);
 
       setForm({
-        animal_id: '',
-        tipo_racao: '',
-        quantidade_kg: '',
-        observacoes: '',
+        animal_id: "",
+        tipo_racao: "",
+        quantidade_kg: "",
+        observacoes: "",
         horario: new Date().toTimeString().slice(0, 5),
       });
-
     } catch (error) {
-      console.error('Erro ao registrar alimentação:', error.response?.data);
-      toast({ title: 'Erro', description: 'Erro ao registrar alimentação. Tente novamente.', variant: 'destructive' });
+      console.error("Erro ao registrar alimentação:", error.response?.data);
+      toast({
+        title: "Erro",
+        description: "Erro ao registrar alimentação. Tente novamente.",
+        variant: "destructive",
+      });
     } finally {
       setSubmitting(false);
     }
@@ -106,19 +117,20 @@ export default function RegistroAlimentacao() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-
             <div>
               <Label>Tipo de Ração *</Label>
               <select
                 className="w-full border rounded-lg p-2 mt-1"
                 value={form.tipo_racao}
-                onChange={(e) => setForm({ ...form, tipo_racao: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, tipo_racao: e.target.value })
+                }
                 required
               >
                 <option value="">Selecione...</option>
                 {tiposRacao.map((tipo) => (
-                  <option key={tipo.id} value={tipo.id} >
-                    ({tipo.peso_por_saco}kg/saco)
+                  <option key={tipo.id} value={tipo.id}>
+                    {tipo.nome} ({tipo.peso_por_saco}kg/saco)
                   </option>
                 ))}
               </select>
@@ -137,25 +149,34 @@ export default function RegistroAlimentacao() {
                 min="0.1"
                 placeholder="Ex: 12.5"
                 value={form.quantidade_kg}
-                onChange={(e) => setForm({ ...form, quantidade_kg: e.target.value })} // ← bug corrigido
+                onChange={(e) =>
+                  setForm({ ...form, quantidade_kg: e.target.value })
+                } // ← bug corrigido
                 required
               />
             </div>
 
             <div>
               <Label>
-                Animal <span className="text-gray-400 text-xs font-normal">(opcional)</span>
+                Animal{" "}
+                <span className="text-gray-400 text-xs font-normal">
+                  (opcional)
+                </span>
               </Label>
               <select
                 className="w-full border rounded-lg p-2 mt-1"
                 value={form.animal_id}
-                onChange={(e) => setForm({ ...form, animal_id: e.target.value })}
+                onChange={(e) =>
+                  setForm({ ...form, animal_id: e.target.value })
+                }
               >
                 <option value="">Todos / Sem animal específico</option>
                 {animais.map((animal) => (
                   <option key={animal.id} value={animal.id}>
-                    {animal.brinco} 
-                    {animal.especie_display ? ` (${animal.especie_display})` : ''}
+                    {animal.brinco}
+                    {animal.especie_display
+                      ? ` (${animal.especie_display})`
+                      : ""}
                   </option>
                 ))}
               </select>
@@ -170,18 +191,22 @@ export default function RegistroAlimentacao() {
                 required
               />
             </div>
-
           </div>
 
           <div>
             <Label>
-              Observações <span className="text-gray-400 text-xs font-normal">(opcional)</span>
+              Observações{" "}
+              <span className="text-gray-400 text-xs font-normal">
+                (opcional)
+              </span>
             </Label>
             <textarea
               className="w-full border rounded-lg p-2 mt-1 min-h-[80px]"
               placeholder="Observações adicionais..."
               value={form.observacoes}
-              onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
+              onChange={(e) =>
+                setForm({ ...form, observacoes: e.target.value })
+              }
             />
           </div>
 
@@ -190,10 +215,11 @@ export default function RegistroAlimentacao() {
             disabled={submitting}
             className="bg-purple-600 hover:bg-purple-700"
           >
-            {submitting
-              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              : <Utensils className="h-4 w-4 mr-2" />
-            }
+            {submitting ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Utensils className="h-4 w-4 mr-2" />
+            )}
             Registrar Alimentação
           </Button>
         </form>

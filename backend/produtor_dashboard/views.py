@@ -641,9 +641,30 @@ class AlertaViewSet(viewsets.ModelViewSet):
     permission_classes = [IsProdutorOrAdmin, ModulePermission('dashboard')]
     
     def get_queryset(self):
+        queryset = Alerta.objects.all()
         if self.request.user.role == 'produtor':
-            return Alerta.objects.filter(fazenda__produtor=self.request.user)
-        return Alerta.objects.all()
+            try:
+                fazenda = Fazenda.objects.get(produtor=self.request.user)
+            except Fazenda.DoesNotExist:
+                return Alerta.objects.none()
+
+            queryset = queryset.filter(fazenda=fazenda)
+            prefs, _ = PreferenciasNotificacoes.objects.get_or_create(fazenda=fazenda)
+            tipos_permitidos = []
+
+            if prefs.alertas_saude:
+                tipos_permitidos.extend(['saude', 'reproducao'])
+            if prefs.alertas_estoque:
+                tipos_permitidos.append('alimentacao')
+            if prefs.alertas_relatorios:
+                tipos_permitidos.append('sistema')
+
+            if not tipos_permitidos:
+                return queryset.none()
+
+            return queryset.filter(tipo__in=tipos_permitidos)
+
+        return queryset
     
     @action(detail=True, methods=['post'])
     def marcar_lido(self, request, pk=None):

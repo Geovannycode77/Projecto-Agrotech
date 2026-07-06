@@ -14,6 +14,7 @@ urlpatterns = [
     # Google OAuth
     path('google-login/', views.google_login, name='google_login'),
     path('google-register/', views.google_register, name='google_register'),
+     path('auth/set-password/', views.set_password, name='set-password'),
     
     # Confirmação de email
     path('confirm-email/', views.confirm_email, name='confirm_email'),

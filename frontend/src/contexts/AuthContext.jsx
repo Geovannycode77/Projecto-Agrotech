@@ -40,11 +40,13 @@ export const AuthProvider = ({ children }) => {
       clearAuthData();
       setLoading(false);
       setIsAuthenticated(false);
-      
+
       // Redirecionar para login se não estiver já lá
-      if (window.location.pathname !== "/login" && 
-          window.location.pathname !== "/register" &&
-          !window.location.pathname.includes("/confirm-email")) {
+      if (
+        window.location.pathname !== "/login" &&
+        window.location.pathname !== "/register" &&
+        !window.location.pathname.includes("/confirm-email")
+      ) {
         window.location.href = "/login";
       }
       return;
@@ -90,14 +92,14 @@ export const AuthProvider = ({ children }) => {
     try {
       const data = await authService.login(email, password);
       console.log("✅ Login realizado, user:", data.user);
-      
+
       // Salvar token com expiração (exemplo: 8 horas)
-      const expiryTime = new Date().getTime() + (8 * 60 * 60 * 1000); // 8 horas
+      const expiryTime = new Date().getTime() + 8 * 60 * 60 * 1000; // 8 horas
       localStorage.setItem("access_token", data.access);
       localStorage.setItem("refresh_token", data.refresh);
       localStorage.setItem("token_expiry", expiryTime.toString());
       localStorage.setItem("user", JSON.stringify(data.user));
-      
+
       setUser(data.user);
       setIsAuthenticated(true);
 
@@ -141,28 +143,28 @@ export const AuthProvider = ({ children }) => {
 
   const refreshProfile = async () => {
     try {
-        const perfilData = await authService.getProfile();
-        console.log("✅ Perfil atualizado:", perfilData);
-        setPerfil(perfilData);
-        return perfilData;
+      const perfilData = await authService.getProfile();
+      console.log("✅ Perfil atualizado:", perfilData);
+      setPerfil(perfilData);
+      return perfilData;
     } catch (error) {
-        console.error("❌ Erro ao atualizar perfil:", error);
-        return null;
+      console.error("❌ Erro ao atualizar perfil:", error);
+      return null;
     }
   };
- 
+
   const googleLogin = async (credential) => {
     try {
       const response = await authService.googleLogin({ credential });
 
       if (response.access) {
         // Salvar token com expiração (8 horas)
-        const expiryTime = new Date().getTime() + (8 * 60 * 60 * 1000);
+        const expiryTime = new Date().getTime() + 8 * 60 * 60 * 1000;
         localStorage.setItem("access_token", response.access);
         localStorage.setItem("refresh_token", response.refresh);
         localStorage.setItem("token_expiry", expiryTime.toString());
         localStorage.setItem("user", JSON.stringify(response.user));
-        
+
         setUser(response.user);
         setIsAuthenticated(true);
 
@@ -243,56 +245,59 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-const completeProfile = async (data) => {
-  try {
-    const response = await authService.completeProfile(data);
+  const completeProfile = async (data) => {
+    try {
+      const response = await authService.completeProfile(data);
 
-    if (response.success === false) {
-      return { success: false, error: response.error };
-    }
-
-    // Se a resposta já inclui token (utilizador já existia e está confirmado)
-    if (response.access) {
-      const expiryTime = new Date().getTime() + (8 * 60 * 60 * 1000);
-      localStorage.setItem("access_token", response.access);
-      localStorage.setItem("refresh_token", response.refresh);
-      localStorage.setItem("token_expiry", expiryTime.toString());
-      localStorage.setItem("user", JSON.stringify(response.user));
-      setUser(response.user);
-      setIsAuthenticated(true);
-
-      try {
-        const perfilData = await authService.getProfile();
-        setPerfil(perfilData);
-      } catch (error) {
-          console.error('Complete profile error:', error);
-          console.error('Status:', error.response?.status);
-          console.error('Detalhes:', error.response?.data);
-          console.error('Detalhes JSON:', JSON.stringify(error.response?.data));
+      if (response.success === false) {
+        return { success: false, error: response.error };
       }
-       return {
-      success: false,
-      error: error.response?.data?.error || "Erro ao completar perfil",
-    };
+
+      // Se a resposta já inclui token (utilizador já existia e está confirmado)
+      if (response.access) {
+        const expiryTime = new Date().getTime() + 8 * 60 * 60 * 1000;
+        localStorage.setItem("access_token", response.access);
+        localStorage.setItem("refresh_token", response.refresh);
+        localStorage.setItem("token_expiry", expiryTime.toString());
+        localStorage.setItem("user", JSON.stringify(response.user));
+        setUser(response.user);
+        setIsAuthenticated(true);
+
+        try {
+          const perfilData = await authService.getProfile();
+          setPerfil(perfilData);
+        } catch (error) {
+          console.error("Complete profile error:", error);
+          console.error("Status:", error.response?.status);
+          console.error("Detalhes:", error.response?.data);
+          console.error("Detalhes JSON:", JSON.stringify(error.response?.data));
+        }
+        return {
+          success: true,
+          message: response.message || "Perfil atualizado com sucesso.",
+        };
+      }
+
+      // Caso normal: novo utilizador criado, email de confirmação enviado
+      // NÃO tenta carregar perfil — não há token ainda
+      if (response.user) {
+        setUser(response.user);
+      }
+
+      return {
+        success: true,
+        message:
+          response.message || "Cadastro realizado! Verifique o seu email.",
+      };
+    } catch (error) {
+      console.error("Complete profile error:", error);
+      console.error("Detalhes:", error.response?.data);
+      return {
+        success: false,
+        error: error.response?.data?.error || "Erro ao completar perfil",
+      };
     }
-
-    // Caso normal: novo utilizador criado, email de confirmação enviado
-    // NÃO tenta carregar perfil — não há token ainda
-    if (response.user) {
-      setUser(response.user);
-    }
-
-    return { success: true, message: response.message || 'Cadastro realizado! Verifique o seu email.' };
-
-  } catch (error) {
-    console.error('Complete profile error:', error);
-    console.error('Detalhes:', error.response?.data);
-    return {
-      success: false,
-      error: error.response?.data?.error || "Erro ao completar perfil",
-    };
-  }
-};
+  };
 
   const confirmEmail = async (token) => {
     try {
@@ -300,7 +305,7 @@ const completeProfile = async (data) => {
 
       if (response.success) {
         if (response.access) {
-          const expiryTime = new Date().getTime() + (8 * 60 * 60 * 1000);
+          const expiryTime = new Date().getTime() + 8 * 60 * 60 * 1000;
           localStorage.setItem("access_token", response.access);
           localStorage.setItem("refresh_token", response.refresh);
           localStorage.setItem("token_expiry", expiryTime.toString());

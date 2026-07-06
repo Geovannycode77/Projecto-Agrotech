@@ -194,111 +194,33 @@ export default function AlimentacaoGado() {
     }
   };
 
-  // Calcular autonomia específica para cada ração
-  const calcularAutonomiaPorRacao = (quantidadeSacos, racaId) => {
-    if (!quantidadeSacos || quantidadeSacos <= 0) return 0;
-
-    const raca = estoque.racas.find((r) => r.id === racaId);
-    if (!raca) return 0;
-
+  const calcularConsumoMedioDiarioKg = (nomeRacao = null) => {
     const ultimos7Dias = new Date();
     ultimos7Dias.setDate(ultimos7Dias.getDate() - 7);
 
-    const registrosRacao = alimentacoes.filter((item) => {
+    const registrosRecentes = alimentacoes.filter((item) => {
       const itemData = new Date(item.data);
       const itemNome =
         item.tipo_racao_nome || item.tipo_racao?.nome || item.tipo;
-      return itemData >= ultimos7Dias && itemNome === raca.nome;
+      const ehNoPeriodo =
+        !Number.isNaN(itemData.getTime()) && itemData >= ultimos7Dias;
+      const ehRacaoAlvo = !nomeRacao || itemNome === nomeRacao;
+      return ehNoPeriodo && ehRacaoAlvo;
     });
-
-    if (registrosRacao.length === 0) return 0;
-
-    // Agrupar consumo por dia
-    const consumoPorDia = {};
-    registrosRacao.forEach((item) => {
-      const data = item.data;
-      const quantidade = Number(item.quantidade_sacos) || 0;
-      if (!consumoPorDia[data]) {
-        consumoPorDia[data] = 0;
-      }
-      consumoPorDia[data] += quantidade;
-    });
-
-    const diasComRegistro = Object.keys(consumoPorDia).length;
-    const totalConsumido = Object.values(consumoPorDia).reduce(
-      (sum, val) => sum + val,
-      0,
-    );
-    const consumoMedioDiario =
-      diasComRegistro > 0 ? totalConsumido / diasComRegistro : 0;
-
-    if (consumoMedioDiario <= 0) return 0;
-
-    // Autonomia = Estoque atual / Consumo médio diário
-    return Math.floor(quantidadeSacos / consumoMedioDiario);
-  };
-
-  // Calcular autonomia total do estoque
-  const calcularAutonomiaTotal = () => {
-    const totalSacos =
-      estoque.racas?.reduce(
-        (sum, r) => sum + (Number(r.quantidade_sacos) || 0),
-        0,
-      ) || 0;
-    if (totalSacos === 0) return 0;
-
-    const ultimos7Dias = new Date();
-    ultimos7Dias.setDate(ultimos7Dias.getDate() - 7);
-
-    const registrosRecentes = alimentacoes.filter(
-      (item) => new Date(item.data) >= ultimos7Dias,
-    );
-
-    if (registrosRecentes.length === 0) return 0;
-
-    // Agrupar consumo total por dia
-    const consumoPorDia = {};
-    registrosRecentes.forEach((item) => {
-      const data = item.data;
-      const quantidade = Number(item.quantidade_sacos) || 0;
-      if (!consumoPorDia[data]) {
-        consumoPorDia[data] = 0;
-      }
-      consumoPorDia[data] += quantidade;
-    });
-
-    const diasComRegistro = Object.keys(consumoPorDia).length;
-    const totalConsumido = Object.values(consumoPorDia).reduce(
-      (sum, val) => sum + val,
-      0,
-    );
-    const consumoMedioDiario =
-      diasComRegistro > 0 ? totalConsumido / diasComRegistro : 0;
-
-    if (consumoMedioDiario <= 0) return 0;
-
-    return Math.floor(totalSacos / consumoMedioDiario);
-  };
-
-  // Calcular consumo médio diário em kg
-  const calcularConsumoMedioDiarioKg = () => {
-    const ultimos7Dias = new Date();
-    ultimos7Dias.setDate(ultimos7Dias.getDate() - 7);
-
-    const registrosRecentes = alimentacoes.filter(
-      (item) => new Date(item.data) >= ultimos7Dias,
-    );
 
     if (registrosRecentes.length === 0) return 0;
 
     const consumoPorDia = {};
     registrosRecentes.forEach((item) => {
-      const data = item.data;
+      const data = item.data?.split("T")[0] || item.data;
       const kg = Number(item.quantidade_kg) || 0;
+      const kgFallback =
+        Number(item.quantidade_sacos) * (Number(item.peso_por_saco) || 0);
+      const valorKg = kg > 0 ? kg : kgFallback;
       if (!consumoPorDia[data]) {
         consumoPorDia[data] = 0;
       }
-      consumoPorDia[data] += kg;
+      consumoPorDia[data] += valorKg;
     });
 
     const diasComRegistro = Object.keys(consumoPorDia).length;
@@ -309,6 +231,40 @@ export default function AlimentacaoGado() {
 
     return diasComRegistro > 0 ? totalKg / diasComRegistro : 0;
   };
+
+  // Calcular autonomia específica para cada ração
+  const calcularAutonomiaPorRacao = (quantidadeSacos, raca) => {
+    if (!raca || !quantidadeSacos || quantidadeSacos <= 0) return 0;
+
+    const estoqueKg = quantidadeSacos * (Number(raca.peso_por_saco) || 0);
+    if (estoqueKg <= 0) return 0;
+
+    const consumoMedioDiarioKg = calcularConsumoMedioDiarioKg(raca.nome);
+    if (consumoMedioDiarioKg <= 0) return 0;
+
+    return Math.max(0, Math.floor(estoqueKg / consumoMedioDiarioKg));
+  };
+
+  // Calcular autonomia total do estoque
+  const calcularAutonomiaTotal = () => {
+    const estoqueTotalKg =
+      estoque.racas?.reduce(
+        (sum, r) =>
+          sum +
+          (Number(r.quantidade_sacos) || 0) * (Number(r.peso_por_saco) || 0),
+        0,
+      ) || 0;
+
+    if (estoqueTotalKg <= 0) return 0;
+
+    const consumoMedioDiarioKg = calcularConsumoMedioDiarioKg();
+    if (consumoMedioDiarioKg <= 0) return 0;
+
+    return Math.max(0, Math.floor(estoqueTotalKg / consumoMedioDiarioKg));
+  };
+
+  // Calcular consumo médio diário em kg
+  const consumoMedioDiarioKg = calcularConsumoMedioDiarioKg();
 
   // Calcular custo médio diário
   const calcularCustoMedioDiario = () => {
@@ -340,7 +296,6 @@ export default function AlimentacaoGado() {
     return diasComRegistro > 0 ? totalCusto / diasComRegistro : 0;
   };
 
-  const consumoMedioDiarioKg = calcularConsumoMedioDiarioKg();
   const custoMedioDiario = calcularCustoMedioDiario();
   const autonomiaTotal = calcularAutonomiaTotal();
 
