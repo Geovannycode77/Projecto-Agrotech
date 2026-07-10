@@ -75,6 +75,7 @@ class EstoqueRacao(models.Model):
 
 
 class Animal(models.Model):
+
     """Modelo de animal do rebanho"""
     ESPECIE_CHOICES = (
         ('bovino', 'Bovino'),
@@ -115,7 +116,38 @@ class Animal(models.Model):
         verbose_name = 'Animal'
         verbose_name_plural = 'Animais'
     
+    def clean(self):
+        """Validações de data e idade com regras realistas (bovinos)."""
+        from datetime import date
+        from django.core.exceptions import ValidationError
+
+        if not self.data_nascimento:
+            return
+
+        hoje = timezone.now().date()
+
+        # Não pode ser futura
+        if self.data_nascimento > hoje:
+            raise ValidationError({
+                'data_nascimento': 'A data de nascimento do animal não pode estar no futuro.'
+            })
+
+        # Idade máxima realista (bovinos)
+        # Regra conservadora: bloquear acima de 35 anos.
+        idade_anos = hoje.year - self.data_nascimento.year
+        if (hoje.month, hoje.day) < (self.data_nascimento.month, self.data_nascimento.day):
+            idade_anos -= 1
+
+        if idade_anos > 35:
+            raise ValidationError({
+                'data_nascimento': 'Idade do animal acima do limite realista (verifique a data de nascimento).' 
+            })
+
+
     def save(self, *args, **kwargs):
+        # garante que clean() roda
+        self.full_clean()
+
         if self.data_nascimento:
             hoje = timezone.now().date()
             idade = hoje.year - self.data_nascimento.year
@@ -123,6 +155,7 @@ class Animal(models.Model):
                 idade -= 1
             self.idade_meses = idade * 12
         super().save(*args, **kwargs)
+
     
     def __str__(self):
         return f"{self.brinco} - {self.nome or 'Sem nome'}"

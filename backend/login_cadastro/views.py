@@ -401,159 +401,129 @@ def complete_profile(request):
         password = data.get('password')
         google_id = data.get('google_id')
         name = data.get('name', '')
-        
+
+        print("=" * 60)
+        print(f"📥 complete_profile chamado")
+        print(f"   email: {email}")
+        print(f"   role:  {role}")
+        print(f"   profile recebido: {profile}")
+        print(f"   nome_completo dentro de profile: {profile.get('nome_completo')}")
+        print(f"   crmv: {profile.get('crmv')}")
+        print(f"   especialidade: {profile.get('especialidade')}")
+        print("=" * 60)
+
         print(f"🔵 Complete Profile - Email: {email}, Role: {role}, IsGoogle: {is_google}")
         print(f"📝 Profile data: {profile}")
-        
+
         if not email:
-            return Response({
-                'success': False,
-                'error': 'O email é obrigatório.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
+            return Response({'success': False, 'error': 'O email é obrigatório.'}, status=400)
         if not role:
-            return Response({
-                'success': False,
-                'error': 'Selecione um tipo de usuário.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Verifica se usuário já existe
+            return Response({'success': False, 'error': 'Selecione um tipo de usuário.'}, status=400)
+
+        # Utilizador já existe
         user = CustomUser.objects.filter(email=email).first()
-        
         if user:
-            # ✅ CORREÇÃO: Se o usuário já existe e tem perfil, atualiza os dados
             if user.email_confirmed:
-                # Tenta obter ou criar o perfil
-                perfil, created = Perfil.objects.get_or_create(
-                    user=user,
-                    defaults={'nome_completo': profile.get('nome_completo', name)}
-                )
-                
-                # Se o perfil já existe, atualiza os campos se estiverem vazios
-                if not created:
-                    # Atualiza o nome completo se estiver vazio
-                    if not perfil.nome_completo and profile.get('nome_completo'):
-                        perfil.nome_completo = profile.get('nome_completo')
-                    
-                    # Atualiza outros campos se fornecidos
-                    if profile.get('telefone'):
-                        perfil.telefone = profile.get('telefone')
-                    if profile.get('endereco'):
-                        perfil.endereco = profile.get('endereco')
-                    if profile.get('data_nascimento'):
-                        perfil.data_nascimento = profile.get('data_nascimento')
-                    
-                    # Campos específicos por role
-                    if role == 'produtor' and profile.get('fazenda_nome'):
-                        perfil.fazenda_nome = profile.get('fazenda_nome')
-                    elif role == 'veterinario' and profile.get('especialidade'):
-                        perfil.especialidade = profile.get('especialidade')
-                    elif role == 'funcionario' and profile.get('setor'):
-                        perfil.setor = profile.get('setor')
-                    elif role == 'gestor_financeiro' and profile.get('area_atuacao'):
-                        perfil.area_atuacao = profile.get('area_atuacao')
-                    
-                    perfil.save()
-                    print(f"✅ Perfil atualizado para {user.email}: {perfil.nome_completo}")
-                
-                return Response({
-                    'success': True,
-                    'message': 'Perfil atualizado com sucesso!',
-                    'user': UserSerializer(user).data
-                }, status=status.HTTP_200_OK)
-            
-            # Usuário existe mas não confirmou email
+                # Atualiza perfil existente
+                perfil, _ = Perfil.objects.get_or_create(user=user)
+                if profile.get('nome_completo'): perfil.nome_completo = profile['nome_completo']
+                if profile.get('telefone'):      perfil.telefone      = profile['telefone']
+                if profile.get('endereco'):      perfil.endereco      = profile['endereco']
+                if profile.get('data_nascimento'): perfil.data_nascimento = profile['data_nascimento']
+                if profile.get('fazenda_nome'):  perfil.fazenda_nome  = profile['fazenda_nome']
+                if profile.get('especialidade'): perfil.especialidade = profile['especialidade']
+                if profile.get('setor'):         perfil.setor         = profile['setor']
+                if profile.get('area_atuacao'):  perfil.area_atuacao  = profile['area_atuacao']
+                perfil.save()
+                return Response({'success': True, 'message': 'Perfil atualizado!', 'user': UserSerializer(user).data})
+
             if not user.email_confirmed:
                 send_confirmation_email(user, request)
-                return Response({
-                    'success': True,
-                    'message': 'Usuário já existe. Um novo email de confirmação foi enviado.',
-                    'requires_confirmation': True
-                }, status=status.HTTP_200_OK)
-            
-            return Response({
-                'success': False,
-                'error': 'Este email já está cadastrado. Faça login.'
-            }, status=status.HTTP_400_BAD_REQUEST)
-        
-        # Cria novo usuário
+                return Response({'success': True, 'message': 'Email de confirmação reenviado.', 'requires_confirmation': True})
+
+            return Response({'success': False, 'error': 'Este email já está cadastrado.'}, status=400)
+
+        # Cria novo utilizador
         if is_google and google_credential:
-            # Usuário do Google - cria sem senha
             user = CustomUser.objects.create_user(
-                email=email,
-                password=None,
-                role=role,
-                is_approved=False,
-                email_confirmed=False,
-                is_active=True,
-                google_id=google_id,
-                profile_picture=data.get('picture', ''),
+                email=email, password=None, role=role,
+                is_approved=False, email_confirmed=False, is_active=True,
+                google_id=google_id, profile_picture=data.get('picture', ''),
                 needs_password_setup=False
             )
-            
-            # Pega o nome do perfil ou do Google
-            nome_para_perfil = profile.get('nome_completo') or name or email.split('@')[0]
-            
-            # Cria o perfil com todos os dados
-            Perfil.objects.create(
-                user=user,
-                nome_completo=nome_para_perfil,
-                telefone=profile.get('telefone', ''),
-                endereco=profile.get('endereco', ''),
-                data_nascimento=profile.get('data_nascimento') or None,
-                fazenda_nome=profile.get('fazenda_nome', ''),
-                especialidade=profile.get('especialidade', ''),
-                setor=profile.get('setor', ''),
-                area_atuacao=profile.get('area_atuacao', '')
-            )
-            print(f"✅ Usuário Google criado com perfil: {nome_para_perfil}")
         else:
-            # Usuário normal
             if not password:
-                return Response({
-                    'success': False,
-                    'error': 'A senha é obrigatória.'
-                }, status=status.HTTP_400_BAD_REQUEST)
-            
+                return Response({'success': False, 'error': 'A senha é obrigatória.'}, status=400)
             user = CustomUser.objects.create_user(
-                email=email,
-                password=password,
-                role=role,
-                is_approved=False,
-                email_confirmed=False,
-                is_active=True
+                email=email, password=password, role=role,
+                is_approved=False, email_confirmed=False, is_active=True
             )
-            
-            # Cria o perfil
-            Perfil.objects.create(
-                user=user,
-                nome_completo=profile.get('nome_completo', ''),
-                telefone=profile.get('telefone', ''),
-                endereco=profile.get('endereco', ''),
-                data_nascimento=profile.get('data_nascimento') or None,
-                fazenda_nome=profile.get('fazenda_nome', ''),
-                especialidade=profile.get('especialidade', ''),
-                setor=profile.get('setor', ''),
-                area_atuacao=profile.get('area_atuacao', '')
-            )
-        
-        # Envia email de confirmação
+
+        # ← get_or_create em vez de create (o signal pode ter criado já)
+        nome_para_perfil = profile.get('nome_completo') or name or email.split('@')[0]
+
+        print(f"🔑 Nome que vai ser gravado: '{nome_para_perfil}'")
+
+        perfil, criado = Perfil.objects.update_or_create(
+            user=user,
+            defaults={
+                'nome_completo':   nome_para_perfil,
+                'telefone':        profile.get('telefone') or '',
+                'endereco':        profile.get('endereco') or '',
+                'data_nascimento': profile.get('data_nascimento') or None,
+                'fazenda_nome':    profile.get('fazenda_nome') or '',
+                'especialidade':   profile.get('especialidade') or '',
+                'setor':           profile.get('setor') or '',
+                'area_atuacao':    profile.get('area_atuacao') or '',
+            }
+        )
+        print(f"✅ Perfil {'criado' if criado else 'atualizado'}: nome={perfil.nome_completo}, tel={perfil.telefone}")
+
+        # ── Veterinário: CRMV + especialidade ───────────────────
+        if role == 'veterinario':
+            try:
+                from veterinario_dashboard.models import Veterinario
+                crmv         = profile.get('crmv') or ''
+                especialidade = profile.get('especialidade') or 'geral'
+
+                # update_or_create para não duplicar nem perder dados
+                vet, vet_criado = Veterinario.objects.update_or_create(
+                    user=user,
+                    defaults={
+                        'registro_crmv': crmv,
+                        'especialidade':  especialidade,
+                    }
+                )
+                print(f"✅ Veterinário {'criado' if vet_criado else 'atualizado'}: CRMV={vet.registro_crmv}, esp={vet.especialidade}")
+            except Exception as e:
+                print(f"⚠️ Erro ao atualizar Veterinário: {e}")
+
+        # Guarda CRMV no model Veterinario se aplicável
+        if role == 'veterinario' and (profile.get('crmv') or profile.get('especialidade')):
+            try:
+                from veterinario_dashboard.models import Veterinario
+                vet = Veterinario.objects.filter(user=user).first()
+                if vet:
+                    if profile.get('crmv'):         vet.registro_crmv = profile['crmv']
+                    if profile.get('especialidade'): vet.especialidade  = profile.get('especialidade', 'geral')
+                    vet.save()
+                    print(f"✅ Veterinário atualizado: CRMV={vet.registro_crmv}")
+            except Exception as e:
+                print(f"⚠️ Erro ao atualizar veterinário: {e}")
+
         send_confirmation_email(user, request)
-        
+
         return Response({
             'success': True,
             'message': 'Cadastro realizado! Verifique seu email para confirmar a conta.',
             'requires_confirmation': True
         }, status=status.HTTP_201_CREATED)
-        
+
     except Exception as e:
         print(f"❌ Complete profile error: {str(e)}")
         import traceback
         traceback.print_exc()
-        return Response({
-            'success': False,
-            'error': 'Ocorreu um erro ao processar seu cadastro. Tente novamente.'
-        }, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'success': False, 'error': 'Erro ao processar cadastro. Tente novamente.'}, status=400)
 
 
 # ========== RECUPERAÇÃO DE SENHA ==========
@@ -731,24 +701,59 @@ def delete_user(request, user_id):
 @api_view(['GET', 'PUT'])
 @permission_classes([IsAuthenticated])
 def get_update_profile(request):
-    """Obter ou atualizar perfil do usuário"""
     if request.method == 'GET':
         try:
-            # Tenta buscar o perfil existente
             try:
                 perfil = Perfil.objects.get(user=request.user)
             except Perfil.DoesNotExist:
-                # Se não existir, cria um novo
-                nome_padrao = request.user.email.split('@')[0]
                 perfil = Perfil.objects.create(
                     user=request.user,
-                    nome_completo=nome_padrao
+                    nome_completo=request.user.email.split('@')[0]
                 )
-                print(f"✅ Perfil criado automaticamente para {request.user.email} com nome: {nome_padrao}")
-            
-            serializer = PerfilSerializer(perfil)
-            return Response(serializer.data)
-            
+
+            data = PerfilSerializer(perfil).data
+            data['email'] = request.user.email
+            if 'telefone' in data and data['telefone']:
+                data['telefone'] = str(data['telefone'])
+
+            # Dados extra do model Veterinario
+            if request.user.role == 'veterinario':
+                try:
+                    from veterinario_dashboard.models import Veterinario
+                    vet = Veterinario.objects.get(user=request.user)
+                    data['registro_crmv'] = vet.registro_crmv or ''
+                    data['especialidade'] = vet.get_especialidade_display() if vet.especialidade else ''
+                except Exception:
+                    data['registro_crmv'] = perfil.especialidade or ''
+
+            # Dados extra do model Funcionario
+            elif request.user.role == 'funcionario':
+                try:
+                    from funcionario_dashboard.models import Funcionario
+                    func = Funcionario.objects.get(user=request.user)
+                    data['fazenda_nome'] = func.fazenda.nome if func.fazenda else ''
+                    data['cargo'] = func.cargo or ''
+                    data['turno'] = func.turno or ''
+                    data['data_contratacao'] = func.data_contratacao or ''
+                except Exception:
+                    pass
+
+            # Dados extra do model GestorFinanceiro
+            elif request.user.role == 'gestor_financeiro':
+                try:
+                    from Gestor_financeiro_dashboard.models import GestorFinanceiro
+                    gestor = GestorFinanceiro.objects.get(user=request.user)
+                    data['fazenda_nome']  = gestor.fazenda.nome if gestor.fazenda else ''
+                    data['cargo']         = 'Gestor Financeiro'
+                    data['departamento']  = gestor.departamento or 'Financeiro'
+                    data['nivel_acesso']  = gestor.nivel_acesso or 'avancado'
+                except Exception:
+                    data['cargo']        = 'Gestor Financeiro'
+                    data['departamento'] = 'Financeiro'
+
+            # ✅ ÚNICO return, cobre TODOS os papéis (admin, produtor, veterinario, etc.)
+            return Response(data)
+
         except Exception as e:
             print(f"❌ Erro ao obter perfil: {str(e)}")
             import traceback
@@ -757,30 +762,38 @@ def get_update_profile(request):
                 {'error': f'Erro ao obter perfil: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
-    
+
     elif request.method == 'PUT':
+        # ... (essa parte já está correta, sem mudanças)
         try:
-            # Tenta buscar o perfil existente
             try:
                 perfil = Perfil.objects.get(user=request.user)
             except Perfil.DoesNotExist:
-                # Se não existir, cria um novo
-                perfil = Perfil.objects.create(
-                    user=request.user,
-                    nome_completo=''
-                )
-            
+                perfil = Perfil.objects.create(user=request.user, nome_completo='')
+
             serializer = PerfilSerializer(perfil, data=request.data, partial=True)
             if serializer.is_valid():
                 serializer.save()
-                print(f"✅ Perfil atualizado para {request.user.email}")
+
+                # Atualiza também o model Veterinario se aplicável
+                if request.user.role == 'veterinario':
+                    try:
+                        from veterinario_dashboard.models import Veterinario
+                        vet = Veterinario.objects.filter(user=request.user).first()
+                        if vet:
+                            if request.data.get('registro_crmv'):
+                                vet.registro_crmv = request.data.get('registro_crmv')
+                            if request.data.get('especialidade'):
+                                vet.especialidade = request.data.get('especialidade')
+                            vet.save()
+                    except Exception:
+                        pass
+
                 return Response(serializer.data)
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-            
+
         except Exception as e:
             print(f"❌ Erro ao atualizar perfil: {str(e)}")
-            import traceback
-            traceback.print_exc()
             return Response(
                 {'error': f'Erro ao atualizar perfil: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -802,3 +815,58 @@ def get_admin_stats(request):
         }
     }
     return Response(stats)
+
+# ========== EXCLUIR CONTA ==========
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_own_account(request):
+    """Utilizador elimina a própria conta (dados pessoais apenas)"""
+    try:
+        user = request.user
+        if user.is_superuser:
+            return Response(
+                {'error': 'Conta de administrador não pode ser eliminada por aqui.'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+        user.delete()
+        return Response({'message': 'Conta eliminada com sucesso.'}, status=status.HTTP_200_OK)
+    except Exception as e:
+        print(f"❌ Erro ao eliminar conta: {str(e)}")
+        return Response({'error': 'Erro ao eliminar conta.'}, status=status.HTTP_400_BAD_REQUEST)
+    
+    # ========== FOTO DE PERFIL ==========
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def update_profile_photo(request):
+    """Atualizar foto de perfil"""
+    try:
+        foto = request.FILES.get('foto')
+        if not foto:
+            return Response({'error': 'Nenhuma foto enviada.'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Por agora guarda o nome do ficheiro — adapta para S3/Cloudinary se necessário
+        import os
+        from django.conf import settings as django_settings
+
+        upload_dir = os.path.join(django_settings.MEDIA_ROOT, 'perfil_fotos')
+        os.makedirs(upload_dir, exist_ok=True)
+
+        ext = foto.name.split('.')[-1]
+        filename = f"user_{request.user.id}.{ext}"
+        filepath = os.path.join(upload_dir, filename)
+
+        with open(filepath, 'wb+') as f:
+            for chunk in foto.chunks():
+                f.write(chunk)
+
+        foto_url = f"/media/perfil_fotos/{filename}"
+        request.user.profile_picture = foto_url
+        request.user.save(update_fields=['profile_picture'])
+
+        return Response({'foto_url': foto_url, 'message': 'Foto atualizada com sucesso.'})
+
+    except Exception as e:
+        print(f"❌ Erro ao atualizar foto: {str(e)}")
+        return Response({'error': 'Erro ao guardar foto.'}, status=status.HTTP_400_BAD_REQUEST)

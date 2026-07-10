@@ -217,10 +217,6 @@ export default function PerfilAnimal({ animal, onVoltar, onAtualizar }) {
               <p className="font-medium">{formData.brinco}</p>
             </div>
             <div className="p-3 bg-gray-50 rounded-lg">
-              <p className="text-xs text-gray-500">Nome</p>
-              <p className="font-medium">{formData.nome || "-"}</p>
-            </div>
-            <div className="p-3 bg-gray-50 rounded-lg">
               <p className="text-xs text-gray-500">Raça</p>
               <p className="font-medium">{formData.raca || "-"}</p>
             </div>

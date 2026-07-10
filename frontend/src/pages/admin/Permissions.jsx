@@ -79,6 +79,14 @@ export default function Permissions() {
     }
   };
 
+  // Um módulo é aplicável à camada se camada.modulos_aplicaveis for null/undefined
+  // (= acesso a tudo, caso do Administrador) ou se o id do módulo estiver na lista.
+  const isModuloAplicavel = (camada, moduloId) => {
+    const aplicaveis = camada?.modulos_aplicaveis;
+    if (!aplicaveis) return true;
+    return aplicaveis.includes(moduloId);
+  };
+
   const getCorCamada = (cor) => {
     const cores = {
       red: "bg-red-100 text-red-700",
@@ -88,6 +96,17 @@ export default function Permissions() {
       purple: "bg-purple-100 text-purple-700",
     };
     return cores[cor] || "bg-gray-100 text-gray-700";
+  };
+
+  const getDotCorCamada = (cor) => {
+    const dots = {
+      red: "bg-red-500",
+      green: "bg-green-500",
+      blue: "bg-blue-500",
+      yellow: "bg-yellow-500",
+      purple: "bg-purple-500",
+    };
+    return dots[cor] || "bg-gray-400";
   };
 
   if (loading) {
@@ -170,9 +189,25 @@ export default function Permissions() {
                       </div>
                     </td>
                     {modulos.map((modulo) => {
+                      const aplicavel = isModuloAplicavel(camada, modulo.id);
+                      const isAdmin = camadaId === "administrador";
+
+                      if (!aplicavel) {
+                        return (
+                          <td key={modulo.id} className="text-center p-3">
+                            <span
+                              className="text-gray-300 select-none"
+                              title={`${camada.nome} não utiliza o módulo "${modulo.nome}"`}
+                            >
+                              —
+                            </span>
+                          </td>
+                        );
+                      }
+
                       const isChecked =
                         permissoesAtuais[camadaId]?.[modulo.id] || false;
-                      const isAdmin = camadaId === "administrador";
+
                       return (
                         <td key={modulo.id} className="text-center p-3">
                           <Switch
@@ -227,7 +262,7 @@ export default function Permissions() {
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {Object.entries(camadas).map(([camadaId, camada]) => (
               <div key={camadaId} className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full bg-${camada.cor}-500`} />
+                <div className={`w-3 h-3 rounded-full ${getDotCorCamada(camada.cor)}`} />
                 <span className="text-sm text-gray-600">{camada.nome}</span>
               </div>
             ))}

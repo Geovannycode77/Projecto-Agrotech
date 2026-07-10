@@ -5,7 +5,6 @@ from django.conf import settings
 from django.core.validators import RegexValidator, MinLengthValidator
 from django.core.exceptions import ValidationError
 from django.utils import timezone
-from phonenumber_field.modelfields import PhoneNumberField
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 
@@ -123,10 +122,10 @@ class Perfil(models.Model):
     )
     
     # Telefone usando biblioteca especializada
-    telefone = PhoneNumberField(
-        null=True, 
-        blank=True, 
-        region='AO',
+    telefone = models.CharField(
+        max_length=20,
+        blank=True,
+        null=True,
         help_text="Telefone no formato internacional (ex: +244912345678)"
     )
     
@@ -182,11 +181,25 @@ class Perfil(models.Model):
         """Validações customizadas"""
         from datetime import date
         
-        # Validação da data de nascimento (não pode ser futura)
-        if self.data_nascimento and self.data_nascimento > date.today():
-            raise ValidationError({
-                'data_nascimento': 'A data de nascimento não pode ser futura.'
-            })
+        if self.data_nascimento:
+            hoje = date.today()
+
+            # Não pode ser futura
+            if self.data_nascimento > hoje:
+                raise ValidationError({
+                    'data_nascimento': 'A data de nascimento não pode ser futura.'
+                })
+
+            # Deve ser maior/igual a 18 anos
+            idade_anos = hoje.year - self.data_nascimento.year
+            if (hoje.month, hoje.day) < (self.data_nascimento.month, self.data_nascimento.day):
+                idade_anos -= 1
+
+            if idade_anos < 18:
+                raise ValidationError({
+                    'data_nascimento': 'O utilizador deve ser maior de 18 anos.'
+                })
+
         
         # Validação do nome completo (mínimo 3 caracteres)
         if self.nome_completo and len(self.nome_completo.strip()) < 3:
@@ -194,11 +207,6 @@ class Perfil(models.Model):
                 'nome_completo': 'O nome completo deve ter pelo menos 3 caracteres.'
             })
         
-        # Validação do telefone
-        if self.telefone and len(str(self.telefone)) < 9:
-            raise ValidationError({
-                'telefone': 'O telefone deve ter pelo menos 9 dígitos.'
-            })
     
     def save(self, *args, **kwargs):
         self.full_clean()
@@ -304,8 +312,8 @@ def criar_perfil_usuario(sender, instance, created, **kwargs):
                     user=instance,
                     defaults={
                         'fazenda': fazenda,
-                        'especialidade': 'Clínica Geral',
-                        'registro_profissional': ''
+                        'especialidade': 'geral',
+                        'registro_crmv': None
                     }
                 )
                 if created:
@@ -327,7 +335,9 @@ def criar_perfil_usuario(sender, instance, created, **kwargs):
                     user=instance,
                     defaults={
                         'fazenda': fazenda,
-                        'cargo': 'Gestor Financeiro'
+                        'departamento': 'Financeiro',
+                        'nivel_acesso': 'avancado',
+                        'ativo': True
                     }
                 )
                 if created:

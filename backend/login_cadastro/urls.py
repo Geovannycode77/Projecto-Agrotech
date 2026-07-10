@@ -24,6 +24,8 @@ urlpatterns = [
     
     # Perfil
     path('profile/', views.get_update_profile, name='profile'),
+    path('delete-account/', views.delete_own_account, name='delete_account'),
+    path('profile/photo/', views.update_profile_photo, name='profile_photo'),
     
     # Admin - Gestão de usuários
     path('admin/users/', views.list_users, name='list_users'),

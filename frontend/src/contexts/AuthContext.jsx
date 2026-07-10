@@ -243,36 +243,56 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const completeProfile = async (data) => {
-    try {
-      const response = await authService.completeProfile(data);
-      if (response.success === false) {
-        return { success: false, error: response.error };
-      }
+const completeProfile = async (data) => {
+  try {
+    const response = await authService.completeProfile(data);
 
-      // Após completar o perfil, buscar os dados atualizados do usuário
-      if (response.user) {
-        setUser(response.user);
-        setIsAuthenticated(true);
-      }
+    if (response.success === false) {
+      return { success: false, error: response.error };
+    }
 
-      // Buscar o perfil atualizado
+    // Se a resposta já inclui token (utilizador já existia e está confirmado)
+    if (response.access) {
+      const expiryTime = new Date().getTime() + (8 * 60 * 60 * 1000);
+      localStorage.setItem("access_token", response.access);
+      localStorage.setItem("refresh_token", response.refresh);
+      localStorage.setItem("token_expiry", expiryTime.toString());
+      localStorage.setItem("user", JSON.stringify(response.user));
+      setUser(response.user);
+      setIsAuthenticated(true);
+
       try {
         const perfilData = await authService.getProfile();
         setPerfil(perfilData);
       } catch (error) {
-        console.error("Erro ao carregar perfil:", error);
+          console.error('Complete profile error:', error);
+          console.error('Status:', error.response?.status);
+          console.error('Detalhes:', error.response?.data);
+          console.error('Detalhes JSON:', JSON.stringify(error.response?.data));
       }
-
-      return { success: true, message: response.message };
-    } catch (error) {
-      console.error("Complete profile error:", error);
-      return {
-        success: false,
-        error: error.response?.data?.error || "Erro ao completar perfil",
-      };
+       return {
+      success: false,
+      error: error.response?.data?.error || "Erro ao completar perfil",
+    };
     }
-  };
+
+    // Caso normal: novo utilizador criado, email de confirmação enviado
+    // NÃO tenta carregar perfil — não há token ainda
+    if (response.user) {
+      setUser(response.user);
+    }
+
+    return { success: true, message: response.message || 'Cadastro realizado! Verifique o seu email.' };
+
+  } catch (error) {
+    console.error('Complete profile error:', error);
+    console.error('Detalhes:', error.response?.data);
+    return {
+      success: false,
+      error: error.response?.data?.error || "Erro ao completar perfil",
+    };
+  }
+};
 
   const confirmEmail = async (token) => {
     try {

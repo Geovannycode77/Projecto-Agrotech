@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { PawPrint, Weight, Baby, AlertTriangle, CheckCircle, Loader2 } from 'lucide-react';
-import { funcionarioService } from '@/services/funcionarioService';
+import { funcionarioService } from '@/services/FuncionarioService';
 import { toast } from '@/hooks/use-toast';
 
 export default function AtualizarAnimais() {
@@ -46,7 +46,7 @@ export default function AtualizarAnimais() {
       await funcionarioService.atualizarPeso(pesoData.animal, pesoData.peso);
       showSuccess('peso');
       setPesoData({ animal: '', peso: '' });
-      await carregarAnimais(); // atualiza lista com novo peso
+      await carregarAnimais();
     } catch (error) {
       console.error('Erro:', error.response?.data);
       toast({ title: 'Erro', description: 'Erro ao atualizar peso.', variant: 'destructive' });
@@ -84,10 +84,9 @@ export default function AtualizarAnimais() {
     setSubmitting(s => ({ ...s, morte: true }));
     try {
       await funcionarioService.registrarMorte({
-        animal:      morteData.animal,
-        data_hora:   new Date(morteData.data).toISOString(),
-        descricao:   morteData.causa,
-        novo_status: 'morto',
+        animal:   morteData.animal,
+        descricao: morteData.causa,
+        data_hora: new Date(morteData.data + 'T12:00:00').toISOString(),
       });
       showSuccess('morte');
       setMorteData({ animal: '', data: new Date().toISOString().split('T')[0], causa: '' });
@@ -106,9 +105,12 @@ export default function AtualizarAnimais() {
 
   const causasMorte = ['Doença', 'Acidente', 'Idade avançada', 'Complicação no parto', 'Outro'];
 
-  const getAnimalLabel = (a) =>
-    `${a.brinco || a.id} ${a.nome ? `- ${a.nome}` : ''} ${a.especie_display ? `(${a.especie_display})` : ''}`.trim();
-
+  const getAnimalLabel = (a) => {
+  const nome = a.nome ? `- ${a.nome}` : '';
+  const especie = a.especie_display ? `(${a.especie_display})` : '';
+  const peso = a.peso_atual ? `| ${a.peso_atual}kg` : '';
+  return `${a.brinco || a.id} ${nome} ${especie} ${peso}`.trim();
+};
   // Só fêmeas para seleção de mãe
   const femeas = animais.filter(a => a.sexo === 'F' && a.status === 'ativo');
 

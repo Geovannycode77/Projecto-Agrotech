@@ -70,11 +70,9 @@ const menuItemsByRole = {
     { path: "/admin/dashboard", icon: LayoutDashboard, label: "Dashboard", color: "text-emerald-600" },
     { path: "/admin/users", icon: Users, label: "Gestão de Utilizadores", color: "text-blue-600" },
     { path: "/admin/permissions", icon: Shield, label: "Permissões", color: "text-purple-600" },
-    { path: "/admin/settings", icon: Settings, label: "Configuração do Sistema", color: "text-orange-600" },
     { path: "/admin/backups", icon: Database, label: "Backups", color: "text-teal-600" },
     { path: "/admin/reports", icon: FileText, label: "Relatórios Gerais", color: "text-rose-600" },
     { path: "/admin/security", icon: Lock, label: "Segurança", color: "text-red-600" },
-    { path: "/admin/monitoring", icon: BarChart3, label: "Monitoramento", color: "text-indigo-600" },
   ],
 };
 

@@ -51,6 +51,9 @@ class Receita(models.Model):
     comprovante = models.FileField(upload_to='comprovantes/receitas/', blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
+    comprador       = models.CharField(max_length=200, blank=True, default='')
+    forma_pagamento = models.CharField(max_length=100, blank=True, default='')
+    peso_total      = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     
     class Meta:
         db_table = 'gestor_receitas'

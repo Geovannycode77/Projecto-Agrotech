@@ -115,7 +115,7 @@ export default function AlertasSaude({ alertas: alertasProps, onAtualizar }) {
                       <div>
                         <p className="font-medium">{alerta.mensagem}</p>
                         <p className="text-sm text-gray-600 mt-1">
-                          Animal: {alerta.animal_nome || alerta.animal}
+                          Animal: { alerta.animal}
                         </p>
                         <p className="text-xs text-gray-500 mt-1">
                           Prioridade: {alerta.prioridade?.toUpperCase() || 'NORMAL'}
@@ -152,20 +152,28 @@ export default function AlertasSaude({ alertas: alertasProps, onAtualizar }) {
         <CardContent>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
             <div className="text-center p-3 bg-emerald-50 rounded-lg">
-              <div className="text-2xl font-bold text-emerald-600">{estatisticas.saudaveis || 0}</div>
+              <div className="text-2xl font-bold text-emerald-600">
+                {estatisticas.animais_saudaveis || estatisticas.saudaveis || 0}
+              </div>
               <div className="text-sm text-gray-600">Saudáveis</div>
             </div>
-            <div className="text-center p-3 bg-yellow-50 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-600">{estatisticas.atencao || 0}</div>
-              <div className="text-sm text-gray-600">Em Atenção</div>
-            </div>
             <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{estatisticas.tratamento || 0}</div>
+              <div className="text-2xl font-bold text-blue-600">
+                {estatisticas.tratamentos_ativos || estatisticas.tratamento || 0}
+              </div>
               <div className="text-sm text-gray-600">Em Tratamento</div>
             </div>
             <div className="text-center p-3 bg-red-50 rounded-lg">
-              <div className="text-2xl font-bold text-red-600">{estatisticas.criticos || 0}</div>
-              <div className="text-sm text-gray-600">Críticos</div>
+              <div className="text-2xl font-bold text-red-600">
+                {estatisticas.animais_doentes || estatisticas.criticos || 0}
+              </div>
+              <div className="text-sm text-gray-600">Doentes</div>
+            </div>
+            <div className="text-center p-3 bg-gray-50 rounded-lg">
+              <div className="text-2xl font-bold text-gray-600">
+                {estatisticas.animais_mortos || 0}
+              </div>
+              <div className="text-sm text-gray-600">Mortos</div>
             </div>
           </div>
         </CardContent>

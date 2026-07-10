@@ -1,3 +1,4 @@
+import json
 from rest_framework import viewsets, status, filters
 from rest_framework.decorators import action, api_view, permission_classes
 from rest_framework.response import Response
@@ -599,6 +600,160 @@ def update_role_permissions(request, role_name):
     except Exception as e:
         return Response(
             {'error': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+# ==================== PERMISSÕES SIMPLIFICADAS ====================
+
+def _default_simple_permissions():
+    """Estrutura padrão de camadas (roles) + módulos do sistema."""
+    return {
+        'camadas': {
+            'administrador': {
+                'nome': 'Administrador',
+                'descricao': 'Acesso total ao sistema',
+                'cor': 'red',
+                'permissoes': ['*'],
+            },
+            'produtor': {
+                'nome': 'Produtor',
+                'descricao': 'Gestão de produção, animais e fazenda',
+                'cor': 'green',
+                'permissoes': ['animais', 'producao', 'fazenda', 'dashboard'],
+            },
+            'veterinario': {
+                'nome': 'Veterinário',
+                'descricao': 'Gestão de saúde animal',
+                'cor': 'blue',
+                'permissoes': ['animais', 'vacinas', 'consultas', 'dashboard'],
+            },
+            'funcionario': {
+                'nome': 'Funcionário',
+                'descricao': 'Tarefas operacionais',
+                'cor': 'yellow',
+                'permissoes': ['tarefas', 'animais_leitura', 'dashboard'],
+            },
+            'gestor_financeiro': {
+                'nome': 'Gestor Financeiro',
+                'descricao': 'Gestão financeira',
+                'cor': 'purple',
+                'permissoes': ['financas', 'relatorios', 'dashboard'],
+            },
+        },
+        'modulos': [
+            {'id': 'dashboard', 'nome': 'Dashboard'},
+            {'id': 'animais', 'nome': 'Animais'},
+            {'id': 'producao', 'nome': 'Produção'},
+            {'id': 'fazenda', 'nome': 'Fazenda'},
+            {'id': 'vacinas', 'nome': 'Vacinas'},
+            {'id': 'consultas', 'nome': 'Consultas'},
+            {'id': 'tarefas', 'nome': 'Tarefas'},
+            {'id': 'financas', 'nome': 'Finanças'},
+            {'id': 'relatorios', 'nome': 'Relatórios'},
+            {'id': 'animais_leitura', 'nome': 'Animais (Leitura)'},
+        ],
+    }
+
+
+def _load_simple_permissions():
+    """Lê do banco a configuração salva, ou devolve o default se ainda não existir."""
+    saved = SystemSettings.objects.filter(key='simple_permissions').first()
+    if saved and saved.value:
+        try:
+            data = json.loads(saved.value)
+            if data.get('camadas') and data.get('modulos'):
+                return data
+        except (json.JSONDecodeError, TypeError):
+            pass
+    return _default_simple_permissions()
+
+
+# Quais módulos cada camada (role) realmente usa no sistema.
+# Isso é uma regra de negócio fixa (reflete o que cada ModulePermission(...)
+# checa nas views de cada app) — não fica salvo no banco, é recalculado
+# sempre que a matriz é carregada. None = acesso a todos os módulos.
+MODULOS_APLICAVEIS_POR_ROLE = {
+    'administrador': None,
+    'produtor': ['dashboard', 'animais', 'producao', 'fazenda', 'tarefas', 'financas', 'relatorios'],
+    'veterinario': ['dashboard', 'animais', 'vacinas', 'consultas'],
+    'funcionario': ['dashboard', 'tarefas', 'animais_leitura'],
+    'gestor_financeiro': ['dashboard', 'financas', 'relatorios'],
+}
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def get_simple_permissions(request):
+    """Retorna a configuração simplificada de permissões por role + lista de módulos"""
+    try:
+        data = _load_simple_permissions()
+
+        # Anexa, para cada camada, quais módulos ela realmente usa.
+        # O frontend usa isso pra não mostrar switch de módulo que não
+        # se aplica àquele role (ex: Veterinário não usa "Tarefas").
+        for camada_id, camada in data['camadas'].items():
+            camada['modulos_aplicaveis'] = MODULOS_APLICAVEIS_POR_ROLE.get(camada_id)
+
+        return Response(data)
+    except Exception as e:
+        return Response(
+            {'error': f'Erro ao carregar permissões simplificadas: {str(e)}'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated, IsAdminUser])
+def save_simple_permissions(request):
+    """
+    Salva a configuração simplificada de permissões.
+    O frontend envia: { "administrador": {"dashboard": true, ...}, "produtor": {...}, ... }
+    """
+    try:
+        permissoes_marcadas = request.data
+
+        if not isinstance(permissoes_marcadas, dict) or not permissoes_marcadas:
+            return Response(
+                {'error': 'Dados de permissões inválidos'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        current_data = _load_simple_permissions()
+
+        novas_camadas = {}
+        for camada_id, camada_info in current_data['camadas'].items():
+            if camada_id == 'administrador':
+                # Administrador mantém acesso total sempre
+                novas_camadas[camada_id] = {**camada_info, 'permissoes': ['*']}
+                continue
+
+            aplicaveis = MODULOS_APLICAVEIS_POR_ROLE.get(camada_id)
+            modulos_marcados = [
+                modulo_id
+                for modulo_id, marcado in permissoes_marcadas.get(camada_id, {}).items()
+                if marcado and (aplicaveis is None or modulo_id in aplicaveis)
+            ]
+            novas_camadas[camada_id] = {**camada_info, 'permissoes': modulos_marcados}
+
+        payload = {'camadas': novas_camadas, 'modulos': current_data['modulos']}
+
+        SystemSettings.objects.update_or_create(
+            key='simple_permissions',
+            defaults={'value': json.dumps(payload), 'updated_by': request.user}
+        )
+
+        AdminLog.objects.create(
+            admin=request.user,
+            action='settings_change',
+            description='Permissões simplificadas atualizadas',
+            ip_address=get_client_ip(request)
+        )
+
+        return Response({'message': 'Permissões salvas com sucesso', **payload})
+    except Exception as e:
+        return Response(
+            {'error': f'Erro ao salvar permissões: {str(e)}'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 

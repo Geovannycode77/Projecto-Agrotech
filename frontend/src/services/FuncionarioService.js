@@ -87,28 +87,26 @@ export const funcionarioService = {
   },
 
   // Atualização de Animais
-  atualizarPeso: async (animalId, peso) => {
-    const response = await api.post(`funcionario/atualizacoes/`, {
-      animal: animalId,
-      tipo: 'peso',
-      novo_valor: peso,
-      descricao: `Atualização de peso para ${peso}kg`
-    });
-    return response.data;
-  },
+
 
   registrarNascimento: async (data) => {
     const response = await api.post("funcionario/nascimentos/", data);
     return response.data;
   },
 
-  registrarMorte: async (data) => {
-    const response = await api.post(`funcionario/atualizacoes/`, {
-      ...data,
-      tipo: 'obito'
-    });
-    return response.data;
-  },
+registrarMorte: async (data) => {
+  const payload = JSON.stringify({
+    animal_id: String(data.animal),   // ← força string no JSON
+    status_novo: 'morto',
+    observacoes: data.descricao,
+    data_hora: data.data_hora,
+  });
+
+  const response = await api.post('funcionario/atualizacoes/', payload, {
+    headers: { 'Content-Type': 'application/json' }
+  });
+  return response.data;
+},
 
   // Perfil
   getPerfil: async () => {
@@ -144,4 +142,18 @@ export const funcionarioService = {
     const response = await api.get("funcionario/animais/");
     return response.data;
   },
+
+atualizarPeso: async (animalId, peso) => {
+  const payload = JSON.stringify({
+    animal_id: String(animalId),      // ← força string no JSON
+    peso_novo: parseFloat(peso),
+    observacoes: `Peso atualizado para ${peso}kg`,
+  });
+
+  const response = await api.post('funcionario/atualizacoes/', payload, {
+    headers: { 'Content-Type': 'application/json' }
+  });
+  return response.data;
+},
+
 };

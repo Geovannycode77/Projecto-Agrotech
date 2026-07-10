@@ -11,6 +11,7 @@ from django.utils import timezone
 from datetime import timedelta, date
 from django_filters.rest_framework import DjangoFilterBackend
 from login_cadastro.models import CustomUser
+from login_cadastro.permissions import ModulePermission
 from produtor_dashboard.models import Fazenda, Animal, TipoRacao
 from produtor_dashboard.serializers import AnimalSerializer, TipoRacaoSerializer
 from .models import (
@@ -66,7 +67,7 @@ class FuncionarioViewSet(viewsets.ModelViewSet):
         serializer.save(user=self.request.user)
 
 @api_view(['GET'])
-@permission_classes([IsFuncionarioOrAdmin])
+@permission_classes([IsFuncionarioOrAdmin, ModulePermission('animais', 'animais_leitura')])
 def get_animais_funcionario(request):
     if request.user.role == 'funcionario':
         funcionario = Funcionario.objects.get(user=request.user)
@@ -81,7 +82,7 @@ def get_animais_funcionario(request):
     return Response(serializer.data)
 
 @api_view(['GET'])
-@permission_classes([IsFuncionarioOrAdmin])
+@permission_classes([IsFuncionarioOrAdmin, ModulePermission('producao', 'tarefas')])
 def get_tipos_racao_funcionario(request):
     if request.user.role == 'funcionario':
         funcionario = Funcionario.objects.get(user=request.user)
@@ -97,7 +98,7 @@ def get_tipos_racao_funcionario(request):
 
 class TarefaViewSet(viewsets.ModelViewSet):
     serializer_class = TarefaSerializer
-    permission_classes = [IsFuncionarioOrAdmin]
+    permission_classes = [IsFuncionarioOrAdmin, ModulePermission('tarefas')]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'prioridade', 'tipo']
     search_fields = ['titulo', 'descricao']
@@ -177,7 +178,7 @@ class TarefaViewSet(viewsets.ModelViewSet):
 
 class RegistroAlimentacaoViewSet(viewsets.ModelViewSet):
     serializer_class = RegistroAlimentacaoFuncionarioSerializer
-    permission_classes = [IsFuncionarioOrAdmin]
+    permission_classes = [IsFuncionarioOrAdmin, ModulePermission('producao', 'tarefas')]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['tipo_racao']
     ordering_fields = ['data_hora']
@@ -204,7 +205,7 @@ class RegistroAlimentacaoViewSet(viewsets.ModelViewSet):
 
 class OcorrenciaViewSet(viewsets.ModelViewSet):
     serializer_class = OcorrenciaSerializer
-    permission_classes = [IsFuncionarioOrAdmin]
+    permission_classes = [IsFuncionarioOrAdmin, ModulePermission('animais', 'tarefas')]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['tipo', 'resolvido']
     search_fields = ['titulo', 'descricao']
@@ -240,9 +241,9 @@ class OcorrenciaViewSet(viewsets.ModelViewSet):
 
 class AtualizacaoAnimalViewSet(viewsets.ModelViewSet):
     serializer_class = AtualizacaoAnimalSerializer
-    permission_classes = [IsFuncionarioOrAdmin]
+    permission_classes = [IsFuncionarioOrAdmin, ModulePermission('animais', 'tarefas')]
     ordering = ['-data_hora']
-    
+
     def get_queryset(self):
         if self.request.user.role == 'funcionario':
             return AtualizacaoAnimal.objects.filter(funcionario=self.request.user)
@@ -250,13 +251,54 @@ class AtualizacaoAnimalViewSet(viewsets.ModelViewSet):
             fazenda = Fazenda.objects.get(produtor=self.request.user)
             return AtualizacaoAnimal.objects.filter(animal__fazenda=fazenda)
         return AtualizacaoAnimal.objects.all()
-    
-    def perform_create(self, serializer):
-        serializer.save(funcionario=self.request.user)
+
+    def create(self, request, *args, **kwargs):
+        import uuid  # ← import aqui dentro mesmo
+
+        animal_id = request.data.get('animal_id')
+        print(f"🔍 animal_id recebido: {animal_id!r}, tipo: {type(animal_id)}")
+
+        if not animal_id:
+            return Response({'error': 'animal_id é obrigatório.'}, status=400)
+
+        try:
+            # ← converte string UUID para objeto UUID que o Django entende
+            animal = Animal.objects.get(pk=uuid.UUID(str(animal_id)))
+        except Animal.DoesNotExist:
+            return Response({'error': 'Animal não encontrado.'}, status=400)
+        except (ValueError, AttributeError) as e:
+            print(f"❌ Erro UUID: {e}")
+            return Response({'error': f'UUID inválido: {animal_id}'}, status=400)
+
+        peso_novo   = request.data.get('peso_novo')
+        status_novo = request.data.get('status_novo')
+        observacoes = request.data.get('observacoes', '')
+        data_hora   = request.data.get('data_hora', timezone.now())
+
+        atualizacao = AtualizacaoAnimal.objects.create(
+            funcionario     = request.user,
+            animal          = animal,
+            peso_anterior   = animal.peso_atual,
+            peso_novo       = float(peso_novo) if peso_novo else None,
+            status_anterior = animal.status,
+            status_novo     = status_novo or None,
+            observacoes     = observacoes,
+            data_hora       = data_hora,
+        )
+
+        # Aplica as mudanças no animal
+        if peso_novo:
+            animal.peso_atual = float(peso_novo)
+        if status_novo:
+            animal.status = status_novo
+        animal.save()
+
+        serializer = self.get_serializer(atualizacao)
+        return Response(serializer.data, status=status.HTTP_201_CREATED)
 
 class NascimentoViewSet(viewsets.ModelViewSet):
     serializer_class = NascimentoSerializer
-    permission_classes = [IsFuncionarioOrAdmin]
+    permission_classes = [IsFuncionarioOrAdmin, ModulePermission('animais', 'tarefas')]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['especie']
     ordering = ['-data_nascimento']
@@ -315,7 +357,7 @@ class FuncionarioViewSet(viewsets.ModelViewSet):
         return Response([])
 
 @api_view(['GET'])
-@permission_classes([IsFuncionarioOrAdmin])
+@permission_classes([IsFuncionarioOrAdmin, ModulePermission('dashboard')])
 def get_funcionario_dashboard(request):
 
     """Dados completos do dashboard do funcionário"""

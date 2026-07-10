@@ -120,13 +120,12 @@ export const authService = {
     localStorage.removeItem("access_token");
     localStorage.removeItem("refresh_token");
     localStorage.removeItem("user");
-    // NÃO coloque window.location.href aqui
   },
   
-      getProfile: async () => {
+  getProfile: async () => {
       const response = await authApi.get('profile/');
       return response.data;
-    },
+  },
 
 
   getCurrentUser: async () => {
@@ -138,6 +137,18 @@ export const authService = {
     const response = await authApi.put("profile/", profileData);
     return response.data;
   },
+
+deleteAccount: async () => {
+  const response = await authApi.delete("delete-account/");
+  return response.data;
+},
+
+updateProfileWithPhoto: async (formData) => {
+  const response = await authApi.patch("profile/photo/", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+  });
+  return response.data;
+},
 
   googleLogin: async (data) => {
     const response = await authApi.post("google-login/", data);
@@ -255,6 +266,42 @@ export const adminService = {
       },
     );
     return response.data;
+  },
+
+  // REPORTS
+  getRecentReports: async () => {
+    try {
+      const response = await api.get('dashboard-admin/reports/');
+      return response.data;
+    } catch {
+      return [];
+    }
+  },
+
+  generateReport: async (reportId, dateRange) => {
+    try {
+      const response = await api.get('dashboard-admin/reports/generate/', {
+        params: { tipo: reportId, start: dateRange.start, end: dateRange.end },
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao gerar relatório:', error);
+      throw error;
+    }
+  },
+
+  exportData: async (formato, dateRange) => {
+    try {
+      const response = await api.get('dashboard-admin/reports/export/', {
+        params: { formato, start: dateRange.start, end: dateRange.end },
+        responseType: 'blob',
+      });
+      return response.data;
+    } catch (error) {
+      console.error('Erro ao exportar:', error);
+      throw error;
+    }
   },
 
   // BACKUPS

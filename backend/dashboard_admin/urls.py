@@ -29,6 +29,8 @@ urlpatterns = [
     path('permissions/', views.get_permissions, name='admin-permissions'),
     path('roles-permissions/', views.get_roles_permissions, name='admin-roles-permissions'),
     path('roles-permissions/<str:role_name>/', views.update_role_permissions, name='admin-update-role-permissions'),
+    path('simple-permissions/', views.get_simple_permissions, name='admin-simple-permissions'),
+    path('simple-permissions/save/', views.save_simple_permissions, name='admin-save-simple-permissions'),
     
     # SEGURANÇA
     path('security/settings/', views.get_security_settings, name='security-settings'),

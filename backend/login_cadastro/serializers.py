@@ -62,10 +62,26 @@ class PerfilSerializer(serializers.ModelSerializer):
         read_only_fields = ['id', 'user', 'created_at', 'updated_at']
     
     def validate_data_nascimento(self, value):
-        """Valida que a data de nascimento não é futura"""
-        if value and value > date.today():
+        """Valida que a data de nascimento não é futura e que o utilizador é maior de 18 anos"""
+        if not value:
+            return value
+
+        hoje = date.today()
+
+        # Não pode ser futura
+        if value > hoje:
             raise serializers.ValidationError('A data de nascimento não pode ser futura.')
+
+        # Deve ser maior de 18 anos
+        idade_anos = hoje.year - value.year
+        if (hoje.month, hoje.day) < (value.month, value.day):
+            idade_anos -= 1
+
+        if idade_anos < 18:
+            raise serializers.ValidationError('O utilizador deve ser maior de 18 anos.')
+
         return value
+
     
     def validate_nome_completo(self, value):
         """Valida que o nome completo tem pelo menos 3 caracteres"""

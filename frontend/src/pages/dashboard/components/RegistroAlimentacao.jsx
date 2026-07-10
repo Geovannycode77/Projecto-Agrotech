@@ -3,13 +3,14 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Utensils } from 'lucide-react';
+import { Loader2, Utensils, CheckCircle } from 'lucide-react';
 import { funcionarioService } from '@/services/FuncionarioService';
 import { toast } from '@/hooks/use-toast';
 
 export default function RegistroAlimentacao() {
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [success, setSuccess] = useState(false);
   const [animais, setAnimais] = useState([]);
   const [tiposRacao, setTiposRacao] = useState([]);
   const [form, setForm] = useState({
@@ -17,7 +18,7 @@ export default function RegistroAlimentacao() {
     tipo_racao: '',
     quantidade_kg: '',
     observacoes: '',
-    horario: ''
+    horario: new Date().toTimeString().slice(0, 5), // HH:MM atual
   });
 
   useEffect(() => {
@@ -29,17 +30,13 @@ export default function RegistroAlimentacao() {
     try {
       const [animaisData, tiposData] = await Promise.all([
         funcionarioService.getAnimais(),
-        funcionarioService.getTiposRacao()
+        funcionarioService.getTiposRacao(),
       ]);
-      setAnimais(animaisData.results || animaisData);
-      setTiposRacao(tiposData.results || tiposData);
+      setAnimais(Array.isArray(animaisData) ? animaisData : animaisData.results || []);
+      setTiposRacao(Array.isArray(tiposData) ? tiposData : tiposData.results || []);
     } catch (error) {
       console.error('Erro ao carregar dados:', error);
-      toast({
-        title: "Erro",
-        description: "Não foi possível carregar os dados.",
-        variant: "destructive",
-      });
+      toast({ title: 'Erro', description: 'Não foi possível carregar os dados.', variant: 'destructive' });
     } finally {
       setLoading(false);
     }
@@ -50,33 +47,32 @@ export default function RegistroAlimentacao() {
     setSubmitting(true);
 
     try {
+      // Monta o datetime completo combinando data de hoje + horário selecionado
+      const hoje = new Date().toISOString().split('T')[0]; // "2026-06-06"
+      const horarioISO = new Date(`${hoje}T${form.horario}:00`).toISOString();
+
       await funcionarioService.registrarAlimentacao({
-        animal_id: form.animal_id,
-        tipo_racao: form.tipo_racao,
+        animal_id:    form.animal_id   || undefined, // opcional
+        tipo_racao:   form.tipo_racao,
         quantidade_kg: parseFloat(form.quantidade_kg),
-        observacoes: form.observacoes,
-        horario: form.horario
+        observacoes:  form.observacoes,
+        horario:      horarioISO,       // ← datetime completo para o serializer mapear em data_hora
       });
+
+      setSuccess(true);
+      setTimeout(() => setSuccess(false), 3000);
 
       setForm({
         animal_id: '',
         tipo_racao: '',
         quantidade_kg: '',
         observacoes: '',
-        horario: ''
+        horario: new Date().toTimeString().slice(0, 5),
       });
 
-      toast({
-        title: "Sucesso",
-        description: "Alimentação registrada com sucesso!",
-      });
     } catch (error) {
-      console.error('Erro ao registrar alimentação:', error);
-      toast({
-        title: "Erro",
-        description: "Erro ao registrar alimentação. Tente novamente.",
-        variant: "destructive",
-      });
+      console.error('Erro ao registrar alimentação:', error.response?.data);
+      toast({ title: 'Erro', description: 'Erro ao registrar alimentação. Tente novamente.', variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
@@ -85,10 +81,8 @@ export default function RegistroAlimentacao() {
   if (loading) {
     return (
       <Card>
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-emerald-600" />
-          </div>
+        <CardContent className="flex justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
         </CardContent>
       </Card>
     );
@@ -98,76 +92,108 @@ export default function RegistroAlimentacao() {
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <Utensils className="h-5 w-5 text-emerald-600" />
+          <Utensils className="h-5 w-5 text-purple-600" />
           Registrar Alimentação
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {success && (
+          <div className="mb-4 p-3 bg-green-50 text-green-800 rounded-lg flex items-center gap-2">
+            <CheckCircle className="h-5 w-5" />
+            Alimentação registrada com sucesso!
+          </div>
+        )}
+
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
             <div>
-              <Label>Animal</Label>
+              <Label>Tipo de Ração *</Label>
               <select
-                className="w-full border rounded-lg p-2"
-                value={form.animal_id}
-                onChange={(e) => setForm({ ...form, animal_id: e.target.value })}
-                required
-              >
-                <option value="">Selecione...</option>
-                {animais.map(animal => (
-                  <option key={animal.id} value={animal.id}>
-                    {animal.brinco} - {animal.nome || 'Sem nome'}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <Label>Tipo de Ração</Label>
-              <select
-                className="w-full border rounded-lg p-2"
+                className="w-full border rounded-lg p-2 mt-1"
                 value={form.tipo_racao}
                 onChange={(e) => setForm({ ...form, tipo_racao: e.target.value })}
                 required
               >
                 <option value="">Selecione...</option>
-                {tiposRacao.map(tipo => (
-                  <option key={tipo.id} value={tipo.nome}>
-                    {tipo.nome} ({tipo.peso_por_saco}kg/saco)
+                {tiposRacao.map((tipo) => (
+                  <option key={tipo.id} value={tipo.id} >
+                    ({tipo.peso_por_saco}kg/saco)
+                  </option>
+                ))}
+              </select>
+              {tiposRacao.length === 0 && (
+                <p className="text-xs text-gray-400 mt-1">
+                  Nenhum tipo de ração cadastrado na fazenda.
+                </p>
+              )}
+            </div>
+
+            <div>
+              <Label>Quantidade (kg) *</Label>
+              <Input
+                type="number"
+                step="0.1"
+                min="0.1"
+                placeholder="Ex: 12.5"
+                value={form.quantidade_kg}
+                onChange={(e) => setForm({ ...form, quantidade_kg: e.target.value })} // ← bug corrigido
+                required
+              />
+            </div>
+
+            <div>
+              <Label>
+                Animal <span className="text-gray-400 text-xs font-normal">(opcional)</span>
+              </Label>
+              <select
+                className="w-full border rounded-lg p-2 mt-1"
+                value={form.animal_id}
+                onChange={(e) => setForm({ ...form, animal_id: e.target.value })}
+              >
+                <option value="">Todos / Sem animal específico</option>
+                {animais.map((animal) => (
+                  <option key={animal.id} value={animal.id}>
+                    {animal.brinco} 
+                    {animal.especie_display ? ` (${animal.especie_display})` : ''}
                   </option>
                 ))}
               </select>
             </div>
+
             <div>
-              <Label>Quantidade (kg)</Label>
-              <Input
-                type="number"
-                step="0.1"
-                placeholder="Ex: 12.5"
-                value={form.quantidade_kg}
-                onChange={(e) => setForm({ ...form, quantité_kg: e.target.value })}
-                required
-              />
-            </div>
-            <div>
-              <Label>Horário</Label>
+              <Label>Horário *</Label>
               <Input
                 type="time"
                 value={form.horario}
                 onChange={(e) => setForm({ ...form, horario: e.target.value })}
+                required
               />
             </div>
+
           </div>
+
           <div>
-            <Label>Observações</Label>
+            <Label>
+              Observações <span className="text-gray-400 text-xs font-normal">(opcional)</span>
+            </Label>
             <textarea
-              className="w-full border rounded-lg p-2 min-h-[80px]"
+              className="w-full border rounded-lg p-2 mt-1 min-h-[80px]"
               placeholder="Observações adicionais..."
               value={form.observacoes}
               onChange={(e) => setForm({ ...form, observacoes: e.target.value })}
             />
           </div>
-          <Button type="submit" disabled={submitting} className="bg-emerald-600 hover:bg-emerald-700">
-            {submitting ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Utensils className="h-4 w-4 mr-2" />}
+
+          <Button
+            type="submit"
+            disabled={submitting}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
+            {submitting
+              ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+              : <Utensils className="h-4 w-4 mr-2" />
+            }
             Registrar Alimentação
           </Button>
         </form>

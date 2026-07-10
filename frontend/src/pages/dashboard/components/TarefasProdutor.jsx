@@ -238,7 +238,7 @@ export default function TarefasProdutor() {
                   <option value="">Nenhum</option>
                   {animais.map((animal) => (
                     <option key={animal.id} value={animal.id}>
-                      {animal.brinco} - {animal.nome || "Sem nome"}
+                      {animal.brinco} 
                     </option>
                   ))}
                 </select>
