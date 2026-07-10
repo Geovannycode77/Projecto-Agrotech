@@ -288,7 +288,7 @@ function ProdutorDashboard() {
           <div className="w-8"></div>
         </div>
       </header>
-
+[/*modo pc */]
       <aside className="hidden lg:block fixed left-0 top-0 h-full w-72 bg-white/95 backdrop-blur-sm shadow-xl z-20">
         <div className="p-6 border-b border-gray-100">
           <div className="flex items-center gap-3">
@@ -400,7 +400,8 @@ function ProdutorDashboard() {
           </div>
         </div>
       )}
-
+      
+     {/*area principal */}
       <main className="lg:ml-72 min-h-screen">
         <div className="p-4 md:p-6 lg:p-8">
           <div className="mb-6">
